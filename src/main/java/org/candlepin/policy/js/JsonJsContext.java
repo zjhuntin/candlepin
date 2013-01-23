@@ -37,20 +37,8 @@ public class JsonJsContext extends JsContext {
     private ObjectMapper mapper;
     private ArgumentJsContext nonSerializableContext;
 
-    public JsonJsContext() {
-        mapper = new ObjectMapper();
-
-        // Since each class can only have one @JsonFilter annotation, and most have
-        // ApiHateoas, We just default here to using the Export filter.
-        SimpleFilterProvider filterProvider = new SimpleFilterProvider();
-        filterProvider.setDefaultFilter(new ExportBeanPropertyFilter());
-        mapper.setFilters(filterProvider);
-
-        AnnotationIntrospector primary = new JacksonAnnotationIntrospector();
-        AnnotationIntrospector secondary = new JaxbAnnotationIntrospector();
-        AnnotationIntrospector pair = new AnnotationIntrospector.Pair(primary, secondary);
-        mapper.setAnnotationIntrospector(pair);
-
+    public JsonJsContext(ObjectMapper mapper) {
+        this.mapper = mapper;
         nonSerializableContext = new ArgumentJsContext();
     }
 

@@ -41,18 +41,12 @@ import com.google.inject.Inject;
  * A class used to check consumer compliance status.
  */
 public class ComplianceRules {
-
-    private EntitlementCurator entCurator;
-    private JsRunner jsRules;
-    private ObjectMapper mapper;
-    private static Logger log = Logger.getLogger(ComplianceRules.class);
-
-    @Inject
-    public ComplianceRules(JsRunner jsRules, EntitlementCurator entCurator) {
-        this.entCurator = entCurator;
-        this.jsRules = jsRules;
-
+    static ObjectMapper mapper;
+    static {
         mapper = new ObjectMapper();
+
+        // Since each class can only have one @JsonFilter annotation, and most have
+        // ApiHateoas, We just default here to using the Export filter.
         SimpleFilterProvider filterProvider = new SimpleFilterProvider();
         filterProvider.setDefaultFilter(new ExportBeanPropertyFilter());
         mapper.setFilters(filterProvider);
@@ -61,6 +55,16 @@ public class ComplianceRules {
         AnnotationIntrospector secondary = new JaxbAnnotationIntrospector();
         AnnotationIntrospector pair = new AnnotationIntrospector.Pair(primary, secondary);
         mapper.setAnnotationIntrospector(pair);
+    }
+
+    private EntitlementCurator entCurator;
+    private JsRunner jsRules;
+    private static Logger log = Logger.getLogger(ComplianceRules.class);
+
+    @Inject
+    public ComplianceRules(JsRunner jsRules, EntitlementCurator entCurator) {
+        this.entCurator = entCurator;
+        this.jsRules = jsRules;
 
         jsRules.init("compliance_name_space");
     }
@@ -76,7 +80,7 @@ public class ComplianceRules {
 
         List<Entitlement> ents = entCurator.listByConsumer(c);
 
-        JsonJsContext args = new JsonJsContext();
+        JsonJsContext args = new JsonJsContext(mapper);
         args.put("consumer", c);
         args.put("entitlements", ents);
         args.put("ondate", date);
@@ -97,7 +101,7 @@ public class ComplianceRules {
 
     public boolean isStackCompliant(Consumer consumer, String stackId,
         List<Entitlement> entsToConsider) {
-        JsonJsContext args = new JsonJsContext();
+        JsonJsContext args = new JsonJsContext(mapper);
         args.put("stack_id", stackId);
         args.put("consumer", consumer);
         args.put("entitlements", entsToConsider);
@@ -106,7 +110,7 @@ public class ComplianceRules {
     }
 
     public boolean isEntitlementCompliant(Consumer consumer, Entitlement ent) {
-        JsonJsContext args = new JsonJsContext();
+        JsonJsContext args = new JsonJsContext(mapper);
         args.put("consumer", consumer);
         args.put("entitlement", ent);
         args.put("log", log, false);
