@@ -572,13 +572,20 @@ public class ImporterTest {
     }
 
     private File createFile(String filename, String version, Date date,
-                 String username, String prefix)
+                 String username, String prefix, String cdnUrl)
         throws JsonGenerationException, JsonMappingException, IOException {
 
         File f = new File(tempDir, filename);
-        Meta meta = new Meta(version, date, username, prefix);
+        Meta meta = new Meta(version, date, username, prefix, cdnUrl);
         mapper.writeValue(f, meta);
         return f;
+    }
+
+    private File createFile(String filename, String version, Date date,
+                String username, String prefix)
+        throws JsonGenerationException, JsonMappingException, IOException {
+
+        return createFile(filename, version, date, username, prefix, null);
     }
 
     private File[] createMockJsFile(String filename)
@@ -640,7 +647,7 @@ public class ImporterTest {
         ConflictOverrides forcedConflicts = mock(ConflictOverrides.class);
         when(forcedConflicts.isForced(any(Importer.Conflict.class))).thenReturn(false);
 
-        Meta meta = new Meta("1.0", new Date(), "admin", "/candlepin/owners");
+        Meta meta = new Meta("1.0", new Date(), "admin", "/candlepin/owners", null);
 
         i.importConsumer(owner, consumerfile, upstream, forcedConflicts, meta);
 

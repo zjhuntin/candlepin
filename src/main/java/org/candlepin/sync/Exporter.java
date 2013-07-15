@@ -122,6 +122,12 @@ public class Exporter {
     }
 
     public File getFullExport(Consumer consumer) throws ExportCreationException {
+        return getFullExport(consumer, null, null, null);
+    }
+
+    public File getFullExport(Consumer consumer, String cdnUrl, String webAppPrefix,
+        String webApiPrefix)
+        throws ExportCreationException {
         // TODO: need to delete tmpDir (which contains the archive,
         // which we need to return...)
         try {
@@ -129,8 +135,8 @@ public class Exporter {
             File baseDir = new File(tmpDir.getAbsolutePath(), "export");
             baseDir.mkdir();
 
-            exportMeta(baseDir);
-            exportConsumer(baseDir, consumer);
+            exportMeta(baseDir, cdnUrl);
+            exportConsumer(baseDir, consumer, webAppPrefix, webApiPrefix);
             exportIdentityCertificate(baseDir, consumer);
             exportEntitlements(baseDir, consumer);
             exportEntitlementsCerts(baseDir, consumer, null, true);
@@ -155,7 +161,7 @@ public class Exporter {
             File baseDir = new File(tmpDir.getAbsolutePath(), "export");
             baseDir.mkdir();
 
-            exportMeta(baseDir);
+            exportMeta(baseDir, null);
             exportEntitlementsCerts(baseDir, consumer, serials, false);
             return makeArchive(consumer, tmpDir, baseDir);
         }
@@ -288,28 +294,35 @@ public class Exporter {
         out.closeEntry();
     }
 
-    private void exportMeta(File baseDir) throws IOException {
+    private void exportMeta(File baseDir, String cdnUrl)
+        throws IOException {
         File file = new File(baseDir.getCanonicalPath(), "meta.json");
         FileWriter writer = new FileWriter(file);
         Meta m = new Meta(getVersion(), new Date(),
             principalProvider.get().getPrincipalName(),
-            getPrefixWebUrl());
+            null, cdnUrl);
         meta.export(mapper, writer, m);
         writer.close();
     }
 
-    private String getPrefixWebUrl() {
+    private String getPrefixWebUrl(String override) {
         String prefixWebUrl = config.getString(ConfigProperties.PREFIX_WEBURL);
-        if (prefixWebUrl != null && prefixWebUrl.trim().equals("")) {
-            prefixWebUrl = null;
+        if (!StringUtils.isBlank(override)) {
+            return override;
+        }
+        if (StringUtils.isBlank(prefixWebUrl)) {
+            return null;
         }
         return prefixWebUrl;
     }
 
-    private String getPrefixApiUrl() {
+    private String getPrefixApiUrl(String override) {
         String prefixApiUrl = config.getString(ConfigProperties.PREFIX_APIURL);
-        if (prefixApiUrl != null && prefixApiUrl.trim().equals("")) {
-            prefixApiUrl = null;
+        if (!StringUtils.isBlank(override)) {
+            return override;
+        }
+        if (StringUtils.isBlank(prefixApiUrl)) {
+            return null;
         }
         return prefixApiUrl;
     }
@@ -319,11 +332,13 @@ public class Exporter {
         return map.get("version") + "-" + map.get("release");
     }
 
-    private void exportConsumer(File baseDir, Consumer consumer) throws IOException {
+    private void exportConsumer(File baseDir, Consumer consumer, String webAppPrefix,
+        String webApiPrefix)
+        throws IOException {
         File file = new File(baseDir.getCanonicalPath(), "consumer.json");
         FileWriter writer = new FileWriter(file);
-        this.consumerExporter.export(mapper, writer, consumer, getPrefixWebUrl(),
-            getPrefixApiUrl());
+        this.consumerExporter.export(mapper, writer, consumer,
+            getPrefixWebUrl(webAppPrefix), getPrefixApiUrl(webApiPrefix));
         writer.close();
     }
 

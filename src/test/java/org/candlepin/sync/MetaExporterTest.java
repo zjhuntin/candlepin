@@ -45,13 +45,15 @@ public class MetaExporterTest {
         meta.setCreated(now);
         meta.setPrincipalName("myUsername");
         meta.setWebAppPrefix("webapp_prefix");
+        meta.setCdnUrl("http://cdnu.rl/test");
 
         metaEx.export(mapper, writer, meta);
 
         StringBuffer json = new StringBuffer();
         json.append("{\"version\":\"0.1.0\",\"created\":\"").append(nowString);
         json.append("\",\"principalName\":\"myUsername\",");
-        json.append("\"webAppPrefix\":\"webapp_prefix\"}");
+        json.append("\"webAppPrefix\":\"webapp_prefix\",");
+        json.append("\"cdnUrl\":\"http://cdnu.rl/test\"}");
         assertTrue(TestUtil.isJsonEqual(json.toString(), writer.toString()));
     }
 

@@ -41,6 +41,11 @@ describe 'Candlepin Export' do
     exported_consumer['uuid'].should == @candlepin_client.uuid
   end
 
+  it 'exports CDN URL' do
+   exported_cdn_url = parse_file(File.join(@export_dir, 'meta.json'))
+   exported_cdn_url['cdnUrl'].should == "http://cschevia.is/1337"
+  end
+
   it 'should not include consumer json in entitlements' do
     Dir["#{@export_dir}/entitlements/*.json"].find_all do |ent|
       JSON.parse(File.read(ent)).has_key? 'consumer'

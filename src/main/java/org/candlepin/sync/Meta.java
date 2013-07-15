@@ -24,13 +24,15 @@ public class Meta {
     private Date created;
     private String principalName;
     private String webAppPrefix;
+    private String cdnUrl;
 
     public Meta() {
-        this("0.0.0", new Date(), "", null);
+        this("0.0.0", new Date(), "", null, null);
     }
 
     public Meta(String version, Date creation,
-                String userName, String webAppPrefix) {
+                String userName, String webAppPrefix,
+                String cdnUrl) {
         this.version = version;
         this.created = creation;
 
@@ -44,6 +46,11 @@ public class Meta {
 
         this.principalName = userName;
         this.webAppPrefix = webAppPrefix;
+        this.cdnUrl = cdnUrl;
+    }
+
+    public String getCdnUrl() {
+        return cdnUrl;
     }
 
     public String getVersion() {
@@ -78,4 +85,7 @@ public class Meta {
         this.webAppPrefix = prefix;
     }
 
+    public void setCdnUrl(String cdnUrl) {
+        this.cdnUrl = cdnUrl;
+    }
 }

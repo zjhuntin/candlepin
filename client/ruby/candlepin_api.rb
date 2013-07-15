@@ -369,8 +369,10 @@ class Candlepin
     return status['result']
   end
 
-  def export_consumer(dest_dir)
+  def export_consumer(dest_dir, params={})
     path = "/consumers/#{@uuid}/export"
+    path += "?cdn_url=#{params[:cdn_url]}&" if params[:cdn_url]
+
     begin
       get_file(path, dest_dir)
     rescue Exception => e

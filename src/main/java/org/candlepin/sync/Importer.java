@@ -427,8 +427,9 @@ public class Importer {
 
             importer.store(productsToImport);
 
+            Meta meta = mapper.readValue(metadata, Meta.class);
             importEntitlements(owner, productsToImport, entitlements.listFiles(),
-                consumer);
+                consumer, meta);
 
             refresher.add(owner);
             refresher.run();
@@ -565,7 +566,7 @@ public class Importer {
     }
 
     public void importEntitlements(Owner owner, Set<Product> products, File[] entitlements,
-        ConsumerDto consumer)
+        ConsumerDto consumer, Meta meta)
         throws IOException, SyncDataFormatException {
         EntitlementImporter importer = new EntitlementImporter(subCurator, csCurator,
             sink, i18n);
@@ -581,7 +582,8 @@ public class Importer {
             try {
                 log.debug("Import entitlement: " + entitlement.getName());
                 reader = new FileReader(entitlement);
-                subscriptionsToImport.add(importer.importObject(mapper, reader, owner, productsById, consumer));
+                subscriptionsToImport.add(importer.importObject(mapper, reader, owner,
+                    productsById, consumer, meta));
             }
             finally {
                 if (reader != null) {

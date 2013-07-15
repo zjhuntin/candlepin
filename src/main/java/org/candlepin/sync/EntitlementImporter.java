@@ -63,7 +63,7 @@ public class EntitlementImporter {
     }
 
     public Subscription importObject(ObjectMapper mapper, Reader reader, Owner owner,
-        Map<String, Product> productsById, ConsumerDto consumer)
+        Map<String, Product> productsById, ConsumerDto consumer, Meta meta)
         throws IOException, SyncDataFormatException {
 
         Entitlement entitlement = mapper.readValue(reader, Entitlement.class);
@@ -84,6 +84,7 @@ public class EntitlementImporter {
         subscription.setQuantity(entitlement.getQuantity().longValue());
 
         subscription.setProduct(findProduct(productsById, entitlement.getProductId()));
+        subscription.setCdnUrl(meta.getCdnUrl());
 
         Set<Product> products = new HashSet<Product>();
         for (ProvidedProduct providedProduct : entitlement.getPool().

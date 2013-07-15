@@ -1669,7 +1669,10 @@ public class ConsumerResource {
     public File exportData(
         @Context HttpServletResponse response,
         @PathParam("consumer_uuid")
-        @Verify(value = Consumer.class, require = Access.ALL) String consumerUuid) {
+        @Verify(value = Consumer.class, require = Access.ALL) String consumerUuid,
+        @QueryParam("cdn_url") String cdnUrl,
+        @QueryParam("webapp_prefix") String webAppPrefix,
+        @QueryParam("webapi_prefix") String webApiPrefix) {
 
         Consumer consumer = verifyAndLookupConsumer(consumerUuid);
         if (consumer.getType() == null ||
@@ -1686,7 +1689,7 @@ public class ConsumerResource {
 
         File archive;
         try {
-            archive = exporter.getFullExport(consumer);
+            archive = exporter.getFullExport(consumer, cdnUrl, webAppPrefix, webApiPrefix);
             response.addHeader("Content-Disposition", "attachment; filename=" +
                 archive.getName());
 

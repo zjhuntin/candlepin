@@ -258,7 +258,8 @@ public class ConsumerResourceIntegrationTest extends DatabaseTestFixture {
         consumerCurator.update(consumer);
         setupPrincipal(owner, Access.READ_ONLY);
         securityInterceptor.enable();
-        consumerResource.exportData(mock(HttpServletResponse.class), consumer.getUuid());
+        consumerResource.exportData(mock(HttpServletResponse.class),
+            consumer.getUuid(), null, null, null);
     }
 
     @SuppressWarnings("unchecked")

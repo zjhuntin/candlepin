@@ -605,8 +605,11 @@ public class EntitlementImporterTest {
         productsById.put(subProvided1.getProductId(), TestUtil.createProduct(
             subProvided1.getProductId(), subProvided1.getProductName()));
 
+        Meta meta = new Meta();
+        meta.setCdnUrl("cdn/url");
+
         Subscription sub = importer.importObject(om, reader, owner,
-            productsById, consumerDto);
+            productsById, consumerDto, meta);
 
         assertEquals(pool.getId(), sub.getUpstreamPoolId());
         assertEquals(consumer.getUuid(), sub.getUpstreamConsumerId());
@@ -638,6 +641,8 @@ public class EntitlementImporterTest {
         assertEquals(cert.getSerial().getExpiration(), serial.getExpiration());
         assertEquals(cert.getSerial().getCreated(), serial.getCreated());
         assertEquals(cert.getSerial().getUpdated(), serial.getUpdated());
+
+        assertEquals(sub.getCdnUrl(), meta.getCdnUrl());
     }
 
     private Subscription createSubscription(Owner owner, String productId,
