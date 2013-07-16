@@ -11,8 +11,6 @@ SMALL_SUB_QUANTITY = 5
 LARGE_SUB_QUANTITY = 10
 
 filenames=["test_products.json"]
-puts "filenames",filenames
-puts "ARGV",ARGV
 if not ARGV.empty?
   filenames.clear
   ARGV.each do |filename|
@@ -21,10 +19,6 @@ if not ARGV.empty?
 end
 
 data = {}
-
-puts "filenames"
-puts filenames
-puts 'json', JSON
 
 filenames.each do |filename|
   puts "filename2", filename

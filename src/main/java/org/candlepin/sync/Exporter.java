@@ -126,7 +126,7 @@ public class Exporter {
     }
 
     public File getFullExport(Consumer consumer, String cdnUrl, String webAppPrefix,
-        String webApiPrefix)
+        String apiUrl)
         throws ExportCreationException {
         // TODO: need to delete tmpDir (which contains the archive,
         // which we need to return...)
@@ -136,7 +136,7 @@ public class Exporter {
             baseDir.mkdir();
 
             exportMeta(baseDir, cdnUrl);
-            exportConsumer(baseDir, consumer, webAppPrefix, webApiPrefix);
+            exportConsumer(baseDir, consumer, webAppPrefix, apiUrl);
             exportIdentityCertificate(baseDir, consumer);
             exportEntitlements(baseDir, consumer);
             exportEntitlementsCerts(baseDir, consumer, null, true);
@@ -333,12 +333,12 @@ public class Exporter {
     }
 
     private void exportConsumer(File baseDir, Consumer consumer, String webAppPrefix,
-        String webApiPrefix)
+        String apiUrl)
         throws IOException {
         File file = new File(baseDir.getCanonicalPath(), "consumer.json");
         FileWriter writer = new FileWriter(file);
         this.consumerExporter.export(mapper, writer, consumer,
-            getPrefixWebUrl(webAppPrefix), getPrefixApiUrl(webApiPrefix));
+            getPrefixWebUrl(webAppPrefix), getPrefixApiUrl(apiUrl));
         writer.close();
     }
 

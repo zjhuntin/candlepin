@@ -1672,7 +1672,7 @@ public class ConsumerResource {
         @Verify(value = Consumer.class, require = Access.ALL) String consumerUuid,
         @QueryParam("cdn_url") String cdnUrl,
         @QueryParam("webapp_prefix") String webAppPrefix,
-        @QueryParam("webapi_prefix") String webApiPrefix) {
+        @QueryParam("api_url") String apiUrl) {
 
         Consumer consumer = verifyAndLookupConsumer(consumerUuid);
         if (consumer.getType() == null ||
@@ -1689,7 +1689,7 @@ public class ConsumerResource {
 
         File archive;
         try {
-            archive = exporter.getFullExport(consumer, cdnUrl, webAppPrefix, webApiPrefix);
+            archive = exporter.getFullExport(consumer, cdnUrl, webAppPrefix, apiUrl);
             response.addHeader("Content-Disposition", "attachment; filename=" +
                 archive.getName());
 

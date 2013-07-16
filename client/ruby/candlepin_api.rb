@@ -371,7 +371,10 @@ class Candlepin
 
   def export_consumer(dest_dir, params={})
     path = "/consumers/#{@uuid}/export"
-    path += "?cdn_url=#{params[:cdn_url]}&" if params[:cdn_url]
+    path += "?" if params
+    path += "cdn_url=#{params[:cdn_url]}&" if params[:cdn_url]
+    path += "webapp_prefix=#{params[:webapp_prefix]}&" if params[:webapp_prefix]
+    path += "api_url=#{params[:api_url]}&" if params[:api_url]
 
     begin
       get_file(path, dest_dir)

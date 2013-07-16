@@ -290,7 +290,8 @@ module ExportMethods
     @export_dir = File.join(@tmp_dir, "export")
     Dir.mkdir(@tmp_dir)
 
-    @export_filename = @candlepin_client.export_consumer(@tmp_dir, {:cdn_url => "http://cschevia.is/1337"})
+    @export_filename = @candlepin_client.export_consumer(@tmp_dir, {:cdn_url => "http://cschevia.is/1337",
+        :webapp_prefix => "webapp1", :api_url => "api1"})
     # Save current working dir so we can return later:
     @orig_working_dir = Dir.pwd()
 

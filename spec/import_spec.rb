@@ -246,10 +246,12 @@ describe 'Candlepin Import' do
 
   it 'contains upstream consumer' do
     # this information used to be on /imports but now exists on Owner
+    # checking for api and webapp overrides
     consumer = @candlepin_consumer
     upstream = @cp.get_owner(@import_owner['key'])['upstreamConsumer']
     upstream.uuid.should == consumer['uuid']
-    upstream.include?('apiUrl').should be_true
+    upstream.apiUrl.should == "api1"
+    upstream.webUrl.should == "webapp1"
     upstream.id.should_not be_nil
     upstream.idCert.should_not be_nil
     upstream.name.should == consumer['name']
@@ -263,5 +265,11 @@ describe 'Candlepin Import' do
     pool["derivedProductId"].should == @derived_product.id
     pool["derivedProvidedProducts"].length.should == 1
     pool["derivedProvidedProducts"][0]["productId"].should == @derived_provided_prod.id
+  end
+
+  it 'should put the cdn from the manifest into the created subscriptions' do
+    @cp.list_subscriptions(@import_owner['key']).find_all do |sub|
+        sub['cdnUrl'].should == "http://cschevia.is/1337"
+    end
   end
 end
