@@ -16,6 +16,7 @@ package org.candlepin.resource;
 
 import static org.quartz.JobBuilder.newJob;
 
+import org.apache.commons.lang.StringUtils;
 import org.candlepin.auth.interceptor.Verify;
 import org.candlepin.controller.Entitler;
 import org.candlepin.controller.PoolManager;
@@ -219,9 +220,9 @@ public class EntitlementResource {
      */
     @GET
     @Consumes({MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON})
-    @Produces({ MediaType.TEXT_PLAIN })
+    @Produces(MediaType.APPLICATION_JSON)
     @Path("{dbid}/upstream_cert")
-    public String getEntitlementUpstreamCert(
+    public String[] getEntitlementUpstreamCert(
         @PathParam("dbid") String dbid) {
         Entitlement ent = entitlementCurator.find(dbid);
         // optimization: don't do entitlement regen here, as we don't read
@@ -229,13 +230,20 @@ public class EntitlementResource {
 
         if (ent == null) {
             throw new NotFoundException(i18n.tr(
-                "Subscription with ID ''{0}'' could not be found.", dbid));
+                "Entitlement with ID ''{0}'' could not be found.", dbid));
         }
 
         String subscriptionId = ent.getPool().getSubscriptionId();
         SubscriptionResource subResource = new SubscriptionResource(subService,
             consumerCurator, i18n);
-        return subResource.getSubCertAsPem(subscriptionId);
+        String[] result = new String[2];
+        String cdn = subResource.getSubscription(subscriptionId).getCdnUrl();
+        if (StringUtils.isBlank(cdn)) {
+            cdn = "";
+        }
+        result[0] = cdn;
+        result[1] = subResource.getSubCertAsPem(subscriptionId);
+        return result;
     }
 
     /**

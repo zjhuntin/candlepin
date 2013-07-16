@@ -241,7 +241,8 @@ describe 'Candlepin Import' do
     consumer = consumer_client(@import_owner_client, 'system6')
     entitlement = consumer.consume_pool(pool.id)[0]
     ent =  @cp.get_subscription_cert_by_ent_id entitlement.id
-    cert.should == ent
+    ent[0].should == "http://cschevia.is/1337"
+    ent[1] == cert.should
   end
 
   it 'contains upstream consumer' do

@@ -680,7 +680,7 @@ class Candlepin
   end
 
   def get_subscription_cert_by_ent_id(ent_id)
-    return get_text("/entitlements/#{ent_id}/upstream_cert", 'text/plain')
+    return get("/entitlements/#{ent_id}/upstream_cert")
   end
 
   def create_subscription(owner_key, product_id, quantity=1,
