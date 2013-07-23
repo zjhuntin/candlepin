@@ -969,6 +969,33 @@ class Candlepin
     get("/distributor_versions")
   end
 
+  def create_content_delivery_network(key, name, url, cert=nil)
+    cdn =  {
+      'key' => key,
+      'name' => name,
+      'url' => url,
+      'certificate' => cert
+    }
+    post('/content_delivery_network', cdn)
+  end
+
+  def update_content_delivery_network(key, name, url, cert=nil)
+    cdn =  {
+      'name' => name,
+      'url' => url,
+      'certificate' => cert
+    }
+    put("/content_delivery_network/#{key}", cdn)
+  end
+
+  def delete_content_delivery_network(key)
+    delete("/content_delivery_network/#{key}")
+  end
+
+  def get_content_delivery_networks()
+    get("/content_delivery_network")
+  end
+
   # Assumes a zip archive currently. Returns filename (random#.zip) of the
   # temp file created.
   def get_file(uri, dest_dir)

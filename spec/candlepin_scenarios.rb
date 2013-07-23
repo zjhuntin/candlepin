@@ -14,6 +14,7 @@ module CandlepinScenarios
         @owners = []
         @products = []
         @dist_versions = []
+        @content_delivery_networks = []
         @users = []
         @roles = []
         @rules = Base64.encode64("")
@@ -25,6 +26,7 @@ module CandlepinScenarios
         @users.reverse_each { |user| @cp.delete_user user['username'] }
         @products.reverse_each { |product| @cp.delete_product product['id'] }
         @dist_versions.reverse_each { |dist_version| @cp.delete_distributor_version dist_version['id'] }
+        @content_delivery_networks.reverse_each { |content_delivery_network| @cp.delete_content_delivery_network content_delivery_network['key'] }
 
         # restore the original rules
         if (@rules)
@@ -101,6 +103,21 @@ module CandlepinMethods
     @dist_versions << dist_version
 
     return dist_version
+  end
+
+  # Wrapper for ruby API so we can track all content delivery network we created and clean them up.
+  def create_content_delivery_network(key, name, url, cert=nil)
+    content_delivery_network = @cp.create_content_delivery_network(key, name, url, cert)
+    @content_delivery_networks << content_delivery_network
+
+    return content_delivery_network
+  end
+
+  def update_content_delivery_network(key, name, url, cert=nil)
+    content_delivery_network = @cp.update_content_delivery_network(key, name, url, cert)
+    @content_delivery_networks << content_delivery_network
+
+    return content_delivery_network
   end
 
   def user_client(owner, user_name, readonly=false)

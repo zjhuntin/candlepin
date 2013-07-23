@@ -1129,4 +1129,5 @@
     <include file="db/changelog/20130705140300-add-certv3-capability.xml" />
     <include file="db/changelog/20130717133146-ownerkey-and-displayname-in-deletedconsumer.xml" />
     <include file="db/changelog/20130715142926-add-cdn-url-to-subscription.xml" />
+    <include file="db/changelog/20130722140547-add-cdn-table.xml" />
 </databaseChangeLog>
