@@ -302,12 +302,20 @@ module ExportMethods
     @entitlement3 = @candlepin_client.consume_pool(pool4.id)[0]
     @entitlement_up = @candlepin_client.consume_pool(@pool_up.id)[0]
 
+    if @cdn == nil
+        @cdn_key = random_string("test-cdn")
+        @cdn = @cp.create_content_delivery_network(@cdn_key,
+                                               "Test CDN",
+                                               "https://cdn.test.com")
+    end
+
+
     # Make a temporary directory where we can safely extract our archive:
     @tmp_dir = File.join(Dir.tmpdir, random_string('candlepin-rspec'))
     @export_dir = File.join(@tmp_dir, "export")
     Dir.mkdir(@tmp_dir)
 
-    @export_filename = @candlepin_client.export_consumer(@tmp_dir, {:cdn_url => "http://cschevia.is/1337",
+    @export_filename = @candlepin_client.export_consumer(@tmp_dir, {:cdn_key => @cdn_key,
         :webapp_prefix => "webapp1", :api_url => "api1"})
     # Save current working dir so we can return later:
     @orig_working_dir = Dir.pwd()

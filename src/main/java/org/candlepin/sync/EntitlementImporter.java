@@ -31,8 +31,8 @@ import org.candlepin.audit.Event;
 import org.candlepin.audit.EventSink;
 import org.candlepin.model.CertificateSerial;
 import org.candlepin.model.CertificateSerialCurator;
-import org.candlepin.model.ContentDeliveryNetwork;
-import org.candlepin.model.ContentDeliveryNetworkCurator;
+import org.candlepin.model.Cdn;
+import org.candlepin.model.CdnCurator;
 import org.candlepin.model.DerivedProvidedProduct;
 import org.candlepin.model.Entitlement;
 import org.candlepin.model.EntitlementCertificate;
@@ -53,12 +53,12 @@ public class EntitlementImporter {
 
     private SubscriptionCurator subscriptionCurator;
     private CertificateSerialCurator csCurator;
-    private ContentDeliveryNetworkCurator cdnCurator;
+    private CdnCurator cdnCurator;
     private EventSink sink;
     private I18n i18n;
 
     public EntitlementImporter(SubscriptionCurator subscriptionCurator,
-        CertificateSerialCurator csCurator, ContentDeliveryNetworkCurator cdnCurator,
+        CertificateSerialCurator csCurator, CdnCurator cdnCurator,
         EventSink sink, I18n i18n) {
 
         this.subscriptionCurator = subscriptionCurator;
@@ -92,7 +92,7 @@ public class EntitlementImporter {
         subscription.setProduct(findProduct(productsById, entitlement.getProductId()));
         String cdnKey = meta.getCdnKey();
         if (!StringUtils.isBlank(cdnKey)) {
-            ContentDeliveryNetwork cdn = cdnCurator.lookupByKey(cdnKey);
+            Cdn cdn = cdnCurator.lookupByKey(cdnKey);
             if (cdn != null) {
                 subscription.setCdn(cdn);
             }

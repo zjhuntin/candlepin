@@ -37,8 +37,8 @@ import org.candlepin.audit.EventSink;
 import org.candlepin.model.CertificateSerial;
 import org.candlepin.model.CertificateSerialCurator;
 import org.candlepin.model.Consumer;
-import org.candlepin.model.ContentDeliveryNetwork;
-import org.candlepin.model.ContentDeliveryNetworkCurator;
+import org.candlepin.model.Cdn;
+import org.candlepin.model.CdnCurator;
 import org.candlepin.model.DerivedProvidedProduct;
 import org.candlepin.model.Entitlement;
 import org.candlepin.model.EntitlementCertificate;
@@ -67,7 +67,7 @@ public class EntitlementImporterTest {
     @Mock private EventSink sink;
     @Mock private SubscriptionCurator curator;
     @Mock private CertificateSerialCurator certSerialCurator;
-    @Mock private ContentDeliveryNetworkCurator cdnCurator;
+    @Mock private CdnCurator cdnCurator;
     @Mock private ObjectMapper om;
 
     private Owner owner;
@@ -608,7 +608,8 @@ public class EntitlementImporterTest {
 
         Meta meta = new Meta();
         meta.setCdnKey("test-cdn");
-        ContentDeliveryNetwork testCdn = new ContentDeliveryNetwork("test-cdn", "Test CDN", "https://test.url.com");
+        Cdn testCdn = new Cdn("test-cdn",
+            "Test CDN", "https://test.url.com");
         when(cdnCurator.lookupByKey("test-cdn")).thenReturn(testCdn);
 
         Subscription sub = importer.importObject(om, reader, owner,

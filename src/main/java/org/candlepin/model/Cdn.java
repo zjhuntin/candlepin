@@ -30,18 +30,14 @@ import javax.xml.bind.annotation.XmlRootElement;
 import org.hibernate.annotations.GenericGenerator;
 
 /**
- * Represents an ContentDeliveryNetwork within an owner/organization. ContentDeliveryNetworks are tracked
- * primarily so we can enable/disable/promote content in specific places.
- *
- * Not all deployments of Candlepin will make use of this table, it will at times
- * be completely empty.
+ * Represents an Content Delivery Network
  */
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @Entity
 @Table(name = "cp_cdn",
     uniqueConstraints = {@UniqueConstraint(columnNames = {"key"})})
-public class ContentDeliveryNetwork extends AbstractHibernateObject {
+public class Cdn extends AbstractHibernateObject {
 
     @Id
     @GeneratedValue(generator = "system-uuid")
@@ -60,13 +56,13 @@ public class ContentDeliveryNetwork extends AbstractHibernateObject {
 
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "certificate_id")
-    private ContentDeliveryNetworkCertificate cert;
+    private CdnCertificate cert;
 
-    public ContentDeliveryNetwork() {
+    public Cdn() {
     }
 
-    public ContentDeliveryNetwork(String key, String name, String url,
-        ContentDeliveryNetworkCertificate cert) {
+    public Cdn(String key, String name, String url,
+        CdnCertificate cert) {
         this.key = key;
         this.name = name;
         this.url = name;
@@ -78,7 +74,7 @@ public class ContentDeliveryNetwork extends AbstractHibernateObject {
      * @param string2
      * @param string3
      */
-    public ContentDeliveryNetwork(String key, String name, String url) {
+    public Cdn(String key, String name, String url) {
         this.key = key;
         this.name = name;
         this.url = name;
@@ -116,11 +112,11 @@ public class ContentDeliveryNetwork extends AbstractHibernateObject {
         this.url = url;
     }
 
-    public ContentDeliveryNetworkCertificate getCertificate() {
+    public CdnCertificate getCertificate() {
         return cert;
     }
 
-    public void setCertificate(ContentDeliveryNetworkCertificate cert) {
+    public void setCertificate(CdnCertificate cert) {
         this.cert = cert;
     }
 

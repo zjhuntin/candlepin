@@ -1670,7 +1670,7 @@ public class ConsumerResource {
         @Context HttpServletResponse response,
         @PathParam("consumer_uuid")
         @Verify(value = Consumer.class, require = Access.ALL) String consumerUuid,
-        @QueryParam("cdn_url") String cdnUrl,
+        @QueryParam("cdn_key") String cdnKey,
         @QueryParam("webapp_prefix") String webAppPrefix,
         @QueryParam("api_url") String apiUrl) {
 
@@ -1689,7 +1689,7 @@ public class ConsumerResource {
 
         File archive;
         try {
-            archive = exporter.getFullExport(consumer, cdnUrl, webAppPrefix, apiUrl);
+            archive = exporter.getFullExport(consumer, cdnKey, webAppPrefix, apiUrl);
             response.addHeader("Content-Disposition", "attachment; filename=" +
                 archive.getName());
 

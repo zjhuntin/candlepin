@@ -114,9 +114,9 @@ public class Subscription extends AbstractHibernateObject {
     @JoinColumn(name = "certificate_id")
     private SubscriptionsCertificate cert;
 
-    @OneToOne(cascade = CascadeType.ALL)
+    @OneToOne
     @JoinColumn(name = "cdn_id")
-    private ContentDeliveryNetwork cdn;
+    private Cdn cdn;
 
     public Subscription() {
     }
@@ -357,11 +357,11 @@ public class Subscription extends AbstractHibernateObject {
         this.derivedProvidedProducts = subProvidedProducts;
     }
 
-    public ContentDeliveryNetwork getCdn() {
+    public Cdn getCdn() {
         return cdn;
     }
 
-    public void setCdn(ContentDeliveryNetwork cdn) {
+    public void setCdn(Cdn cdn) {
         this.cdn = cdn;
     }
 

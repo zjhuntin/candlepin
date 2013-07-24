@@ -54,7 +54,7 @@ import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerType;
 import org.candlepin.model.ConsumerType.ConsumerTypeEnum;
 import org.candlepin.model.ConsumerTypeCurator;
-import org.candlepin.model.ContentDeliveryNetworkCurator;
+import org.candlepin.model.CdnCurator;
 import org.candlepin.model.DerivedProvidedProduct;
 import org.candlepin.model.DistributorVersion;
 import org.candlepin.model.DistributorVersionCapability;
@@ -97,8 +97,8 @@ public class ExporterTest {
     private EntitlementCurator ec;
     private DistributorVersionCurator dvc;
     private DistributorVersionExporter dve;
-    private ContentDeliveryNetworkCurator cdnc;
-    private ContentDeliveryNetworkExporter cdne;
+    private CdnCurator cdnc;
+    private CdnExporter cdne;
     private EntitlementExporter ee;
     private PKIUtility pki;
     private CandlepinCommonTestConfig config;
@@ -126,8 +126,8 @@ public class ExporterTest {
         pprov = mock(PrincipalProvider.class);
         dvc = mock(DistributorVersionCurator.class);
         dve = new DistributorVersionExporter();
-        cdnc = mock(ContentDeliveryNetworkCurator.class);
-        cdne = new ContentDeliveryNetworkExporter();
+        cdnc = mock(CdnCurator.class);
+        cdne = new CdnExporter();
 
         when(exportRules.canExport(any(Entitlement.class))).thenReturn(Boolean.TRUE);
     }

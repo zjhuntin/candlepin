@@ -19,47 +19,46 @@ import java.io.Reader;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.candlepin.model.ContentDeliveryNetwork;
-import org.candlepin.model.ContentDeliveryNetworkCurator;
-import org.candlepin.model.DistributorVersion;
+import org.candlepin.model.Cdn;
+import org.candlepin.model.CdnCurator;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * DistributorVersionImporter
  */
-public class ContentDeliveryNetworkImporter {
-    private static Logger log = Logger.getLogger(ContentDeliveryNetworkImporter.class);
+public class CdnImporter {
+    private static Logger log = Logger.getLogger(CdnImporter.class);
 
-    private ContentDeliveryNetworkCurator curator;
+    private CdnCurator curator;
 
-    public ContentDeliveryNetworkImporter(ContentDeliveryNetworkCurator curator) {
+    public CdnImporter(CdnCurator curator) {
         this.curator = curator;
     }
 
-    public ContentDeliveryNetwork createObject(ObjectMapper mapper, Reader reader)
+    public Cdn createObject(ObjectMapper mapper, Reader reader)
         throws IOException {
-        ContentDeliveryNetwork cdn = mapper.readValue(reader,
-            ContentDeliveryNetwork.class);
+        Cdn cdn = mapper.readValue(reader,
+            Cdn.class);
         cdn.setId(null);
         return cdn;
     }
 
     /**
-     * @param distVers Set of Distributor Versions.
+     * @param cdnSet Set of CDN's.
      */
-    public void store(Set<ContentDeliveryNetwork> cdnSet) {
-        log.debug("Creating/updating distributor versions");
-        for (ContentDeliveryNetwork cdn : cdnSet) {
-            ContentDeliveryNetwork existing = curator.lookupByKey(cdn.getKey());
+    public void store(Set<Cdn> cdnSet) {
+        log.debug("Creating/updating cdns");
+        for (Cdn cdn : cdnSet) {
+            Cdn existing = curator.lookupByKey(cdn.getKey());
             if (existing == null) {
                 curator.create(cdn);
-                log.debug("Created Content Delivery Network: " + cdn.getName());
+                log.debug("Created CDN: " + cdn.getName());
             }
             else {
                 existing.setName(cdn.getName());
                 existing.setUrl(cdn.getUrl());
                 curator.merge(existing);
-                log.debug("Updating Content Delivery Network: " + cdn.getName());
+                log.debug("Updating CDN: " + cdn.getName());
             }
         }
     }

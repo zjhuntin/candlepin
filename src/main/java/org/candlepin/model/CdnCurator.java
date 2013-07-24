@@ -21,32 +21,32 @@ import org.hibernate.criterion.Restrictions;
 /**
  * Subscription manager.
  */
-public class ContentDeliveryNetworkCurator
-    extends AbstractHibernateCurator<ContentDeliveryNetwork> {
+public class CdnCurator
+    extends AbstractHibernateCurator<Cdn> {
 
-    protected ContentDeliveryNetworkCurator() {
-        super(ContentDeliveryNetwork.class);
+    protected CdnCurator() {
+        super(Cdn.class);
     }
 
     /**
-     * Return ContentDeliveryNetwork for the given key.
-     * @param key ContentDeliveryNetwork key
-     * @return ContentDeliveryNetwork whose key matches the given value.
+     * Return CDN for the given key.
+     * @param key CDN key
+     * @return CDN whose key matches the given value.
      */
-    public ContentDeliveryNetwork lookupByKey(String key) {
-        return (ContentDeliveryNetwork) currentSession()
-            .createCriteria(ContentDeliveryNetwork.class)
+    public Cdn lookupByKey(String key) {
+        return (Cdn) currentSession()
+            .createCriteria(Cdn.class)
             .add(Restrictions.eq("key", key)).uniqueResult();
     }
 
     /**
-     * Return a list of the Content Delivery Networks known .
+     * Return a list of the CDN's known .
      *
-     * @return a list of ContentDeliveryNetworks
+     * @return a list of CDN's
      */
     @SuppressWarnings("unchecked")
-    public List<ContentDeliveryNetwork> list() {
-        return currentSession().createCriteria(ContentDeliveryNetwork.class).list();
+    public List<Cdn> list() {
+        return currentSession().createCriteria(Cdn.class).list();
     }
 
 }

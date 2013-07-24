@@ -31,36 +31,35 @@ import org.apache.commons.lang.StringUtils;
 import org.candlepin.auth.Principal;
 import org.candlepin.exceptions.BadRequestException;
 import org.candlepin.exceptions.NotFoundException;
-import org.candlepin.model.ContentDeliveryNetwork;
-import org.candlepin.model.ContentDeliveryNetworkCurator;
-import org.candlepin.model.DistributorVersion;
+import org.candlepin.model.Cdn;
+import org.candlepin.model.CdnCurator;
 import org.xnap.commons.i18n.I18n;
 
 import com.google.inject.Inject;
 
 /**
- * DistributorVersionResource
+ * CdnResource
  */
 @Path("/content_delivery_network")
-public class ContentDeliveryNetworkResource {
+public class CdnResource {
 
     private I18n i18n;
-    private ContentDeliveryNetworkCurator curator;
+    private CdnCurator curator;
 
     @Inject
-    public ContentDeliveryNetworkResource(I18n i18n,
-        ContentDeliveryNetworkCurator curator) {
+    public CdnResource(I18n i18n,
+        CdnCurator curator) {
         this.i18n = i18n;
         this.curator = curator;
     }
 
     /**
-     * @return a ContentDeliveryNetwork list
+     * @return a Cdn list
      * @httpcode 200
      */
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public List<ContentDeliveryNetwork> getContentDeliveryNetworks() {
+    public List<Cdn> getContentDeliveryNetworks() {
         return curator.list();
     }
 
@@ -73,42 +72,42 @@ public class ContentDeliveryNetworkResource {
     @Path("/{key}")
     public void delete(@PathParam("key") String key,
         @Context Principal principal) {
-        ContentDeliveryNetwork cdn = curator.lookupByKey(key);
+        Cdn cdn = curator.lookupByKey(key);
         if (cdn != null) {
             curator.delete(cdn);
         }
     }
 
     /**
-     * @return a DistributorVersion
+     * @return a Cdn
      * @httpcode 200
      */
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    public ContentDeliveryNetwork create(ContentDeliveryNetwork cdn,
+    public Cdn create(Cdn cdn,
         @Context Principal principal) {
-        ContentDeliveryNetwork existing = curator.lookupByKey(cdn.getKey());
+        Cdn existing = curator.lookupByKey(cdn.getKey());
         if (existing != null) {
             throw new BadRequestException(
-                i18n.tr("A content delivery network with the key {0}" +
+                i18n.tr("A CDN with the key {0}" +
                         "already exists", cdn.getKey()));
         }
         return curator.create(cdn);
     }
 
     /**
-     * @return a DistributorVersion
+     * @return a Cdn
      * @httpcode 200
      */
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{key}")
-    public ContentDeliveryNetwork update(@PathParam("key") String key,
-        ContentDeliveryNetwork cdn,
+    public Cdn update(@PathParam("key") String key,
+        Cdn cdn,
         @Context Principal principal) {
-        ContentDeliveryNetwork existing = verifyAndLookupContentDeliveryNetwork(key);
+        Cdn existing = verifyAndLookupCdn(key);
         if (!StringUtils.isBlank(cdn.getName())) {
             existing.setName(cdn.getName());
         }
@@ -122,8 +121,8 @@ public class ContentDeliveryNetworkResource {
         return existing;
     }
 
-    private ContentDeliveryNetwork verifyAndLookupContentDeliveryNetwork(String key) {
-        ContentDeliveryNetwork cdn = curator.lookupByKey(key);
+    private Cdn verifyAndLookupCdn(String key) {
+        Cdn cdn = curator.lookupByKey(key);
 
         if (cdn == null) {
             throw new NotFoundException(i18n.tr("No such content delivery network: {0}",

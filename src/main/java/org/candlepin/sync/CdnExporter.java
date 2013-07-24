@@ -17,14 +17,14 @@ package org.candlepin.sync;
 import java.io.IOException;
 import java.io.Writer;
 
-import org.candlepin.model.ContentDeliveryNetwork;
+import org.candlepin.model.Cdn;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
- * DistributorVersionExporter
+ * CdnExporter
  */
-public class ContentDeliveryNetworkExporter {
-    void export(ObjectMapper mapper, Writer writer, ContentDeliveryNetwork cdn)
+public class CdnExporter {
+    void export(ObjectMapper mapper, Writer writer, Cdn cdn)
         throws IOException {
 
         mapper.writeValue(writer, cdn);

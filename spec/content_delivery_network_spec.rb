@@ -11,7 +11,8 @@ describe 'Content Delivery Network' do
 
   it 'should allow content delivery network creation' do
     count = @cp.get_content_delivery_networks.size
-    cdn = create_content_delivery_network("test-cdn",
+    cdn_key = random_string("test-cdn")
+    cdn = create_content_delivery_network(cdn_key,
                                    "Test CDN",
                                    "https://cdn.test.com")
     cdn.id.should_not be nil
@@ -20,11 +21,12 @@ describe 'Content Delivery Network' do
 
   it 'should allow content delivery network update' do
     count = @cp.get_content_delivery_networks.size
-    cdn = create_content_delivery_network("test-cdn",
+    cdn_key = random_string("test-cdn")
+    cdn = create_content_delivery_network(cdn_key,
                                    "Test CDN",
                                    "https://cdn.test.com")
     cdn_id = cdn.id
-    cdn = update_content_delivery_network("test-cdn",
+    cdn = update_content_delivery_network(cdn_key,
                                    "Test CDN 2",
                                    "https://special.cdn.test.com")
     @cp.get_content_delivery_networks.size.should == count+1
@@ -35,11 +37,12 @@ describe 'Content Delivery Network' do
 
   it 'should allow certificate to be put on CDN on create' do
     count = @cp.get_content_delivery_networks.size
+    cdn_key = random_string("test-cdn")
     certificate = {
         'key' => 'test-key',
         'cert' => 'test-cert'
     }
-    cdn = create_content_delivery_network("test-cdn",
+    cdn = create_content_delivery_network(cdn_key,
                                    "Test CDN",
                                    "https://cdn.test.com",
                                    certificate)
@@ -51,16 +54,17 @@ describe 'Content Delivery Network' do
 
   it 'should allow certificate to be put on CDN on update' do
     count = @cp.get_content_delivery_networks.size
+    cdn_key = random_string("test-cdn")
     certificate = {
         'key' => 'test-key',
         'cert' => 'test-cert'
     }
-    cdn = create_content_delivery_network("test-cdn",
+    cdn = create_content_delivery_network(cdn_key,
                                    "Test CDN",
                                    "https://cdn.test.com")
     cdn_id = cdn.id
     cdn.id.should_not be nil
-    cdn = update_content_delivery_network("test-cdn", nil, nil, certificate)
+    cdn = update_content_delivery_network(cdn_key, nil, nil, certificate)
     @cp.get_content_delivery_networks.size.should == count+1
     cdn.certificate['key'].should == "test-key"
     cdn.certificate['cert'].should == "test-cert"

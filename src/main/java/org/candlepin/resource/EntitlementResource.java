@@ -16,7 +16,7 @@ package org.candlepin.resource;
 
 import static org.quartz.JobBuilder.newJob;
 
-import java.util.ArrayList;
+import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 
@@ -39,7 +39,7 @@ import org.candlepin.exceptions.BadRequestException;
 import org.candlepin.exceptions.NotFoundException;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCurator;
-import org.candlepin.model.ContentDeliveryNetwork;
+import org.candlepin.model.Cdn;
 import org.candlepin.model.Entitlement;
 import org.candlepin.model.EntitlementCurator;
 import org.candlepin.paging.Page;
@@ -222,7 +222,7 @@ public class EntitlementResource {
     @Consumes({MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON})
     @Produces(MediaType.APPLICATION_JSON)
     @Path("{dbid}/upstream_cert")
-    public List getEntitlementUpstreamCert(
+    public CdnInfo getEntitlementUpstreamCert(
         @PathParam("dbid") String dbid) {
         Entitlement ent = entitlementCurator.find(dbid);
         // optimization: don't do entitlement regen here, as we don't read
@@ -236,10 +236,8 @@ public class EntitlementResource {
         String subscriptionId = ent.getPool().getSubscriptionId();
         SubscriptionResource subResource = new SubscriptionResource(subService,
             consumerCurator, i18n);
-        List result = new ArrayList();
-        ContentDeliveryNetwork cdn = subResource.getSubscription(subscriptionId).getCdn();
-        result.add(cdn);
-        result.add(subResource.getSubCertAsPem(subscriptionId));
+        Cdn cdn = subResource.getSubscription(subscriptionId).getCdn();
+        CdnInfo result = new CdnInfo(cdn, subResource.getSubCertAsPem(subscriptionId));
         return result;
     }
 
@@ -283,6 +281,41 @@ public class EntitlementResource {
             .build();
 
         return detail;
+    }
+
+    /**
+     *
+     * CdnInfo
+     *
+     * Container for subscription entitlement and cdn
+     */
+    public class CdnInfo implements Serializable {
+        private Cdn cdn;
+        private String subCert;
+
+        public CdnInfo() {
+        }
+
+        public CdnInfo(Cdn cdn, String subEntitlement) {
+            this.cdn = cdn;
+            this.subCert = subEntitlement;
+        }
+
+        public Cdn getCdn() {
+            return this.cdn;
+        }
+
+        public void setCdn(Cdn cdn) {
+            this.cdn = cdn;
+        }
+
+        public String getSubCert() {
+            return this.subCert;
+        }
+
+        public void setSubCert(String subCert) {
+            this.subCert = subCert;
+        }
     }
 
 }

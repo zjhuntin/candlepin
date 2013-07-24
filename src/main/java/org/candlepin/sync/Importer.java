@@ -45,8 +45,8 @@ import org.candlepin.model.CertificateSerialCurator;
 import org.candlepin.model.ConsumerType;
 import org.candlepin.model.ConsumerTypeCurator;
 import org.candlepin.model.ContentCurator;
-import org.candlepin.model.ContentDeliveryNetwork;
-import org.candlepin.model.ContentDeliveryNetworkCurator;
+import org.candlepin.model.Cdn;
+import org.candlepin.model.CdnCurator;
 import org.candlepin.model.DistributorVersion;
 import org.candlepin.model.DistributorVersionCurator;
 import org.candlepin.model.ExporterMetadata;
@@ -125,7 +125,7 @@ public class Importer {
     private Config config;
     private ExporterMetadataCurator expMetaCurator;
     private CertificateSerialCurator csCurator;
-    private ContentDeliveryNetworkCurator cdnCurator;
+    private CdnCurator cdnCurator;
     private EventSink sink;
     private I18n i18n;
     private DistributorVersionCurator distVerCurator;
@@ -137,7 +137,8 @@ public class Importer {
         ContentCurator contentCurator, SubscriptionCurator subCurator, PoolManager pm,
         PKIUtility pki, Config config, ExporterMetadataCurator emc,
         CertificateSerialCurator csc, EventSink sink, I18n i18n,
-        DistributorVersionCurator distVerCurator) {
+        DistributorVersionCurator distVerCurator,
+        CdnCurator cdnCurator) {
 
         this.config = config;
         this.consumerTypeCurator = consumerTypeCurator;
@@ -155,6 +156,7 @@ public class Importer {
         this.sink = sink;
         this.i18n = i18n;
         this.distVerCurator = distVerCurator;
+        this.cdnCurator = cdnCurator;
     }
 
     /**
@@ -702,9 +704,9 @@ public class Importer {
     }
 
     public void importContentDeliveryNetworks(File[] cdnFiles) throws IOException {
-        ContentDeliveryNetworkImporter importer =
-            new ContentDeliveryNetworkImporter(cdnCurator);
-        Set<ContentDeliveryNetwork> cdns = new HashSet<ContentDeliveryNetwork>();
+        CdnImporter importer =
+            new CdnImporter(cdnCurator);
+        Set<Cdn> cdns = new HashSet<Cdn>();
         for (File cdnFile : cdnFiles) {
             Reader reader = null;
             try {

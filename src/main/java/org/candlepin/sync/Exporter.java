@@ -38,8 +38,8 @@ import org.candlepin.guice.PrincipalProvider;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerType;
 import org.candlepin.model.ConsumerTypeCurator;
-import org.candlepin.model.ContentDeliveryNetwork;
-import org.candlepin.model.ContentDeliveryNetworkCurator;
+import org.candlepin.model.Cdn;
+import org.candlepin.model.CdnCurator;
 import org.candlepin.model.DerivedProvidedProduct;
 import org.candlepin.model.DistributorVersion;
 import org.candlepin.model.DistributorVersionCurator;
@@ -77,8 +77,8 @@ public class Exporter {
     private EntitlementExporter entExporter;
     private DistributorVersionCurator distVerCurator;
     private DistributorVersionExporter distVerExporter;
-    private ContentDeliveryNetworkCurator cdnCurator;
-    private ContentDeliveryNetworkExporter cdnExporter;
+    private CdnCurator cdnCurator;
+    private CdnExporter cdnExporter;
 
     private ConsumerTypeCurator consumerTypeCurator;
     private EntitlementCertServiceAdapter entCertAdapter;
@@ -101,8 +101,8 @@ public class Exporter {
         PKIUtility pki, Config config, ExportRules exportRules,
         PrincipalProvider principalProvider, DistributorVersionCurator distVerCurator,
         DistributorVersionExporter distVerExporter,
-        ContentDeliveryNetworkCurator cdnCurator,
-        ContentDeliveryNetworkExporter cdnExporter) {
+        CdnCurator cdnCurator,
+        CdnExporter cdnExporter) {
 
         this.consumerTypeCurator = consumerTypeCurator;
 
@@ -133,7 +133,7 @@ public class Exporter {
         return getFullExport(consumer, null, null, null);
     }
 
-    public File getFullExport(Consumer consumer, String cdn, String webAppPrefix,
+    public File getFullExport(Consumer consumer, String cdnKey, String webAppPrefix,
         String apiUrl)
         throws ExportCreationException {
         // TODO: need to delete tmpDir (which contains the archive,
@@ -143,7 +143,7 @@ public class Exporter {
             File baseDir = new File(tmpDir.getAbsolutePath(), "export");
             baseDir.mkdir();
 
-            exportMeta(baseDir, cdn);
+            exportMeta(baseDir, cdnKey);
             exportConsumer(baseDir, consumer, webAppPrefix, apiUrl);
             exportIdentityCertificate(baseDir, consumer);
             exportEntitlements(baseDir, consumer);
@@ -303,13 +303,13 @@ public class Exporter {
         out.closeEntry();
     }
 
-    private void exportMeta(File baseDir, String cdn)
+    private void exportMeta(File baseDir, String cdnKey)
         throws IOException {
         File file = new File(baseDir.getCanonicalPath(), "meta.json");
         FileWriter writer = new FileWriter(file);
         Meta m = new Meta(getVersion(), new Date(),
             principalProvider.get().getPrincipalName(),
-            null, cdn);
+            null, cdnKey);
         meta.export(mapper, writer, m);
         writer.close();
     }
@@ -573,14 +573,14 @@ public class Exporter {
     }
 
     private void exportContentDeliveryNetworks(File baseDir) throws IOException {
-        List<ContentDeliveryNetwork> cdns = cdnCurator.list();
+        List<Cdn> cdns = cdnCurator.list();
         if (cdns == null || cdns.isEmpty()) { return; }
 
         File cdnDir = new File(baseDir.getCanonicalPath(), "content_delivery_network");
         cdnDir.mkdir();
 
         FileWriter writer = null;
-        for (ContentDeliveryNetwork cdn : cdns) {
+        for (Cdn cdn : cdns) {
             if (log.isDebugEnabled()) {
                 log.debug("Exporting Content Delivery Network" + cdn.getName());
             }

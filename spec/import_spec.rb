@@ -241,8 +241,8 @@ describe 'Candlepin Import' do
     consumer = consumer_client(@import_owner_client, 'system6')
     entitlement = consumer.consume_pool(pool.id)[0]
     ent =  @cp.get_subscription_cert_by_ent_id entitlement.id
-    ent[0].should == "http://cschevia.is/1337"
-    ent[1] == cert.should
+    ent.cdn['key'].should == @cdn_key
+    ent.subCert == cert.should
   end
 
   it 'contains upstream consumer' do
@@ -270,7 +270,7 @@ describe 'Candlepin Import' do
 
   it 'should put the cdn from the manifest into the created subscriptions' do
     @cp.list_subscriptions(@import_owner['key']).find_all do |sub|
-        sub['cdnUrl'].should == "http://cschevia.is/1337"
+        sub['cdn']['key'].should == @cdn_key
     end
   end
 end

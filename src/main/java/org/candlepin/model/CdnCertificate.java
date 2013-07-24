@@ -29,13 +29,13 @@ import org.hibernate.annotations.GenericGenerator;
 
 
 /**
- * Certificate
+ * CdnCertificate
  */
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.PROPERTY)
 @Entity
 @Table(name = "cp_cdn_certificate")
-public class ContentDeliveryNetworkCertificate extends AbstractCertificate {
+public class CdnCertificate extends AbstractCertificate {
 
     @Id
     @GeneratedValue(generator = "system-uuid")
