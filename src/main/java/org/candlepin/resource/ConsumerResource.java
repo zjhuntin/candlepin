@@ -36,6 +36,7 @@ import org.candlepin.exceptions.NotFoundException;
 import org.candlepin.model.ActivationKey;
 import org.candlepin.model.ActivationKeyCurator;
 import org.candlepin.model.ActivationKeyPool;
+import org.candlepin.model.CdnCurator;
 import org.candlepin.model.CertificateSerialDto;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCapability;
@@ -88,6 +89,7 @@ import org.candlepin.version.CertVersionConflictException;
 import com.google.inject.Inject;
 import com.google.inject.persist.Transactional;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.jboss.resteasy.annotations.providers.jaxb.Wrapped;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
@@ -157,6 +159,7 @@ public class ConsumerResource {
     private DeletedConsumerCurator deletedConsumerCurator;
     private EnvironmentCurator environmentCurator;
     private DistributorVersionCurator distributorVersionCurator;
+    private CdnCurator cdnCurator;
     private Config config;
 
     @Inject
@@ -175,6 +178,7 @@ public class ConsumerResource {
         ComplianceRules complianceRules, DeletedConsumerCurator deletedConsumerCurator,
         EnvironmentCurator environmentCurator,
         DistributorVersionCurator distributorVersionCurator,
+        CdnCurator cdnCurator,
         Config config) {
 
         this.consumerCurator = consumerCurator;
@@ -201,6 +205,7 @@ public class ConsumerResource {
         this.deletedConsumerCurator = deletedConsumerCurator;
         this.environmentCurator = environmentCurator;
         this.distributorVersionCurator = distributorVersionCurator;
+        this.cdnCurator = cdnCurator;
         this.consumerPersonNamePattern = Pattern.compile(config.getString(
             ConfigProperties.CONSUMER_PERSON_NAME_PATTERN));
         this.consumerSystemNamePattern = Pattern.compile(config.getString(
@@ -1682,6 +1687,12 @@ public class ConsumerResource {
                     "Unit {0} cannot be exported. " +
                     "A manifest cannot be made for units of type ''{1}''.",
                     consumerUuid, consumer.getType().getLabel()));
+        }
+
+        if (!StringUtils.isBlank(cdnKey) &&
+            cdnCurator.lookupByKey(cdnKey) == null) {
+            throw new ForbiddenException(
+                i18n.tr("A CDN with key {0} does not exist on this system.", cdnKey));
         }
 
         poolManager.regenerateDirtyEntitlements(
