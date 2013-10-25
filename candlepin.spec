@@ -31,7 +31,7 @@ Name: candlepin
 Summary: Candlepin is an open source entitlement management system
 Group: System Environment/Daemons
 License: GPLv2
-Version: 0.8.19
+Version: 0.8.29
 Release: 1%{?dist}
 URL: http://fedorahosted.org/candlepin
 # Source0: https://fedorahosted.org/releases/c/a/candlepin/%{name}-%{version}.tar.gz
@@ -212,6 +212,8 @@ rm -rf $RPM_BUILD_ROOT
 install -d -m 755 $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/certs/
 install -d -m 755 $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/certs/upstream/
 install -m 644 conf/candlepin-redhat-ca.crt %{buildroot}%{_sysconfdir}/%{name}/certs/upstream/
+install -d 755 %{buildroot}%{_sysconfdir}/logrotate.d/
+install -m 644 conf/logrotate.conf %{buildroot}%{_sysconfdir}/logrotate.d/%{name}
 install -d -m 755 $RPM_BUILD_ROOT/%{_sysconfdir}/%{name}/
 install -d -m 755 $RPM_BUILD_ROOT/%{_datadir}/%{name}/
 install -m 755 code/setup/cpsetup $RPM_BUILD_ROOT/%{_datadir}/%{name}/cpsetup
@@ -294,6 +296,7 @@ fi
 # If a deployment is managing their own, they will need to restore from the
 # .rpmsave backup after upgrading the candlepin rpm.
 %config %attr(644, root, root) %{_sysconfdir}/%{name}/certs/upstream/candlepin-redhat-ca.crt
+%config(noreplace) %attr(644,root,root) %{_sysconfdir}/logrotate.d/candlepin
 %doc LICENSE
 %doc README
 
@@ -323,6 +326,90 @@ fi
 
 
 %changelog
+* Wed Oct 02 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.29-1
+- 1011100: Fix orphaned virt bonus pools in hosted. (dgoodwin@redhat.com)
+- 1006374: add delete cascade to cp_pool_* (jesusr@redhat.com)
+- Updated translations and extract latest strings. (dgoodwin@redhat.com)
+- Improve the concurrency-test.rb script. (dgoodwin@redhat.com)
+- support default quantity for future pools (ckozak@redhat.com)
+- Add a type indicator to Pool. (dgoodwin@redhat.com)
+- Fix use of skip_subs in test data importer. (mstead@redhat.com)
+- Fix NPE from base64 (jesusr@redhat.com)
+- Make v1 certs populate 'brand_type' too. (alikins@redhat.com)
+- Log scheduler exception (ckozak@redhat.com)
+- Add option to deploy candlepin.conf automatically. (awood@redhat.com)
+- Generate candlepin.conf based on a template and YAML data. (awood@redhat.com)
+- Fix import_products on ruby-1.9 (alikins@redhat.com)
+- Add spec test for nonexistant attributes (ckozak@redhat.com)
+- Allow unknown properties in HibernateObjects.  Futureproofing (ckozak@redhat.com)
+- Stop using Exporter as a singleton. (dgoodwin@redhat.com)
+- Thread the pool refresh as well. (alikins@redhat.com)
+- make import_products loader multithreaded (alikins@redhat.com)
+- test-data: Shared File System should 'MKT' (alikins@redhat.com)
+- Create activation keys for all owner-pool-contract (alikins@redhat.com)
+- Various changes to deploy script: MySQL support, DB passwords, etc. (awood@redhat.com)
+
+* Mon Sep 23 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.28-1
+- 1007836: calculate suggested quantity with only matching stacking_ids (ckozak@redhat.com)
+
+* Thu Sep 12 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.27-1
+- 845600, 996672: fix suggested quantities (ckozak@redhat.com)
+- Strings update. (dgoodwin@redhat.com)
+- Change brand attribute from 'os' to 'brand_type' (alikins@redhat.com)
+- Spec test cleanup (awood@redhat.com)
+* Fri Sep 06 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.26-1
+- 1004780: truncate result string to fit in db (jesusr@redhat.com)
+- 1002946: Fix entitlement dates not being updated when pool dates change.  (dgoodwin@redhat.com)
+- Run spec tests in parallel (awood@redhat.com)
+- Numerous spec test changes to work in parallel (awood@redhat.com)
+- adding f19 for katello (jesusr@redhat.com)
+
+* Tue Sep 03 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.25-1
+- 994853: Fix installed product date range. (dgoodwin@redhat.com)
+- 998317: check delete for null (jesusr@redhat.com)
+- 1003079: Allow autobind to select pools with unlimited quantity (mstead@redhat.com)
+- Simplify spec test for role listing by user. (alikins@redhat.com)
+- Remove double sorting in get installed product date range.  (dgoodwin@redhat.com)
+- Fix unlimited stackable pool autobinding, fix unlimited pool quantity (ckozak@redhat.com)
+- fix validation of null params (ckozak@redhat.com)
+- Add os oid to Product certificates (alikins@redhat.com)
+- Added Satellite version 5.6 to distributor versions (wpoteat@redhat.com)
+
+* Wed Aug 28 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.24-1
+- 996925 - Exception while deleting manifest (wpoteat@redhat.com)
+
+* Mon Aug 26 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.23-1
+- 1000444: Fixed find by stack id query (mstead@redhat.com)
+
+* Fri Aug 23 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.22-1
+- 750872: complete partial stacks with no installed products (ckozak@redhat.com)
+- 876758 - String Updates: Entitlement -> Subscription updates (wpoteat@redhat.com)
+- 998317: NPE in refreshpools prevents refreshing pools (jesusr@redhat.com)
+- Pushing latest strings (jesusr@redhat.com)
+- Fix autoheal entire org (ckozak@redhat.com)
+- Filter distributor versions when querying  (wpoteat@redhat.com)
+- Fix bug in get_owner() (awood@redhat.com)
+
+* Wed Aug 21 2013 jesus m. rodriguez <jesusr@redhat.com> 0.8.21-1
+- 990639: date ranges for partial products (ckozak@redhat.com)
+- 997970: For v1 certs, skip unknown content types (alikins@redhat.com)
+- Feature: One sub pool per stack (mstead@redhat.com)
+- Increased autobind performance (ckozak@redhat.com)
+* Wed Aug 14 2013 Devan Goodwin <dgoodwin@rm-rf.ca> 0.8.20-1
+- extract and merge strings (jesusr@redhat.com)
+- 994711: protect against consuming other org ents (jesusr@redhat.com)
+- dont list expired (ckozak@redhat.com)
+- Async binds should have the same behavior as regular binds.
+  (awood@redhat.com)
+- 988549: Let CandlepinPoolManager decide which products to bind.
+  (awood@redhat.com)
+- 989698: Attempted fix for hornetq journal errors. (dgoodwin@redhat.com)
+- 990728: Refresh Manifest fails when the upstream distributor has all the
+  subscriptions removed (wpoteat@redhat.com)
+- 990113: '500 Internal Server Error' importing manifest from stage
+  (wpoteat@redhat.com)
+- Fixed typo in string (cschevia@redhat.com)
+
 * Wed Jul 31 2013 Devan Goodwin <dgoodwin@rm-rf.ca> 0.8.19-1
 - Strings update. (dgoodwin@redhat.com)
 - Allow calls to /owners/{owner_key}/consumers to accept a list of consumer

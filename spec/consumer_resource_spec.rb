@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
+require 'spec_helper'
 require 'candlepin_scenarios'
+require 'rexml/document'
 
 describe 'Consumer Resource' do
 
   include CandlepinMethods
-  include CandlepinScenarios
 
   before(:each) do
     @owner1 = create_owner random_string('test_owner1')
@@ -25,7 +26,35 @@ describe 'Consumer Resource' do
     @cp.refresh_pools(@owner1['key'])
     pool = @consumer1.list_pools({:owner => @owner1['id']}).first
     lambda {
-      @consumer2.consume_pool(pool.id).size.should == 1
+      @consumer2.consume_pool(pool.id, {:quantity => 1}).size.should == 1
+    }.should raise_exception(RestClient::Forbidden)
+  end
+
+  it "should expose a consumer's event atom feed" do
+    atom = @consumer1.list_consumer_events_atom(@consumer1.uuid)
+    doc = REXML::Document.new(atom)
+    events = REXML::XPath.match(doc, "//*[local-name()='event'][type = 'CREATED' and target ='CONSUMER']")
+    events.should have(1).things
+
+    # Consumer 2 should not be able to see consumer 1's feed:
+    lambda {
+      @consumer2.list_consumer_events_atom(@consumer1.uuid)
+    }.should raise_exception(RestClient::Forbidden)
+  end
+
+  it "should expose a consumer's events" do
+    events = @consumer1.list_consumer_events(@consumer1.uuid)
+    events.size.should be > 0
+
+    # Events are sorted in order of descending timestamp, so the first
+    # event should be consumer created:
+    events[-1]['target'].should == 'CONSUMER'
+    events[-1]['type'].should == 'CREATED'
+    events[-1]['principal']['name'].should == @username1
+
+    # Consumer 2 should not be able to see consumer 1's feed:
+    lambda {
+      @consumer2.list_consumer_events(@consumer1.uuid)
     }.should raise_exception(RestClient::Forbidden)
   end
 
@@ -51,7 +80,7 @@ describe 'Consumer Resource' do
     @cp.refresh_pools(@owner1['key'])
     pool = @consumer1.list_pools({:owner => @owner1['id']}).first
 
-    @consumer1.consume_pool(pool.id).size.should == 1
+    @consumer1.consume_pool(pool.id, {:quantity => 1}).size.should == 1
     @consumer1.get_consumer()['entitlementStatus'].should == "valid"
   end
 
@@ -83,7 +112,8 @@ describe 'Consumer Resource' do
     end.should raise_exception(RestClient::Gone)
   end
 
-  it 'allows super admins to see all consumers' do
+  #TODO Get this working in parallel
+  it 'allows super admins to see all consumers', :serial => true do
     uuids = []
     @cp.list_consumers.each do |c|
       uuids << c['uuid']
@@ -111,8 +141,9 @@ describe 'Consumer Resource' do
     @user2.list_consumers({:owner => @owner2['key']}).length.should == 1
   end
 
-  it 'lets a super admin filter consumers by owner' do
-    @cp.list_consumers.size.should > 1
+  #TODO Get this working in parallel
+  it 'lets a super admin filter consumers by owner', :serial => true do
+    @cp.list_consumers.size.should be > 1
     @cp.list_consumers({:owner => @owner1['key']}).size.should == 1
   end
 
@@ -208,27 +239,27 @@ describe 'Consumer Resource' do
   end
 
   it "does not let an owner register with UUID of another owner's consumer" do
-    linux_net = create_owner 'linux_net'
-    greenfield = create_owner 'greenfield_consulting'
+    linux_net = create_owner(random_string('linux_net'))
+    greenfield = create_owner(random_string('greenfield_consulting'))
 
-    linux_bill = user_client(linux_net, 'bill')
-    green_ralph = user_client(greenfield, 'ralph')
+    linux_bill = user_client(linux_net, random_string('bill'))
+    green_ralph = user_client(greenfield, random_string('ralph'))
 
-    system1 = linux_bill.register('system1')
+    system1 = linux_bill.register(random_string('system1'))
 
     lambda do
-      green_ralph.register('system2', :system, system1.uuid)
+      green_ralph.register(random_string('system2'), :system, system1.uuid)
     end.should raise_exception(RestClient::BadRequest)
   end
 
   it "does not let an owner reregister another owner's consumer" do
-    linux_net = create_owner 'linux_net'
-    greenfield = create_owner 'greenfield_consulting'
+    linux_net = create_owner(random_string('linux_net'))
+    greenfield = create_owner(random_string('greenfield_consulting'))
 
-    linux_bill = user_client(linux_net, 'bill')
+    linux_bill = user_client(linux_net, random_string('bill'))
     green_ralph = user_client(greenfield, 'ralph')
 
-    system1 = linux_bill.register('system1')
+    system1 = linux_bill.register(random_string('system1'))
 
     lambda do
       green_ralph.regenerate_identity_certificate(system1.uuid)
@@ -246,7 +277,7 @@ describe 'Consumer Resource' do
     @cp.refresh_pools(owner['key'])
     pool = cp_client.list_pools({:owner => owner['id']}).first
 
-    cp_client.consume_pool(pool.id).size.should == 1
+    cp_client.consume_pool(pool.id, {:quantity => 1}).size.should == 1
   end
 
   it 'updates consumer updated timestamp on bind' do
@@ -262,7 +293,11 @@ describe 'Consumer Resource' do
 
     # Do a bind and make sure the updated timestamp changed:
     old_updated = @cp.get_consumer(consumer['uuid'])['updated']
-    consumer_client.consume_pool(pool['id'])
+
+    # MySQL before 5.6.4 doesn't store fractional seconds on timestamps.
+    sleep 1
+
+    consumer_client.consume_pool(pool['id'], {:quantity => 1})
     @cp.get_consumer(consumer['uuid'])['updated'].should_not == old_updated
   end
 
@@ -291,7 +326,7 @@ describe 'Consumer Resource' do
     owner = create_owner random_string('owner')
     user = user_client(owner, random_string('billy'))
 
-    consumer = user.register('machine1', :system, 'custom-uuid')
+    consumer = user.register(random_string('machine1'), :system, 'custom-uuid')
     consumer.uuid.should == 'custom-uuid'
   end
 
@@ -311,7 +346,7 @@ describe 'Consumer Resource' do
     key1 = @cp.create_activation_key(owner['key'], 'key1')
     @cp.add_pool_to_key(key1['id'], pool1['id'], 3)
     @cp.create_activation_key(owner['key'], 'key2')
-    consumer = client.register('machine1', :system, nil, {}, nil,
+    consumer = client.register(random_string('machine1'), :system, nil, {}, nil,
       owner['key'], ["key1", "key2"])
     consumer.uuid.should_not be_nil
 
@@ -345,7 +380,7 @@ describe 'Consumer Resource' do
     @cp.list_consumers({:owner => owner['key']}).size.should == 1
 
     lambda do
-      consumer = client.register('machine1', :system, nil, {}, nil,
+      consumer = client.register(random_string('machine1'), :system, nil, {}, nil,
         owner['key'], ["key1"])
     end.should raise_exception(RestClient::Forbidden)
 
@@ -374,7 +409,7 @@ describe 'Consumer Resource' do
     facts = {
       'system.machine' => 'x86_64',
     }
-    consumer = user.register('machine1', :system, nil, facts, nil, nil, [], installed)
+    consumer = user.register(random_string('machine1'), :system, nil, facts, nil, nil, [], installed)
     verify_installed_pids(consumer, [pid1, pid2])
 
     # Now update the installed packages:
@@ -412,7 +447,7 @@ describe 'Consumer Resource' do
     @cp.refresh_pools(owner['key'])
 
     for pool in @cp.list_owner_pools(owner['key']) do
-        cp_client.consume_pool(pool.id)
+        cp_client.consume_pool(pool.id, {:quantity => 1})
     end
 
     consumer = @cp.get_consumer(cp_client.uuid)
@@ -663,25 +698,25 @@ describe 'Consumer Resource' do
     user = user_client(owner, random_string('willy'))
 
     # Register the UUID initially
-    user.register('machine1', :system, 'ALF')
+    user.register(random_string('machine1'), :system, 'ALF')
 
     # Second registration should be denied
     lambda do
-      user.register('machine2', :system, 'ALF')
+      user.register(random_string('machine2'), :system, 'ALF')
     end.should raise_exception(RestClient::BadRequest)
   end
 
   it 'should allow a consumer to unregister and free up the pool' do
-    owner = create_owner('zowner')
-    user = user_client(owner, 'cukebuster')
+    owner = create_owner(random_string('zowner'))
+    user = user_client(owner, random_string('cukebuster'))
     # performs the register for us
-    consumer = consumer_client(user, 'machine1')
+    consumer = consumer_client(user, random_string('machine1'))
     product = create_product()
     @cp.create_subscription(owner['key'], product.id, 2)
     @cp.refresh_pools(owner['key'])
     pool = consumer.list_pools(:consumer => consumer.uuid)[0]
     pool.consumed.should == 0
-    consumer.consume_pool(pool.id)
+    consumer.consume_pool(pool.id, {:quantity => 1})
     @cp.get_pool(pool.id).consumed.should == 1
     consumer.unregister(consumer.uuid)
     @cp.get_pool(pool.id).consumed.should == 0
@@ -811,6 +846,12 @@ describe 'Consumer Resource' do
         cert=host_consumer1['idCert']['cert'],
         key=host_consumer1['idCert']['key'])
     consumer_client1.update_consumer({:guestIds => guests1})
+
+    # MySQL before 5.6.4 doesn't store fractional seconds on timestamps
+    # and getHost() method in ConsumerCurator (which is what tells us which
+    # host a guest is associated with) sorts results by updated time.
+    sleep 1
+
     consumer_client2 = Candlepin.new(username=nil, password=nil,
         cert=host_consumer2['idCert']['cert'],
         key=host_consumer2['idCert']['key'])
@@ -841,6 +882,12 @@ describe 'Consumer Resource' do
         cert=host_consumer1['idCert']['cert'],
         key=host_consumer1['idCert']['key'])
     consumer_client1.update_consumer({:guestIds => guests1})
+
+    # MySQL before 5.6.4 doesn't store fractional seconds on timestamps
+    # and getHost() method in ConsumerCurator (which is what tells us which
+    # host a guest is associated with) sorts results by updated time.
+    sleep 1
+
     consumer_client2 = Candlepin.new(username=nil, password=nil,
         cert=host_consumer2['idCert']['cert'],
         key=host_consumer2['idCert']['key'])
@@ -889,4 +936,80 @@ describe 'Consumer Resource' do
     consumer['facts']['lscpu.numa_node0_cpu(s)'].should == '0-3'
   end
 
+  # When no quantity is sent to the server, the suggested quantity should be attached
+  it "should bind correct quantity when not specified" do
+    facts = {
+        'cpu.cpu_socket(s)' => '4',
+    }
+    product1 = create_product(random_string('product'), random_string('product-multiple-arch'),
+        :attributes => { :sockets => '1', :'multi-entitlement' => 'yes', :stacking_id => 'consumer-bind-test'})
+    sub = @cp.create_subscription(@owner1['key'], product1.id, 10)
+    installed = [
+        {'productId' => product1.id, 'productName' => product1.name}
+    ]
+    @consumer1.update_consumer({:installedProducts => installed, :facts => facts})
+    @cp.refresh_pools(@owner1['key'])
+    pool = @consumer1.list_pools({:owner => @owner1['id']}).first
+    ent = @consumer1.consume_pool(pool.id)
+    ent[0]["quantity"].should == 4
+  end
+
+  it "should bind quantity 1 when suggested is 0 and not specified" do
+    facts = {
+      'cpu.cpu_socket(s)' => '4',
+    }
+    product1 = create_product(random_string('product'), random_string('product-multiple-arch'),
+        :attributes => { :sockets => '2', :'multi-entitlement' => 'yes', :stacking_id => 'consumer-bind-test'})
+    sub = @cp.create_subscription(@owner1['key'], product1.id, 10)
+    installed = [
+        {'productId' => product1.id, 'productName' => product1.name}
+    ]
+    @consumer1.update_consumer({:installedProducts => installed, :facts => facts})
+    @cp.refresh_pools(@owner1['key'])
+    pool = @consumer1.list_pools({:owner => @owner1['id']}).first
+    # Cover product with 2 2 socket ents, then suggested will be 0
+    ent = @consumer1.consume_pool(pool.id, {:quantity => 2})
+    ent = @consumer1.consume_pool(pool.id)
+    ent[0]["quantity"].should == 1
+  end
+
+  it "should bind correct future quantity when fully subscribed today" do
+    facts = {
+      'cpu.cpu_socket(s)' => '4',
+    }
+    product1 = create_product(random_string('product'), random_string('product-multiple-arch'),
+        :attributes => { :sockets => '2', :'multi-entitlement' => 'yes', :stacking_id => 'consumer-bind-test'})
+    sub = @cp.create_subscription(@owner1['key'], product1.id, 10)
+    start = Date.today + 400
+    future_sub = @cp.create_subscription(@owner1['key'], product1.id, 10, [], '', '', '', start)
+    installed = [
+        {'productId' => product1.id, 'productName' => product1.name}
+    ]
+    @consumer1.update_consumer({:installedProducts => installed, :facts => facts})
+    @cp.refresh_pools(@owner1['key'])
+    pool = @consumer1.list_pools({:owner => @owner1['id']}).first
+    # Fully cover the product1 for a year
+    @consumer1.consume_pool(pool.id, {:quantity => 2})
+
+    future_pool = @consumer1.list_pools({:owner => @owner1['id'], :activeon => Date.today + 450}).first
+    ent = @consumer1.consume_pool(future_pool.id)[0]
+    ent["quantity"].should == 2
+  end
+
+  it 'should be able to add unused attributes' do
+    guests = [{'guestId' => 'guest1', 'fooBar' => 'some value'}]
+
+    user_cp = user_client(@owner1, random_string('test-user'))
+    consumer = user_cp.register(random_string('host'), :system, nil,
+      {}, nil, nil, [], [])
+
+    consumer_client = Candlepin.new(username=nil, password=nil,
+        cert=consumer['idCert']['cert'],
+        key=consumer['idCert']['key'])
+    consumer_client.update_consumer({:guestIds => guests})
+
+    consumer = @cp.get_consumer(consumer['uuid'])
+    consumer['guestIds'].length.should == 1
+    consumer['guestIds'][0]['guestId'].should == 'guest1'
+  end
 end

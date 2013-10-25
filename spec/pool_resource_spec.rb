@@ -1,9 +1,9 @@
+require 'spec_helper'
 require 'candlepin_scenarios'
 
 describe 'Pool Resource' do
 
   include CandlepinMethods
-  include CandlepinScenarios
 
   it 'lets consumers view pools' do
     owner1 = create_owner random_string('test_owner')
@@ -18,6 +18,7 @@ describe 'Pool Resource' do
     consumer_client = consumer_client(owner1_client, random_string('testsystem'))
     p = consumer_client.get_pool(pool.id)
     p.id.should == pool.id
+    p['type'].should == 'NORMAL'
   end
 
   it 'does not let consumers view another owners pool' do
@@ -79,7 +80,7 @@ describe 'Pool Resource' do
     consumer2_cp = consumer_client(admin_cp, random_string('testsystem'))
 
     # Consume that one entitlement:
-    consumer1_cp.consume_pool(pool.id).size.should == 1
+    consumer1_cp.consume_pool(pool.id, {:quantity => 1}).size.should == 1
 
     pools = consumer2_cp.list_pools({:consumer => consumer2_cp.uuid,
       :listall => true})
@@ -121,7 +122,7 @@ describe 'Pool Resource' do
     pool = owner1_client.list_pools(:owner => owner1.id).first
 
     consumer1_cp = consumer_client(owner1_client, random_string('testsystem'))
-    ent = consumer1_cp.consume_pool(pool['id']).first
+    ent = consumer1_cp.consume_pool(pool['id'], {:quantity => 1}).first
 
     # Org admin should not be able to do this:
     lambda {
@@ -144,14 +145,14 @@ describe 'Pool Resource' do
 
   it 'should return calculated attributes' do
     owner = create_owner random_string('test_owner')
-    product = create_product(name='some_product')
+    product = create_product(nil, random_string('some_product'))
 
     @cp.create_subscription(owner['key'], product.id, 25)
     @cp.refresh_pools(owner['key'])
     pools = @cp.list_pools
     pool = pools.select { |p| p['owner']['key'] == owner['key'] }.first
 
-    user = user_client(owner, 'billy')
+    user = user_client(owner, random_string('billy'))
     system = consumer_client(user, 'system')
 
     @cp.get_pool(pool.id, system.uuid)['calculatedAttributes']['suggested_quantity'].should == "1"

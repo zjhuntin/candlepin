@@ -216,6 +216,43 @@ public class Entitler {
      */
     public List<Entitlement> bindByProducts(String[] productIds,
         Consumer consumer, Date entitleDate) {
+        return bindByProducts(productIds, consumer, entitleDate, false);
+    }
+
+    /**
+     *
+     * Force option is used to heal entire org
+     *
+     * @param productIds List of product ids.
+     * @param consumer The consumer being entitled.
+     * @param entitleDate specific date to entitle by.
+     * @param force heal host even if it has autoheal disabled
+     * @return List of Entitlements
+     */
+    public List<Entitlement> bindByProducts(String[] productIds,
+        Consumer consumer, Date entitleDate, boolean force) {
+        // If the consumer is a guest, and has a host, try to heal the host first
+        if (consumer.hasFact("virt.uuid")) {
+            String guestUuid = consumer.getFact("virt.uuid");
+            Consumer host = consumerCurator.getHost(guestUuid);
+            if (host != null && consumer.getOwner().equals(host.getOwner()) &&
+                    (force || host.isAutoheal())) {
+                log.info("Attempting to heal host machine with UUID " +
+                    host.getUuid() + " for guest with UUID " + consumer.getUuid());
+                try {
+                    List<Entitlement> hostEntitlements =
+                        poolManager.entitleByProductsForHost(consumer, host, entitleDate);
+                    sendEvents(hostEntitlements);
+                }
+                catch (Exception e) {
+                    //log and continue, this should NEVER block
+                    log.debug("Healing failed for host UUID " + host.getUuid() +
+                        " with message: " + e.getMessage());
+                }
+                // Consumer is stale at this point.
+                consumer = consumerCurator.getConsumer(consumer.getUuid());
+            }
+        }
 
         // Attempt to create entitlements:
         try {

@@ -88,7 +88,8 @@ public class EntitlementResource {
 
     private void verifyExistence(Object o, String id) {
         if (o == null) {
-            throw new RuntimeException("object with ID: [" + id + "] not found");
+            throw new RuntimeException(
+                i18n.tr("Object with ID ''{0}'' could not found.", id));
         }
     }
 
@@ -115,8 +116,8 @@ public class EntitlementResource {
             }
         }
 
-        throw new NotFoundException(
-            i18n.tr("Unit: {0} has no subscription for product {1}",
+        throw new NotFoundException(i18n.tr(
+            "Unit ''{0}'' has no subscription for product ''{1}''.",
                 consumerUuid, productId));
     }
 
@@ -138,7 +139,7 @@ public class EntitlementResource {
             Consumer consumer = consumerCurator.findByUuid(consumerUuid);
             if (consumer == null) {
                 throw new BadRequestException(
-                    i18n.tr("No such unit: {0}", consumerUuid));
+                    i18n.tr("Unit with ID ''{0}'' could not be found.", consumerUuid));
             }
 
             p = entitlementCurator.listByConsumer(consumer, pageRequest);
@@ -191,7 +192,7 @@ public class EntitlementResource {
         // Check that quantity param was set and is not 0:
         if (update.getQuantity() <= 0) {
             throw new BadRequestException(
-                i18n.tr("Quantity value must be greater than 0"));
+                i18n.tr("Quantity value must be greater than 0."));
         }
 
         // Verify entitlement exists:

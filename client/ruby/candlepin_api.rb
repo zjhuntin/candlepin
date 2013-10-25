@@ -162,7 +162,8 @@ class Candlepin
   # Can pass an owner key, or an href to follow:
   def get_owner(owner)
     # Looks like a path to follow:
-    if owner[0,1] == "/"
+    # Convert owner to a string in case someone gave us a numeric key
+    if owner.to_s[0] == "/"
       return get(owner)
     end
 
@@ -394,6 +395,12 @@ class Candlepin
 
   def revoke_all_entitlements()
     delete("/consumers/#{@uuid}/entitlements")
+  end
+
+  def autoheal_org(owner_key)
+    # Note that this method returns an array of JobDetails and
+    # not just a single JobDetail.
+    post("/owners/#{owner_key}/entitlements")
   end
 
   def list_products
@@ -839,8 +846,12 @@ class Candlepin
     get("/serials/#{serial_id}")
   end
 
-  def list_consumer_events(owner_key, consumer_id)
-    get_text("/owners/#{owner_key}/consumers/#{consumer_id}/atom")
+  def list_consumer_events(consumer_id)
+    get("/consumers/#{consumer_id}/events")
+  end
+
+  def list_consumer_events_atom(consumer_id)
+    get_text("/consumers/#{consumer_id}/atom")
   end
 
   def list_events
@@ -965,8 +976,13 @@ class Candlepin
     delete("/distributor_versions/#{id}")
   end
 
-  def get_distributor_versions()
-    get("/distributor_versions")
+  def get_distributor_versions(name_search = nil, capability = nil)
+    query = "/distributor_versions"
+    query << "?" if name_search or capability
+    query << "name_search=#{name_search}" if name_search
+    query << "&" if name_search and capability
+    query << "capability=#{capability}" if capability
+    get(query)
   end
 
   def create_content_delivery_network(key, name, url, cert=nil)

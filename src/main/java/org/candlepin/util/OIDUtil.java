@@ -61,6 +61,7 @@ public final class OIDUtil {
     public static final String OP_VERSION_KEY = "Version";
     public static final String OP_ARCH_KEY = "Architecture";
     public static final String OP_PROVIDES_KEY = "Provides";
+    public static final String OP_BRAND_TYPE_KEY = "Brand Type";
 
     public static final String CF_NAME_KEY = "Name";
     public static final String CF_LABEL_KEY = "Label";
@@ -80,6 +81,7 @@ public final class OIDUtil {
 
     public static final String CF_REPO_TYPE_FILE_KEY = "file";
     public static final String CF_REPO_TYPE_YUM_KEY = "yum";
+    public static final String CF_REPO_TYPE_KICKSTART_KEY = "kickstart";
 
     public static final Map<String, String> SYSTEM_OIDS = new HashMap<String, String>();
     public static final Map<String, String> ORDER_OIDS = new HashMap<String, String>();
@@ -140,6 +142,7 @@ public final class OIDUtil {
         ORDER_PRODUCT_OIDS.put(OP_VERSION_KEY, "2");
         ORDER_PRODUCT_OIDS.put(OP_ARCH_KEY, "3");
         ORDER_PRODUCT_OIDS.put(OP_PROVIDES_KEY, "4");
+        ORDER_PRODUCT_OIDS.put(OP_BRAND_TYPE_KEY, "5");
 
         // role entitlement oids
         ROLE_ENTITLEMENT_OIDS.put(ROLE_NAME_KEY, "1");
@@ -171,6 +174,7 @@ public final class OIDUtil {
 
         CF_REPO_TYPE.put(CF_REPO_TYPE_YUM_KEY, "1");
         CF_REPO_TYPE.put(CF_REPO_TYPE_FILE_KEY, "2");
+        CF_REPO_TYPE.put(CF_REPO_TYPE_KICKSTART_KEY, "3");
     }
 
     // Maybe not the best place for this, but better than relying on bouncycastle for it.

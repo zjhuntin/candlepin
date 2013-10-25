@@ -1,3 +1,4 @@
+require 'spec_helper'
 
 require 'candlepin_scenarios'
 require 'time'
@@ -16,7 +17,6 @@ end
 
 describe 'Single Entitlement Compliance Reasons' do
   include CandlepinMethods
-  include CandlepinScenarios 
 
   before(:each) do
     @owner = create_owner random_string('test_owner')
@@ -74,7 +74,7 @@ describe 'Single Entitlement Compliance Reasons' do
     pool = find_pool(@owner.id, @product1_sub.id)
     pool.should_not == nil
 
-    entitlements = system.consume_pool(pool.id)
+    entitlements = system.consume_pool(pool.id, {:quantity => 1})
     entitlements.should_not == nil
     entitlements.size.should == 1
     entitlement = entitlements[0]
@@ -111,7 +111,7 @@ describe 'Single Entitlement Compliance Reasons' do
     pool = find_pool(@owner.id, @product1_sub.id)
     pool.should_not == nil
 
-    entitlements = system.consume_pool(pool.id)
+    entitlements = system.consume_pool(pool.id, {:quantity => 1})
     entitlements.should_not == nil
     entitlements.size.should == 1
     entitlement = entitlements[0]
@@ -148,7 +148,7 @@ describe 'Single Entitlement Compliance Reasons' do
     pool = find_pool(@owner.id, @product1_sub.id)
     pool.should_not == nil
 
-    entitlements = system.consume_pool(pool.id)
+    entitlements = system.consume_pool(pool.id, {:quantity => 1})
     entitlements.should_not == nil
     entitlements.size.should == 1
     entitlement = entitlements[0]
@@ -186,7 +186,7 @@ describe 'Single Entitlement Compliance Reasons' do
     pool = find_pool(@owner.id, @product1_sub.id)
     pool.should_not == nil
 
-    entitlements = system.consume_pool(pool.id)
+    entitlements = system.consume_pool(pool.id, {:quantity => 1})
     entitlements.should_not == nil
     entitlements.size.should == 1
     entitlement = entitlements[0]
@@ -225,7 +225,7 @@ describe 'Single Entitlement Compliance Reasons' do
     pool = find_pool(@owner.id, @product1_sub.id)
     pool.should_not == nil
 
-    entitlements = system.consume_pool(pool.id)
+    entitlements = system.consume_pool(pool.id, {:quantity => 1})
     entitlements.should_not == nil
     entitlements.size.should == 1
     entitlement = entitlements[0]
@@ -262,7 +262,7 @@ describe 'Single Entitlement Compliance Reasons' do
     pool = find_pool(@owner.id, @product1_sub.id)
     pool.should_not == nil
 
-    entitlements = system.consume_pool(pool.id)
+    entitlements = system.consume_pool(pool.id, {:quantity => 1})
     entitlements.should_not == nil
     entitlements.size.should == 1
     entitlement = entitlements[0]
@@ -301,7 +301,7 @@ describe 'Single Entitlement Compliance Reasons' do
     pool = find_pool(@owner.id, @product1_sub.id)
     pool.should_not == nil
 
-    entitlements = system.consume_pool(pool.id)
+    entitlements = system.consume_pool(pool.id, {:quantity => 1})
     entitlements.should_not == nil
     entitlements.size.should == 1
     entitlement = entitlements[0]
@@ -391,7 +391,6 @@ end
 
 describe 'Stacking Compliance Reasons' do
   include CandlepinMethods
-  include CandlepinScenarios
 
   before(:each) do
     @owner = create_owner random_string('test_owner')

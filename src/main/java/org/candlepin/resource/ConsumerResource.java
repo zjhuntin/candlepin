@@ -14,6 +14,37 @@
  */
 package org.candlepin.resource;
 
+import java.io.File;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
+
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
 import org.candlepin.audit.Event;
 import org.candlepin.audit.EventAdapter;
 import org.candlepin.audit.EventFactory;
@@ -62,7 +93,6 @@ import org.candlepin.model.IdentityCertificate;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
 import org.candlepin.model.Pool;
-import org.candlepin.model.PoolCurator;
 import org.candlepin.model.PoolQuantity;
 import org.candlepin.model.Product;
 import org.candlepin.model.Release;
@@ -74,6 +104,7 @@ import org.candlepin.pinsetter.tasks.EntitlerJob;
 import org.candlepin.policy.js.compliance.ComplianceRules;
 import org.candlepin.policy.js.compliance.ComplianceStatus;
 import org.candlepin.policy.js.consumer.ConsumerRules;
+import org.candlepin.policy.js.quantity.QuantityRules;
 import org.candlepin.resource.util.ConsumerInstalledProductEnricher;
 import org.candlepin.resource.util.ResourceDateParser;
 import org.candlepin.service.EntitlementCertServiceAdapter;
@@ -85,45 +116,14 @@ import org.candlepin.sync.ExportCreationException;
 import org.candlepin.sync.Exporter;
 import org.candlepin.util.Util;
 import org.candlepin.version.CertVersionConflictException;
-
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.log4j.Logger;
 import org.jboss.resteasy.annotations.providers.jaxb.Wrapped;
+import org.jboss.resteasy.plugins.providers.atom.Feed;
 import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.quartz.JobDetail;
 import org.xnap.commons.i18n.I18n;
 
-import java.io.File;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Pattern;
-
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
+import com.google.inject.Inject;
+import com.google.inject.persist.Transactional;
 
 /**
  * API Gateway for Consumers
@@ -150,7 +150,6 @@ public class ConsumerResource {
     private static final int FEED_LIMIT = 1000;
     private Exporter exporter;
     private PoolManager poolManager;
-    private PoolCurator poolCurator;
     private ConsumerRules consumerRules;
     private OwnerCurator ownerCurator;
     private ActivationKeyCurator activationKeyCurator;
@@ -161,6 +160,7 @@ public class ConsumerResource {
     private DistributorVersionCurator distributorVersionCurator;
     private CdnCurator cdnCurator;
     private Config config;
+    private QuantityRules quantityRules;
 
     @Inject
     public ConsumerResource(ConsumerCurator consumerCurator,
@@ -172,13 +172,13 @@ public class ConsumerResource {
         EntitlementCertServiceAdapter entCertServiceAdapter, I18n i18n,
         EventSink sink, EventFactory eventFactory, EventCurator eventCurator,
         EventAdapter eventAdapter, UserServiceAdapter userService,
-        Exporter exporter, PoolManager poolManager, PoolCurator poolCurator,
+        Exporter exporter, PoolManager poolManager,
         ConsumerRules consumerRules, OwnerCurator ownerCurator,
         ActivationKeyCurator activationKeyCurator, Entitler entitler,
         ComplianceRules complianceRules, DeletedConsumerCurator deletedConsumerCurator,
         EnvironmentCurator environmentCurator,
         DistributorVersionCurator distributorVersionCurator,
-        CdnCurator cdnCurator,
+        CdnCurator cdnCurator, QuantityRules quantityRules,
         Config config) {
 
         this.consumerCurator = consumerCurator;
@@ -195,7 +195,6 @@ public class ConsumerResource {
         this.userService = userService;
         this.exporter = exporter;
         this.poolManager = poolManager;
-        this.poolCurator = poolCurator;
         this.consumerRules = consumerRules;
         this.ownerCurator = ownerCurator;
         this.eventAdapter = eventAdapter;
@@ -211,6 +210,7 @@ public class ConsumerResource {
         this.consumerSystemNamePattern = Pattern.compile(config.getString(
             ConfigProperties.CONSUMER_SYSTEM_NAME_PATTERN));
         this.config = config;
+        this.quantityRules = quantityRules;
     }
 
     /**
@@ -297,7 +297,8 @@ public class ConsumerResource {
             }
 
             if (expire.before(futureExpire)) {
-                log.warn("regenerating certificate for [" + uuid + "]");
+                log.info("Regenerating identity certificate for consumer: " + uuid +
+                    ", expiry: " + expire);
                 consumer = this.regenerateIdentityCertificates(uuid);
             }
 
@@ -451,6 +452,9 @@ public class ConsumerResource {
             consumer.setEntitlementStatus(compliance.getStatus());
             consumerCurator.update(consumer);
 
+            log.info("Consumer " + consumer.getUuid() + " created in org " +
+                consumer.getOwner().getKey());
+
             return consumer;
         }
         catch (CandlepinException ce) {
@@ -557,7 +561,7 @@ public class ConsumerResource {
         throws BadRequestException {
         if (serviceLevel != null &&
             !serviceLevel.trim().equals("")) {
-            for (String level : poolCurator.retrieveServiceLevelsForOwner(owner, false)) {
+            for (String level : poolManager.retrieveServiceLevelsForOwner(owner, false)) {
                 if (serviceLevel.equalsIgnoreCase(level)) {
                     return;
                 }
@@ -574,9 +578,8 @@ public class ConsumerResource {
         List<ActivationKey> keys, ConsumerType type) {
         if (log.isDebugEnabled()) {
             log.debug("Got consumerTypeLabel of: " + type.getLabel());
-            log.debug("got facts: \n" + consumer.getFacts());
-
             if (consumer.getFacts() != null) {
+                log.debug("incoming facts:");
                 for (String key : consumer.getFacts().keySet()) {
                     log.debug("   " + key + " = " + consumer.getFact(key));
                 }
@@ -613,14 +616,15 @@ public class ConsumerResource {
         }
 
         if (user == null) {
-            throw new NotFoundException(i18n.tr("No such user: {0}"));
+            throw new NotFoundException(
+                i18n.tr("User with ID ''{0}'' could not be found."));
         }
 
         // When registering person consumers we need to be sure the username
         // has some association with the owner the consumer is destined for:
         if (!user.hasOwnerAccess(owner, Access.ALL) && !user.isSuperAdmin()) {
             throw new ForbiddenException(i18n.tr(
-                "User {0} has no roles for organization {1}",
+                "User ''{0}'' has no roles for organization ''{1}''",
                 user.getUsername(), owner.getKey()));
         }
 
@@ -632,7 +636,7 @@ public class ConsumerResource {
                 existing.getType().isType(ConsumerTypeEnum.PERSON)) {
                 // TODO: This is not the correct error code for this situation!
                 throw new BadRequestException(i18n.tr(
-                    "User {0} has already registered a personal consumer",
+                    "User ''{0}'' has already registered a personal consumer",
                     user.getUsername()));
             }
             consumer.setName(user.getUsername());
@@ -668,7 +672,7 @@ public class ConsumerResource {
             !principal.canAccess(owner, Access.ALL)) {
 
             throw new ForbiddenException(i18n.tr(
-                "User {0} cannot access organization {1}",
+                "User ''{0}'' cannot access organization ''{1}''.",
                 principal.getPrincipalName(), owner.getKey()));
         }
 
@@ -729,8 +733,8 @@ public class ConsumerResource {
         ConsumerType type = consumerTypeCurator.lookupByLabel(label);
 
         if (type == null) {
-            throw new BadRequestException(i18n.tr("No such unit type: {0}",
-                label));
+            throw new BadRequestException(i18n.tr(
+                "Unit type ''{0}'' could not be found.", label));
         }
         return type;
     }
@@ -815,8 +819,8 @@ public class ConsumerResource {
                     !toUpdate.getEnvironment().getId().equals(environmentId))) {
             Environment e = environmentCurator.find(environmentId);
             if (e == null) {
-                throw new NotFoundException(i18n.tr("No such environment: {0}",
-                                            environmentId));
+                throw new NotFoundException(i18n.tr(
+                    "Environment with ID ''{0}'' could not be found.", environmentId));
             }
             toUpdate.setEnvironment(e);
 
@@ -1313,9 +1317,10 @@ public class ConsumerResource {
     @Path("/{consumer_uuid}/entitlements")
     public Response bind(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid,
-        @QueryParam("pool") @Verify(Pool.class) String poolIdString,
+        @QueryParam("pool") @Verify(value = Pool.class, nullable = true)
+                String poolIdString,
         @QueryParam("product") String[] productIds,
-        @QueryParam("quantity") @DefaultValue("1") Integer quantity,
+        @QueryParam("quantity") Integer quantity,
         @QueryParam("email") String email,
         @QueryParam("email_locale") String emailLocale,
         @QueryParam("async") @DefaultValue("false") boolean async,
@@ -1327,7 +1332,7 @@ public class ConsumerResource {
                 i18n.tr("Cannot bind by multiple parameters."));
         }
 
-        if (poolIdString == null && quantity > 1) {
+        if (poolIdString == null && quantity != null) {
             throw new BadRequestException(
                 i18n.tr("Cannot specify a quantity when auto-binding."));
         }
@@ -1363,6 +1368,21 @@ public class ConsumerResource {
             throw e;
         }
 
+        if (poolIdString != null && quantity == null) {
+            Pool pool = poolManager.find(poolIdString);
+            if (pool != null) {
+                Date now = new Date();
+                // If the pool is being attached in the future, calculate
+                // suggested quantity on the start date
+                Date onDate = now.before(pool.getStartDate()) ?
+                    pool.getStartDate() : now;
+                quantity = Math.max(1, quantityRules.getSuggestedQuantity(pool,
+                    consumer, onDate).getSuggested().intValue());
+            }
+            else {
+                quantity = 1;
+            }
+        }
         //
         // HANDLE ASYNC
         //
@@ -1372,7 +1392,7 @@ public class ConsumerResource {
             if (poolIdString != null) {
                 detail = EntitlerJob.bindByPool(poolIdString, consumerUuid, quantity);
             }
-            else if (productIds != null && productIds.length > 0) {
+            else {
                 detail = EntitlerJob.bindByProducts(productIds,
                         consumerUuid, entitleDate);
             }
@@ -1402,8 +1422,8 @@ public class ConsumerResource {
                 throw cvce;
             }
             catch (RuntimeException re) {
-                log.warn(i18n.tr("Unable to attach a subscription for a product that " +
-                    "has no pool: {0} ", re.getMessage()));
+                log.warn("Unable to attach a subscription for a product that " +
+                    "has no pool: " + re.getMessage());
             }
         }
 
@@ -1467,8 +1487,8 @@ public class ConsumerResource {
         Consumer consumer = consumerCurator.findByUuid(consumerUuid);
 
         if (consumer == null) {
-            throw new NotFoundException(i18n.tr("No such unit: {0}",
-                consumerUuid));
+            throw new NotFoundException(i18n.tr(
+                "Unit with ID ''{0}'' could not be found.", consumerUuid));
         }
         return consumer;
     }
@@ -1477,8 +1497,8 @@ public class ConsumerResource {
         Entitlement entitlement = entitlementCurator.find(entitlementId);
 
         if (entitlement == null) {
-            throw new NotFoundException(i18n.tr("No such subscription: {0}",
-                entitlementId));
+            throw new NotFoundException(i18n.tr(
+                "Entitlement with ID ''{0}'' could not be found.", entitlementId));
         }
         return entitlement;
     }
@@ -1503,8 +1523,8 @@ public class ConsumerResource {
         if (productId != null) {
             Product p = productAdapter.getProductById(productId);
             if (p == null) {
-                throw new BadRequestException(i18n.tr("No such product: {0}",
-                    productId));
+                throw new BadRequestException(i18n.tr(
+                    "Product with ID ''{0}'' could not be found.", productId));
             }
             entitlementsPage = entitlementCurator.listByConsumerAndProduct(consumer,
                 productId, pageRequest);
@@ -1556,8 +1576,8 @@ public class ConsumerResource {
         Consumer consumer = verifyAndLookupConsumer(consumerUuid);
 
         if (consumer == null) {
-            throw new NotFoundException(i18n.tr("Unit with ID " +
-                consumerUuid + " could not be found."));
+            throw new NotFoundException(i18n.tr(
+                "Unit with ID ''{0}'' could not be found.", consumerUuid));
         }
 
         int total = poolManager.revokeAllEntitlements(consumer);
@@ -1616,10 +1636,9 @@ public class ConsumerResource {
             poolManager.revokeEntitlement(toDelete);
             return;
         }
-        throw new NotFoundException(
-            i18n.tr(
-                "Entitlement Certificate with serial number {0} could not be found.",
-                serial.toString())); // prevent serial number formatting.
+        throw new NotFoundException(i18n.tr(
+            "Entitlement Certificate with serial number ''{0}'' could not be found.",
+            serial.toString())); // prevent serial number formatting.
     }
 
     /**
@@ -1639,6 +1658,24 @@ public class ConsumerResource {
             eventAdapter.addMessageText(events);
         }
         return events;
+    }
+
+    /**
+     * @return the consumer event atom feed.
+     * @httpcode 404
+     * @httpcode 200
+     */
+    @GET
+    @Produces("application/atom+xml")
+    @Path("/{consumer_uuid}/atom")
+    public Feed getConsumerAtomFeed(
+        @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid) {
+        String path = String.format("/consumers/%s/atom", consumerUuid);
+        Consumer consumer = verifyAndLookupConsumer(consumerUuid);
+        Feed feed = this.eventAdapter.toFeed(
+            this.eventCurator.listMostRecent(FEED_LIMIT, consumer), path);
+        feed.setTitle("Event feed for consumer " + consumer.getUuid());
+        return feed;
     }
 
     /**
@@ -1784,8 +1821,7 @@ public class ConsumerResource {
         }
 
         if (log.isDebugEnabled()) {
-            log.debug("Generated identity cert: " + idCert);
-            log.debug("Created consumer: " + c);
+            log.debug("Generated identity cert: " + idCert.getSerial().getId());
         }
 
         return idCert;
@@ -1872,8 +1908,10 @@ public class ConsumerResource {
     @Path("/compliance")
     @Transactional
     public Map<String, ComplianceStatus> getComplianceStatusList(
-        @QueryParam("uuid") @Verify(Consumer.class) List<String> uuids) {
-        List<Consumer> consumers = consumerCurator.findByUuids(uuids);
+        @QueryParam("uuid") @Verify(value = Consumer.class, nullable = true)
+            List<String> uuids) {
+        List<Consumer> consumers = uuids == null ? new LinkedList<Consumer>() :
+            consumerCurator.findByUuids(uuids);
         Map<String, ComplianceStatus> results = new HashMap<String, ComplianceStatus>();
 
         Date now = Calendar.getInstance().getTime();
@@ -1922,8 +1960,8 @@ public class ConsumerResource {
     public void removeDeletionRecord(@PathParam("consumer_uuid") String uuid) {
         DeletedConsumer dc = deletedConsumerCurator.findByConsumerUuid(uuid);
         if (dc == null) {
-            throw new NotFoundException("Deletion record for hypervisor " +
-                            uuid + " not found.");
+            throw new NotFoundException(i18n.tr(
+                "Deletion record for hypervisor ''{0}'' not found.", uuid));
         }
         deletedConsumerCurator.delete(dc);
     }

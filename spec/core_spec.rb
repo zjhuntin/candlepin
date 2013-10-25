@@ -1,8 +1,8 @@
+require 'spec_helper'
 require 'candlepin_scenarios'
 
 describe 'Core Limiting' do
   include CandlepinMethods
-  include CandlepinScenarios
 
   before(:each) do
     @owner = create_owner random_string('test_owner')
@@ -75,7 +75,7 @@ describe 'Core Limiting' do
     pool = find_pool(@owner.id, @core_sub.id)
     pool.should_not == nil
 
-    entitlement = system.consume_pool(pool.id)
+    entitlement = system.consume_pool(pool.id, {:quantity => 1})
     entitlement.should_not == nil
 
     compliance_status = @cp.get_compliance(consumer_id=system.uuid)
@@ -103,7 +103,7 @@ describe 'Core Limiting' do
     pool = find_pool(@owner.id, @core_socket_sub.id)
     pool.should_not == nil
 
-    entitlement = system.consume_pool(pool.id)
+    entitlement = system.consume_pool(pool.id, {:quantity => 1})
     entitlement.should_not == nil
 
     compliance_status = @cp.get_compliance(consumer_id=system.uuid)
@@ -131,7 +131,7 @@ describe 'Core Limiting' do
     pool = find_pool(@owner.id, @core_socket_sub.id)
     pool.should_not == nil
 
-    entitlement = system.consume_pool(pool.id)
+    entitlement = system.consume_pool(pool.id, {:quantity => 1})
     entitlement.should_not == nil
 
     compliance_status = @cp.get_compliance(consumer_id=system.uuid)

@@ -71,6 +71,7 @@ import org.candlepin.model.PoolAttribute;
 import org.candlepin.model.Product;
 import org.candlepin.model.ProductAttribute;
 import org.candlepin.model.ProductContent;
+import org.candlepin.model.ProductPoolAttribute;
 import org.candlepin.model.Subscription;
 import org.candlepin.pki.PKIUtility;
 import org.candlepin.pki.X509ByteExtensionWrapper;
@@ -102,9 +103,16 @@ public class DefaultEntitlementCertServiceAdapterTest {
 
     private static final String CONTENT_LABEL = "label";
     private static final String CONTENT_ID = "1234";
+    private static final String CONTENT_ID_FILE = "2456";
+    private static final String CONTENT_ID_KICKSTART = "2457";
+    private static final String CONTENT_ID_UNKNOWN = "2458";
     private static final String CONTENT_TYPE = "yum";
+    private static final String CONTENT_TYPE_KICKSTART = "kickstart";
+    private static final String CONTENT_TYPE_FILE = "file";
+    private static final String CONTENT_TYPE_UNKNOWN = "unknown content type";
     private static final String CONTENT_GPG_URL = "gpgUrl";
     private static final String CONTENT_URL = "/content/dist/rhel/$releasever/$basearch/os";
+    private static final String CONTENT_URL_UNKNOWN_TYPE = "/unknown/content/type";
     private static final String CONTENT_VENDOR = "vendor";
     private static final String CONTENT_NAME = "name";
     private static final Long CONTENT_METADATA_EXPIRE = 3200L;
@@ -138,6 +146,9 @@ public class DefaultEntitlementCertServiceAdapterTest {
     private Pool pool;
     private Pool largeContentPool;
     private Content content;
+    private Content kickstartContent;
+    private Content fileContent;
+    private Content unknownTypeContent;
     private Content noArchContent;
     private Owner owner;
     private Set<Content> superContent;
@@ -175,6 +186,23 @@ public class DefaultEntitlementCertServiceAdapterTest {
         content.setMetadataExpire(CONTENT_METADATA_EXPIRE);
         content.setRequiredTags(REQUIRED_TAGS);
 
+        kickstartContent = createContent(CONTENT_NAME, CONTENT_ID_KICKSTART,
+            CONTENT_LABEL, CONTENT_TYPE_KICKSTART, CONTENT_VENDOR, CONTENT_URL,
+            CONTENT_GPG_URL, ARCH_LABEL);
+        kickstartContent.setMetadataExpire(CONTENT_METADATA_EXPIRE);
+        kickstartContent.setRequiredTags(REQUIRED_TAGS);
+
+        fileContent = createContent(CONTENT_NAME, CONTENT_ID_FILE, CONTENT_LABEL,
+            CONTENT_TYPE_FILE, CONTENT_VENDOR, CONTENT_URL, CONTENT_GPG_URL, ARCH_LABEL);
+        fileContent.setMetadataExpire(CONTENT_METADATA_EXPIRE);
+        fileContent.setRequiredTags(REQUIRED_TAGS);
+
+        unknownTypeContent = createContent(CONTENT_NAME, CONTENT_ID_UNKNOWN, CONTENT_LABEL,
+            CONTENT_TYPE_UNKNOWN, CONTENT_VENDOR, CONTENT_URL_UNKNOWN_TYPE,
+            CONTENT_GPG_URL, ARCH_LABEL);
+        unknownTypeContent.setMetadataExpire(CONTENT_METADATA_EXPIRE);
+        unknownTypeContent.setRequiredTags(REQUIRED_TAGS);
+
         String emptyArches = "";
         noArchContent = createContent(CONTENT_NAME, CONTENT_ID, CONTENT_LABEL,
             CONTENT_TYPE, CONTENT_VENDOR, CONTENT_URL, CONTENT_GPG_URL, emptyArches);
@@ -202,8 +230,11 @@ public class DefaultEntitlementCertServiceAdapterTest {
         owner = new Owner();
 
         pool = new Pool();
+        pool.setQuantity(1L);
         pool.setProductId(product.getId());
         pool.setProductName(product.getName());
+        pool.setStartDate(subscription.getStartDate());
+        pool.setEndDate(subscription.getEndDate());
         largeContentPool = new Pool();
         largeContentPool.setProductId(largeContentProduct.getId());
         largeContentPool.setProductName(largeContentProduct.getName());
@@ -213,15 +244,11 @@ public class DefaultEntitlementCertServiceAdapterTest {
         entitlement = new Entitlement();
         entitlement.setQuantity(new Integer(ENTITLEMENT_QUANTITY));
         entitlement.setConsumer(consumer);
-        entitlement.setStartDate(subscription.getStartDate());
-        entitlement.setEndDate(subscription.getEndDate());
         entitlement.setPool(pool);
         entitlement.setOwner(owner);
         largeContentEntitlement = new Entitlement();
         largeContentEntitlement.setQuantity(new Integer(ENTITLEMENT_QUANTITY));
         largeContentEntitlement.setConsumer(consumer);
-        largeContentEntitlement.setStartDate(largeContentSubscription.getStartDate());
-        largeContentEntitlement.setEndDate(largeContentSubscription.getEndDate());
         largeContentEntitlement.setPool(largeContentPool);
         largeContentEntitlement.setOwner(owner);
 
@@ -250,8 +277,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
 
         subscription.setProvidedProducts(providedProducts);
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, providedProducts, new BigInteger("1234"), keyPair(), true);
     }
 
     private Set<Content> generateContent(int numberToGenerate, String prefix) {
@@ -275,8 +302,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
             1, "TestContent");
 
         product.setContent(productContent);
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
     }
 
     @Test
@@ -354,8 +381,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     public void testPrefixesShouldBeUsed() throws Exception {
         owner.setContentPrefix("/somePrefix/");
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(
             any(String.class),
@@ -373,8 +400,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
         e.getEnvironmentContent().add(new EnvironmentContent(e, content.getId(), true));
         when(entitlement.getConsumer().getEnvironment()).thenReturn(e);
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(
             any(String.class),
@@ -393,8 +420,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
         e.getEnvironmentContent().add(new EnvironmentContent(e, content.getId(), true));
         when(entitlement.getConsumer().getEnvironment()).thenReturn(e);
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(
             any(String.class),
@@ -407,8 +434,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     public void testPrefixIgnoresEnvIfConsumerHasNone() throws Exception {
         owner.setContentPrefix("/someorg/$env/");
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(
             any(String.class),
@@ -421,8 +448,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     public void testPrefixesAreNotUsedForUeberCertificate() throws Exception {
         owner.setContentPrefix("/somePrefix/");
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), false);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), false);
 
         verify(mockedPKI).createX509Certificate(
             any(String.class),
@@ -435,8 +462,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     public void testBlankPrefixesShouldNotEffectAnything() throws Exception {
         owner.setContentPrefix("");
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsContentUrl(CONTENT_URL, CONTENT_ID)),
@@ -448,8 +475,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     public void testNullPrefixesShouldNotEffectAnything() throws Exception {
         owner.setContentPrefix(null);
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsContentUrl(CONTENT_URL, CONTENT_ID)),
@@ -525,8 +552,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     public void contentExtentionsShouldBeAddedDuringCertificateGeneration()
         throws Exception {
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsContentExtensions()), any(Set.class), any(Date.class),
@@ -538,8 +565,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     public void entitlementQuantityShouldBeAddedDuringCertificateGeneration()
         throws Exception {
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsEntitlementExtensions()), any(Set.class),
@@ -550,8 +577,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
     @Test
     public void managementDisabledByDefault() throws Exception {
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsProvidesManagement("0")), any(Set.class),
@@ -562,10 +589,9 @@ public class DefaultEntitlementCertServiceAdapterTest {
     @Test
     public void managementEnabledByAttribute() throws Exception {
 
-        ProductAttribute attr = new ProductAttribute("management_enabled", "1");
-        subscription.getProduct().addAttribute(attr);
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        pool.addProductAttribute(new ProductPoolAttribute("management_enabled", "1", "p"));
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsProvidesManagement("1")), any(Set.class),
@@ -576,10 +602,9 @@ public class DefaultEntitlementCertServiceAdapterTest {
     @Test
     public void stackingIdByAttribute() throws Exception {
 
-        ProductAttribute attr = new ProductAttribute("stacking_id", "3456");
-        subscription.getProduct().addAttribute(attr);
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        pool.addProductAttribute(new ProductPoolAttribute("stacking_id", "3456", "p"));
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsStackingId("3456")), any(Set.class), any(Date.class),
@@ -591,8 +616,8 @@ public class DefaultEntitlementCertServiceAdapterTest {
         //note that "true" gets recoded to "1" to match other bools in the cert
         PoolAttribute attr = new PoolAttribute("virt_only", "true");
         entitlement.getPool().addAttribute(attr);
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsVirtOnlyKey("1")), any(Set.class), any(Date.class),
@@ -603,9 +628,9 @@ public class DefaultEntitlementCertServiceAdapterTest {
     @Test
     public void orderNumberAttribute() throws Exception {
         //note that "true" gets recoded to "1" to match other bools in the cert
-        subscription.setOrderNumber("this_order");
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        pool.setOrderNumber("this_order");
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsOrderNumberKey("this_order")), any(Set.class),
@@ -616,13 +641,11 @@ public class DefaultEntitlementCertServiceAdapterTest {
     @Test
     public void supportValuesPresentOnCertIfAttributePresent() throws Exception {
 
-        ProductAttribute attr = new ProductAttribute("support_level", "Premium");
-        subscription.getProduct().addAttribute(attr);
-        attr = new ProductAttribute("support_type", "Level 3");
-        subscription.getProduct().addAttribute(attr);
+        pool.setProductAttribute("support_level", "Premium", "p");
+        pool.setProductAttribute("support_type", "Level 3", "p");
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListContainsSupportLevel("Premium")), any(Set.class),
@@ -654,16 +677,16 @@ public class DefaultEntitlementCertServiceAdapterTest {
                 I18nFactory.getI18n(getClass(), Locale.US, I18nFactory.FALLBACK),
                 mockConfig);
 
-        entAdapter.createX509Certificate(entitlement, subscription, product,
-            new BigInteger("1234"), keyPair(), true);
+        entAdapter.createX509Certificate(entitlement, product,
+            new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
     }
 
     @Test
     public void supportValuesAbsentOnCertIfNoSupportAttributes()
         throws Exception {
 
-        certServiceAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
+        certServiceAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
 
         verify(mockedPKI).createX509Certificate(any(String.class),
             argThat(new ListDoesNotContainSupportLevel()), any(Set.class), any(Date.class),
@@ -692,12 +715,12 @@ public class DefaultEntitlementCertServiceAdapterTest {
                 I18nFactory.getI18n(getClass(), Locale.US, I18nFactory.FALLBACK),
                 mockConfig);
 
-        entAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
-        verify(mockV3extensionUtil).getExtensions(any(Set.class), eq(entitlement),
-            any(String.class), any(Map.class), eq(subscription));
+        entAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
+        verify(mockV3extensionUtil).getExtensions(eq(entitlement), any(String.class),
+            any(Map.class));
         verify(mockV3extensionUtil).getByteExtensions(any(Set.class),
-            eq(entitlement), any(String.class), any(Map.class), eq(subscription));
+            eq(entitlement), any(String.class), any(Map.class));
         verifyZeroInteractions(mockExtensionUtil);
     }
 
@@ -723,12 +746,12 @@ public class DefaultEntitlementCertServiceAdapterTest {
                 I18nFactory.getI18n(getClass(), Locale.US, I18nFactory.FALLBACK),
                 mockConfig);
 
-        entAdapter.createX509Certificate(entitlement, subscription,
-            product, new BigInteger("1234"), keyPair(), true);
-        verify(mockV3extensionUtil).getExtensions(any(Set.class), eq(entitlement),
-            any(String.class), any(Map.class), eq(subscription));
+        entAdapter.createX509Certificate(entitlement,
+            product, new HashSet<Product>(), new BigInteger("1234"), keyPair(), true);
+        verify(mockV3extensionUtil).getExtensions(eq(entitlement), any(String.class),
+            any(Map.class));
         verify(mockV3extensionUtil).getByteExtensions(any(Set.class),
-            eq(entitlement), any(String.class), any(Map.class), eq(subscription));
+            eq(entitlement), any(String.class), any(Map.class));
         verifyZeroInteractions(mockExtensionUtil);
     }
 
@@ -746,6 +769,25 @@ public class DefaultEntitlementCertServiceAdapterTest {
         }
     }
 
+    private Boolean extMapHasContentType(Content cont, Map<String, String> extMap,
+        String contentType) {
+        return extMap.containsKey("1.3.6.1.4.1.2312.9.2." +
+            cont.getId() + "." + contentType + ".1");
+    }
+
+    private Boolean extMapHasProductBrandType(Product product, Map<String, String> extMap) {
+        return extMap.containsKey("1.3.6.1.4.1.2312.9.1." +
+            product.getId() + "." + "5");
+    }
+
+    private Boolean extMapProductBrandTypeMatches(Product product, Map<String,
+        String> extMap, String brandType) {
+        String brandTypeOid = "1.3.6.1.4.1.2312.9.1." +
+            product.getId() + "." + "5";
+        String extBrandType = extMap.get(brandTypeOid);
+
+        return extBrandType.equals(brandType);
+    }
 
     @Test
     public void testPrepareV1Extensions() throws IOException,
@@ -757,12 +799,38 @@ public class DefaultEntitlementCertServiceAdapterTest {
 
         Set<X509ExtensionWrapper> extensions =
             certServiceAdapter.prepareV1Extensions(products, entitlement, "",
-                null, subscription);
+                null);
         Map<String, X509ExtensionWrapper> map = getEncodedContent(extensions);
+        Map<String, String> extMap = getEncodedContentMap(extensions);
 
         assertTrue(isEncodedContentValid(map));
 
         assertTrue(map.containsKey(CONTENT_URL));
+        // do we have a yum content type oid
+        assertTrue(extMapHasContentType(content, extMap, "1"));
+        assertFalse(extMapHasContentType(content, extMap, "2"));
+    }
+
+    @Test
+    public void testPrepareV1ExtensionsBrandedProduct() throws IOException,
+        GeneralSecurityException {
+        Set<Product> products = new HashSet<Product>();
+
+        ProductAttribute brandAttr = new ProductAttribute("brand_type", "os");
+        product.addAttribute(brandAttr);
+        products.add(product);
+        setupEntitlements(ARCH_LABEL, "1.0");
+
+        Set<X509ExtensionWrapper> extensions =
+            certServiceAdapter.prepareV1Extensions(products, entitlement, "",
+                null);
+        Map<String, X509ExtensionWrapper> map = getEncodedContent(extensions);
+        Map<String, String> extMap = getEncodedContentMap(extensions);
+
+        assertTrue(isEncodedContentValid(map));
+        assertTrue(extMapHasProductBrandType(product, extMap));
+        assertTrue(extMapProductBrandTypeMatches(product, extMap, "os"));
+
     }
 
     @Test
@@ -786,12 +854,161 @@ public class DefaultEntitlementCertServiceAdapterTest {
 
         Set<X509ExtensionWrapper> extensions =
             certServiceAdapter.prepareV1Extensions(products, entitlement, "",
-                null, subscription);
+                null);
         Map<String, X509ExtensionWrapper> map = getEncodedContent(extensions);
+        Map<String, String> extMap = getEncodedContentMap(extensions);
 
         assertFalse(isEncodedContentValid(map));
-
         assertFalse(map.containsKey(CONTENT_URL));
+        // make sure we don't set content type to "null"
+        assertFalse(extMapHasContentType(kickstartContent, extMap, "null"));
+    }
+
+    @Test
+    public void testPrepareV1ExtensionsKickstartContent() throws IOException,
+        GeneralSecurityException {
+        Set<Product> products = new HashSet<Product>();
+
+        // product with a kickstart content
+        Product kickstartProduct = new Product("12345", "a product",
+            "variant", "version", "ALL", "SVC");
+
+        kickstartProduct.setContent(Collections.singleton(kickstartContent));
+        products.clear();
+        products.add(kickstartProduct);
+        setupEntitlements(ARCH_LABEL, "1.0");
+
+        Set<X509ExtensionWrapper> extensions =
+            certServiceAdapter.prepareV1Extensions(products, entitlement, "",
+                null);
+        Map<String, X509ExtensionWrapper> map = getEncodedContent(extensions);
+        Map<String, String> extMap = getEncodedContentMap(extensions);
+
+        assertTrue(isEncodedContentValid(map));
+        assertTrue(map.containsKey(CONTENT_TYPE_KICKSTART));
+        assertTrue(map.containsKey(CONTENT_URL));
+
+        assertFalse(extMapHasContentType(kickstartContent, extMap, "1"));
+        assertFalse(extMapHasContentType(kickstartContent, extMap, "2"));
+        assertTrue(extMapHasContentType(kickstartContent, extMap, "3"));
+        // make sure we don't set content type to "null"
+        assertFalse(extMapHasContentType(kickstartContent, extMap, "null"));
+    }
+
+    @Test
+    public void testPrepareV1ExtensionsFileContent() throws IOException,
+        GeneralSecurityException {
+        Set<Product> products = new HashSet<Product>();
+
+        // product with a kickstart content
+        Product fileProduct = new Product("12345", "a product",
+            "variant", "version", "ALL", "SVC");
+
+        fileProduct.setContent(Collections.singleton(fileContent));
+        products.clear();
+        products.add(fileProduct);
+        setupEntitlements(ARCH_LABEL, "1.0");
+
+        Set<X509ExtensionWrapper> extensions =
+            certServiceAdapter.prepareV1Extensions(products, entitlement, "",
+                null);
+        Map<String, X509ExtensionWrapper> map = getEncodedContent(extensions);
+        Map<String, String> extMap = getEncodedContentMap(extensions);
+
+        assertTrue(isEncodedContentValid(map));
+        assertTrue(map.containsKey(CONTENT_TYPE_FILE));
+        assertTrue(map.containsKey(CONTENT_URL));
+
+        assertFalse(extMapHasContentType(fileContent, extMap, "1"));
+        assertTrue(extMapHasContentType(fileContent, extMap, "2"));
+        assertFalse(extMapHasContentType(fileContent, extMap, "3"));
+        // make sure we don't set content type to "null"
+        assertFalse(extMapHasContentType(fileContent, extMap, "null"));
+    }
+
+
+    @Test
+    public void testPrepareV1ExtensionsFileUnknownContentType() throws IOException,
+        GeneralSecurityException {
+        Set<Product> products = new HashSet<Product>();
+
+        // product with a kickstart content
+        Product unknownContentTypeProduct = new Product("12345", "a product",
+            "variant", "version", ARCH_LABEL, "SVC");
+
+        unknownContentTypeProduct.setContent(Collections.singleton(unknownTypeContent));
+        products.clear();
+        products.add(unknownContentTypeProduct);
+        setupEntitlements(ARCH_LABEL, "1.0");
+
+        Set<X509ExtensionWrapper> extensions =
+            certServiceAdapter.prepareV1Extensions(products, entitlement, "",
+                null);
+        Map<String, X509ExtensionWrapper> map = getEncodedContent(extensions);
+        Map<String, String> extMap = getEncodedContentMap(extensions);
+
+        // we skip content of unknown type for v1 certs
+        assertFalse(isEncodedContentValid(map));
+        assertFalse(map.containsKey(CONTENT_URL_UNKNOWN_TYPE));
+        assertFalse(map.containsKey(CONTENT_TYPE_UNKNOWN));
+
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "1"));
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "2"));
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "3"));
+
+        // make sure we don't set content type to "null"
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "null"));
+    }
+
+    @Test
+    public void testPrepareV1ExtensionsKnownAndUnknownContentTypes() throws IOException,
+        GeneralSecurityException {
+        Set<Product> products = new HashSet<Product>();
+
+        // product with a kickstart content
+        Product product = new Product("12345", "a product",
+            "variant", "version", ARCH_LABEL, "SVC");
+
+        Set<Content> multipleContents = new HashSet<Content>();
+        multipleContents.add(content);
+        multipleContents.add(fileContent);
+        multipleContents.add(kickstartContent);
+        multipleContents.add(unknownTypeContent);
+
+        product.setContent(multipleContents);
+        products.clear();
+        products.add(product);
+        setupEntitlements(ARCH_LABEL, "1.0");
+
+        Set<X509ExtensionWrapper> extensions =
+            certServiceAdapter.prepareV1Extensions(products, entitlement, "",
+                null);
+        Map<String, X509ExtensionWrapper> map = getEncodedContent(extensions);
+        Map<String, String> extMap = getEncodedContentMap(extensions);
+
+        // we skip content of unknown type for v1 certs, but other
+        // content should still get added
+        assertTrue(isEncodedContentValid(map));
+
+        // other contents are in there
+        assertTrue(map.containsKey(CONTENT_URL));
+
+        // unknown is not
+        assertFalse(map.containsKey(CONTENT_TYPE_UNKNOWN));
+        assertFalse(map.containsKey(CONTENT_URL_UNKNOWN_TYPE));
+
+        // we have a yum,file, and kickstart content and
+        // we do not have any unknown content types
+        assertTrue(extMapHasContentType(content, extMap, "1"));
+        assertTrue(extMapHasContentType(fileContent, extMap, "2"));
+        assertTrue(extMapHasContentType(kickstartContent, extMap, "3"));
+
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "1"));
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "2"));
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "3"));
+
+        // make sure we don't set content type to "null"
+        assertFalse(extMapHasContentType(unknownTypeContent, extMap, "null"));
     }
 
     @Test
@@ -804,25 +1021,24 @@ public class DefaultEntitlementCertServiceAdapterTest {
         when(entitlement.getConsumer().getUuid()).thenReturn("test-consumer");
         when(entitlement.getConsumer().getFact("uname.machine")).thenReturn("x86_64");
 
-        subscription.getProduct().setAttribute("warning_period", "20");
-        subscription.getProduct().setAttribute("sockets", "4");
-        subscription.getProduct().setAttribute("ram", "8");
-        subscription.getProduct().setAttribute("cores", "4");
-        subscription.getProduct().setAttribute("management_enabled", "true");
-        subscription.getProduct().setAttribute("stacking_id", "45678");
-        entitlement.getPool().setAttribute("virt_only", "true");
-        subscription.getProduct().setAttribute("support_level", "slevel");
-        subscription.getProduct().setAttribute("support_type", "stype");
-        subscription.setAccountNumber("account1");
-        subscription.setContractNumber("contract1");
-        subscription.setOrderNumber("order1");
+        pool.setProductAttribute("warning_period", "20", "p");
+        pool.setProductAttribute("sockets", "4", "p");
+        pool.setProductAttribute("ram", "8", "p");
+        pool.setProductAttribute("cores", "4", "p");
+        pool.setProductAttribute("management_enabled", "true", "p");
+        pool.setProductAttribute("stacking_id", "45678", "p");
+        pool.setAttribute("virt_only", "true");
+        pool.setProductAttribute("support_level", "slevel", "p");
+        pool.setProductAttribute("support_type", "stype", "p");
+        pool.setAccountNumber("account1");
+        pool.setContractNumber("contract1");
+        pool.setOrderNumber("order1");
         for (ProductContent pc : product.getProductContent()) {
             pc.setEnabled(false);
         }
 
         Set<X509ExtensionWrapper> extensions =
-            certServiceAdapter.prepareV3Extensions(products, entitlement, "prefix",
-                null, subscription);
+            certServiceAdapter.prepareV3Extensions(entitlement, "prefix", null);
         Map<String, X509ExtensionWrapper> map =
             new HashMap<String, X509ExtensionWrapper>();
         for (X509ExtensionWrapper ext : extensions) {
@@ -832,7 +1048,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         assertEquals(map.get("1.3.6.1.4.1.2312.9.6").getValue(), ("3.2"));
 
         byte[] payload = v3extensionUtil.createEntitlementDataPayload(products, entitlement,
-            "prefix", null, subscription);
+            "prefix", null);
         String stringValue = "";
         try {
             stringValue = processPayload(payload);
@@ -860,7 +1076,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         assertEquals(service.get("level"), "slevel");
         assertEquals(service.get("type"), "stype");
         Map<String, Object> order = (Map<String, Object>) data.get("order");
-        assertEquals(order.get("number"), subscription.getOrderNumber());
+        assertEquals(order.get("number"), pool.getOrderNumber());
         assertTrue(((Integer) order.get("quantity")).intValue() ==
             subscription.getQuantity());
         assertNotNull(order.get("start"));
@@ -940,8 +1156,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         setupEntitlements(null, "3.2");
 
         Set<X509ExtensionWrapper> extensions =
-            certServiceAdapter.prepareV3Extensions(products, entitlement, "prefix",
-                null, subscription);
+            certServiceAdapter.prepareV3Extensions(entitlement, "prefix", null);
         Map<String, X509ExtensionWrapper> map =
             new HashMap<String, X509ExtensionWrapper>();
         for (X509ExtensionWrapper ext : extensions) {
@@ -949,7 +1164,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         }
 
         byte[] payload = v3extensionUtil.createEntitlementDataPayload(products, entitlement,
-            "prefix", null, subscription);
+            "prefix", null);
         String stringValue = "";
         try {
             stringValue = processPayload(payload);
@@ -1000,8 +1215,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         setupEntitlements(ARCH_LABEL, "3.2");
 
         Set<X509ExtensionWrapper> extensions =
-            certServiceAdapter.prepareV3Extensions(products, entitlement, "prefix",
-                null, subscription);
+            certServiceAdapter.prepareV3Extensions(entitlement, "prefix", null);
         Map<String, X509ExtensionWrapper> map =
             new HashMap<String, X509ExtensionWrapper>();
         for (X509ExtensionWrapper ext : extensions) {
@@ -1011,7 +1225,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         assertEquals(map.get("1.3.6.1.4.1.2312.9.6").getValue(), ("3.2"));
 
         byte[] payload = v3extensionUtil.createEntitlementDataPayload(products, entitlement,
-            "prefix", null, subscription);
+            "prefix", null);
         String stringValue = "";
         try {
             stringValue = processPayload(payload);
@@ -1068,8 +1282,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         setupEntitlements(ARCH_LABEL, "3.2");
 
         Set<X509ExtensionWrapper> extensions =
-            certServiceAdapter.prepareV3Extensions(products, entitlement, "prefix",
-                null, subscription);
+            certServiceAdapter.prepareV3Extensions(entitlement, "prefix", null);
         Map<String, X509ExtensionWrapper> map =
             new HashMap<String, X509ExtensionWrapper>();
         for (X509ExtensionWrapper ext : extensions) {
@@ -1079,7 +1292,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         assertEquals(map.get("1.3.6.1.4.1.2312.9.6").getValue(), ("3.2"));
 
         byte[] payload = v3extensionUtil.createEntitlementDataPayload(products, entitlement,
-            "prefix", null, subscription);
+            "prefix", null);
         String stringValue = "";
         try {
             stringValue = processPayload(payload);
@@ -1125,8 +1338,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         }
 
         Set<X509ExtensionWrapper> extensions =
-            certServiceAdapter.prepareV3Extensions(products, entitlement, "prefix",
-                null, subscription);
+            certServiceAdapter.prepareV3Extensions(entitlement, "prefix", null);
         Map<String, X509ExtensionWrapper> map =
             new HashMap<String, X509ExtensionWrapper>();
         for (X509ExtensionWrapper ext : extensions) {
@@ -1136,7 +1348,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         assertEquals(map.get("1.3.6.1.4.1.2312.9.6").getValue(), ("3.2"));
 
         byte[] payload = v3extensionUtil.createEntitlementDataPayload(products, entitlement,
-            "prefix", null, subscription);
+            "prefix", null);
         String stringValue = "";
         try {
             stringValue = processPayload(payload);
@@ -1173,12 +1385,11 @@ public class DefaultEntitlementCertServiceAdapterTest {
         when(entitlement.getConsumer().getUuid()).thenReturn("test-consumer");
         when(entitlement.getConsumer().getFact("uname.machine")).thenReturn("x86_64");
 
-        subscription.getProduct().setAttribute("management_enabled", "1");
+        pool.setProductAttribute("management_enabled", "1", "p");
         entitlement.getPool().setAttribute("virt_only", "1");
 
         Set<X509ExtensionWrapper> extensions =
-            certServiceAdapter.prepareV3Extensions(products, entitlement, "prefix",
-                null, subscription);
+            certServiceAdapter.prepareV3Extensions(entitlement, "prefix", null);
         Map<String, X509ExtensionWrapper> map =
             new HashMap<String, X509ExtensionWrapper>();
         for (X509ExtensionWrapper ext : extensions) {
@@ -1188,7 +1399,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         assertEquals(map.get("1.3.6.1.4.1.2312.9.6").getValue(), ("3.2"));
 
         byte[] payload = v3extensionUtil.createEntitlementDataPayload(products, entitlement,
-            "prefix", null, subscription);
+            "prefix", null);
         String stringValue = "";
         try {
             stringValue = processPayload(payload);
@@ -1240,7 +1451,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
 
         Set<X509ByteExtensionWrapper> byteExtensions =
             certServiceAdapter.prepareV3ByteExtensions(products, entitlement, "prefix",
-                null, subscription);
+                null);
         Map<String, X509ByteExtensionWrapper> byteMap =
             new HashMap<String, X509ByteExtensionWrapper>();
         for (X509ByteExtensionWrapper ext : byteExtensions) {
@@ -1285,7 +1496,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
 
         Set<X509ByteExtensionWrapper> byteExtensions =
             certServiceAdapter.prepareV3ByteExtensions(products, entitlement, "prefix",
-                null, subscription);
+                null);
         Map<String, X509ByteExtensionWrapper> byteMap =
             new HashMap<String, X509ByteExtensionWrapper>();
         for (X509ByteExtensionWrapper ext : byteExtensions) {
@@ -1322,7 +1533,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
 
         Set<X509ByteExtensionWrapper> byteExtensions =
             certServiceAdapter.prepareV3ByteExtensions(products, largeContentEntitlement,
-                "prefix", null, largeContentSubscription);
+                "prefix", null);
         Map<String, X509ByteExtensionWrapper> byteMap =
             new HashMap<String, X509ByteExtensionWrapper>();
         for (X509ByteExtensionWrapper ext : byteExtensions) {
@@ -1366,11 +1577,10 @@ public class DefaultEntitlementCertServiceAdapterTest {
             .thenReturn("3.2");
         when(entitlement.getConsumer().getUuid()).thenReturn("test-consumer");
 
-        certServiceAdapter.prepareV3Extensions(products, entitlement, "prefix",
-                null, subscription);
+        certServiceAdapter.prepareV3Extensions(entitlement, "prefix", null);
         Set<X509ByteExtensionWrapper> byteExtensions =
             certServiceAdapter.prepareV3ByteExtensions(products, entitlement, "prefix",
-                null, subscription);
+                null);
         Map<String, X509ByteExtensionWrapper> byteMap =
             new HashMap<String, X509ByteExtensionWrapper>();
         for (X509ByteExtensionWrapper ext : byteExtensions) {
@@ -1567,6 +1777,18 @@ public class DefaultEntitlementCertServiceAdapterTest {
         return encodedContent;
     }
 
+    private Map<String, String> getEncodedContentMap(
+        Set<X509ExtensionWrapper> contentExtensions) {
+        Map<String, String> encodedContentMap =
+            new HashMap<String, String>();
+
+        for (X509ExtensionWrapper ext : contentExtensions) {
+            encodedContentMap.put(ext.getOid(), ext.getValue());
+        }
+        return encodedContentMap;
+
+    }
+
     private boolean isEncodedContentValid(Set<X509ExtensionWrapper> contentExtensions) {
         Map<String, X509ExtensionWrapper> encodedContent =
             getEncodedContent(contentExtensions);
@@ -1721,6 +1943,28 @@ public class DefaultEntitlementCertServiceAdapterTest {
             super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".1.6");
         }
     }
+
+    static class ListContainsContentTypeYum extends OidMatcher {
+
+        public ListContainsContentTypeYum(String value, String contentID) {
+            super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".1");
+        }
+    }
+
+    static class ListContainsContentTypeFile extends OidMatcher {
+
+        public ListContainsContentTypeFile(String value, String contentID) {
+            super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".2");
+        }
+    }
+
+    static class ListContainsContentTypeKickstart extends OidMatcher {
+
+        public ListContainsContentTypeKickstart(String value, String contentID) {
+            super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".3");
+        }
+    }
+
 
     abstract static class OidAbsentMatcher extends
         ArgumentMatcher<Set<X509ExtensionWrapper>> {

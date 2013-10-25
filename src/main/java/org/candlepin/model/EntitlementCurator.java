@@ -25,8 +25,10 @@ import org.apache.log4j.Logger;
 import org.hibernate.Criteria;
 import org.hibernate.ReplicationMode;
 import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Projections;
+import org.hibernate.criterion.Property;
 import org.hibernate.criterion.Restrictions;
-import org.xnap.commons.i18n.I18n;
+import org.hibernate.criterion.Subqueries;
 
 import java.util.Date;
 import java.util.HashSet;
@@ -40,16 +42,14 @@ import java.util.Set;
 public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
     private static Logger log = Logger.getLogger(EntitlementCurator.class);
     private ProductServiceAdapter productAdapter;
-    private I18n i18n;
 
     /**
      * default ctor
      */
     @Inject
-    public EntitlementCurator(ProductServiceAdapter productAdapter, I18n i18n) {
+    public EntitlementCurator(ProductServiceAdapter productAdapter) {
         super(Entitlement.class);
         this.productAdapter = productAdapter;
-        this.i18n = i18n;
     }
 
     // TODO: handles addition of new entitlements only atm!
@@ -80,7 +80,14 @@ public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
 
     public List<Entitlement> listByConsumer(Consumer consumer) {
         Page<List<Entitlement>> p = listByConsumer(consumer, null);
-        return p.getPageData();
+        List<Entitlement> ents = p.getPageData();
+        //Don't show entitlements that are expired
+        for (int i = ents.size() - 1; i >= 0; i--) {
+            if (ents.get(i).getEndDate().before(new Date())) {
+                ents.remove(i);
+            }
+        }
+        return ents;
     }
 
     public List<Entitlement> listByEnvironment(Environment environment) {
@@ -107,8 +114,9 @@ public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
          */
         Criteria criteria = currentSession().createCriteria(Entitlement.class)
             .add(Restrictions.eq("consumer", consumer))
-            .add(Restrictions.le("startDate", activeOn))
-            .add(Restrictions.ge("endDate", activeOn));
+            .createCriteria("pool")
+                .add(Restrictions.le("startDate", activeOn))
+                .add(Restrictions.ge("endDate", activeOn));
         List<Entitlement> entitlements = criteria.list();
         return entitlements;
     }
@@ -128,20 +136,21 @@ public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
         Date endDate) {
         Criteria criteria = currentSession().createCriteria(Entitlement.class)
             .add(Restrictions.eq("consumer", consumer))
-            .add(Restrictions.or(
-                // Checks start date overlap:
-                Restrictions.and(
-                    Restrictions.le("startDate", startDate),
-                    Restrictions.ge("endDate", startDate)),
-                Restrictions.or(
-                    // Checks end date overlap:
+            .createCriteria("pool")
+                .add(Restrictions.or(
+                    // Checks start date overlap:
                     Restrictions.and(
-                        Restrictions.le("startDate", endDate),
-                        Restrictions.ge("endDate", endDate)),
-                    // Checks total overlap:
-                    Restrictions.and(
-                        Restrictions.ge("startDate", startDate),
-                        Restrictions.le("endDate", endDate)))));
+                        Restrictions.le("startDate", startDate),
+                        Restrictions.ge("endDate", startDate)),
+                    Restrictions.or(
+                        // Checks end date overlap:
+                        Restrictions.and(
+                            Restrictions.le("startDate", endDate),
+                            Restrictions.ge("endDate", endDate)),
+                        // Checks total overlap:
+                        Restrictions.and(
+                            Restrictions.ge("startDate", startDate),
+                            Restrictions.le("endDate", endDate)))));
         return criteria;
     }
 
@@ -167,7 +176,7 @@ public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
 
         // Find direct matches on the pool's product ID:
         Criteria parentProductCrit = createModifiesDateFilteringCriteria(consumer,
-            startDate, endDate).createCriteria("pool").add(
+            startDate, endDate).add(
                 Restrictions.eq("productId", productId));
 
         // Using a set to prevent duplicate matches, if somehow
@@ -175,7 +184,7 @@ public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
         finalResults.addAll(parentProductCrit.list());
 
         Criteria providedCrit = createModifiesDateFilteringCriteria(consumer, startDate,
-            endDate).createCriteria("pool")
+            endDate)
             .createCriteria("providedProducts")
             .add(Restrictions.eq("productId", productId));
         finalResults.addAll(providedCrit.list());
@@ -213,17 +222,18 @@ public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
          */
         Criteria criteria = currentSession().createCriteria(Entitlement.class)
             .add(Restrictions.eq("consumer", consumer))
-            .add(Restrictions.or(
-                Restrictions.and(
-                    Restrictions.ge("startDate", startDate),
-                    Restrictions.le("startDate", endDate)),
-                Restrictions.or(
+            .createCriteria("pool")
+                .add(Restrictions.or(
                     Restrictions.and(
-                        Restrictions.ge("endDate", startDate),
-                        Restrictions.le("endDate", endDate)),
-                    Restrictions.and(
-                        Restrictions.le("startDate", startDate),
-                        Restrictions.ge("endDate", endDate)))));
+                        Restrictions.ge("startDate", startDate),
+                        Restrictions.le("startDate", endDate)),
+                    Restrictions.or(
+                        Restrictions.and(
+                            Restrictions.ge("endDate", startDate),
+                            Restrictions.le("endDate", endDate)),
+                        Restrictions.and(
+                            Restrictions.le("startDate", startDate),
+                            Restrictions.ge("endDate", endDate)))));
         List<Entitlement> finalResults = new LinkedList<Entitlement>();
         List<Entitlement> entsWithOverlap = criteria.list();
         for (Entitlement existingEnt : entsWithOverlap) {
@@ -329,5 +339,29 @@ public class EntitlementCurator extends AbstractHibernateCurator<Entitlement> {
         this.currentSession().replicate(ent, ReplicationMode.EXCEPTION);
 
         return ent;
+    }
+
+    /**
+     * Find the entitlements for the given consumer that are part of the specified stack.
+     *
+     * @param consumer the consumer
+     * @param stackId the ID of the stack
+     * @return the list of entitlements for the consumer that are in the stack.
+     */
+    public List<Entitlement> findByStackId(Consumer consumer, String stackId) {
+        DetachedCriteria stackCriteria = DetachedCriteria.forClass(
+            ProductPoolAttribute.class, "attr")
+                .add(Restrictions.eq("name", "stacking_id"))
+                .add(Restrictions.eq("value", stackId))
+                .add(Property.forName("ent_pool.id").eqProperty("attr.pool.id"))
+                .setProjection(Projections.property("attr.id"));
+
+        Criteria activeNowQuery = currentSession().createCriteria(Entitlement.class)
+            .add(Restrictions.eq("consumer", consumer))
+            .createCriteria("pool", "ent_pool")
+                .add(Restrictions.isNull("sourceEntitlement"))
+                .add(Restrictions.isNull("sourceStackId"))
+                .add(Subqueries.exists(stackCriteria));
+        return activeNowQuery.list();
     }
 }

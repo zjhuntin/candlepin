@@ -17,7 +17,6 @@ package org.candlepin.model;
 import org.candlepin.jackson.HateoasInclude;
 import org.candlepin.util.DateSource;
 
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.map.annotate.JsonFilter;
 import org.hibernate.annotations.Cascade;
 import org.hibernate.annotations.ForeignKey;
@@ -60,9 +59,34 @@ import javax.xml.bind.annotation.XmlTransient;
 @Entity
 @Table(name = "cp_pool", uniqueConstraints = {
         @UniqueConstraint(columnNames = {"subscriptionid", "subscriptionsubkey"})})
-@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonFilter("PoolFilter")
 public class Pool extends AbstractHibernateObject implements Persisted, Owned {
+
+    /**
+     * PoolType
+     *
+     * Pools can have be of several major types which can radically alter how they
+     * behave.
+     *
+     * NORMAL - A regular pool. Usually created 1-1 with a subscription.
+     *
+     * ENTITLEMENT_DERIVED - A pool created as the result of a consumer's use of an
+     * entitlement. Will be cleaned up when the source entitlement is revoked.
+     *
+     * STACK_DERIVED - A pool created as a result of the consumer's use of a stack of
+     * entitlements. Will be cleaned up when the last entitlement in the stack is revoked.
+     * This type of pool can have certain fields change as a result of adding or removing
+     * entitlements to the stack.
+     *
+     * BONUS - A virt-only pool created only in hosted environments when a subscription
+     * has a virt_limit attribute but no host_limited attribute.
+     */
+    public enum PoolType {
+        NORMAL,
+        ENTITLEMENT_DERIVED,
+        STACK_DERIVED,
+        BONUS
+    }
 
     @Id
     @GeneratedValue(generator = "system-uuid")
@@ -93,7 +117,14 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
     @Column(nullable = true)
     private String subscriptionSubKey;
 
-    /* Indicates this pool was created as a result of granting an entitlement.
+    /**
+     * Signifies that this pool is a derived pool linked to this stack (only one
+     * sub pool per stack allowed)
+     */
+    @Column(nullable = true)
+    private String sourceStackId;
+
+    /** Indicates this pool was created as a result of granting an entitlement.
      * Allows us to know that we need to clean this pool up if that entitlement
      * if ever revoked. */
     @ManyToOne
@@ -101,6 +132,16 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
     @JoinColumn(nullable = true)
     @Index(name = "cp_pool_entitlement_fk_idx")
     private Entitlement sourceEntitlement;
+
+    /**
+     * Derived pools belong to a consumer who owns the entitlement(s) which created them.
+     * In cases where a pool is linked to a stack of entitlements, the consumer is only
+     * loosely linked in the database, so instead we will link directly for any derived
+     * pool.
+     */
+    @ManyToOne
+    @JoinColumn(nullable = true)
+    private Consumer sourceConsumer;
 
     @Column(nullable = false)
     private Long quantity;
@@ -119,7 +160,6 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
 
     @OneToMany(targetEntity = ProvidedProduct.class)
     @Cascade({org.hibernate.annotations.CascadeType.ALL,
-        org.hibernate.annotations.CascadeType.MERGE,
         org.hibernate.annotations.CascadeType.DELETE_ORPHAN})
     @JoinColumn(name = "pool_id", insertable = false, updatable = false)
     @Where(clause = "dtype='provided'")
@@ -127,31 +167,27 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
 
     @OneToMany(targetEntity = DerivedProvidedProduct.class)
     @Cascade({org.hibernate.annotations.CascadeType.ALL,
-        org.hibernate.annotations.CascadeType.MERGE,
         org.hibernate.annotations.CascadeType.DELETE_ORPHAN})
     @JoinColumn(name = "pool_id", insertable = false, updatable = false)
     @Where(clause = "dtype='derived'")
     private Set<DerivedProvidedProduct> derivedProvidedProducts =
         new HashSet<DerivedProvidedProduct>();
 
-    @OneToMany(cascade = CascadeType.ALL, mappedBy = "pool")
+    @OneToMany(mappedBy = "pool")
     @Cascade({org.hibernate.annotations.CascadeType.ALL,
-        org.hibernate.annotations.CascadeType.MERGE,
         org.hibernate.annotations.CascadeType.DELETE_ORPHAN})
     private Set<PoolAttribute> attributes = new HashSet<PoolAttribute>();
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany
     @Cascade({org.hibernate.annotations.CascadeType.ALL,
-        org.hibernate.annotations.CascadeType.MERGE,
         org.hibernate.annotations.CascadeType.DELETE_ORPHAN})
     @JoinColumn(name = "pool_id", insertable = false, updatable = false)
     @Where(clause = "dtype='product'")
     private Set<ProductPoolAttribute> productAttributes =
         new HashSet<ProductPoolAttribute>();
 
-    @OneToMany(cascade = CascadeType.ALL)
+    @OneToMany
     @Cascade({org.hibernate.annotations.CascadeType.ALL,
-        org.hibernate.annotations.CascadeType.MERGE,
         org.hibernate.annotations.CascadeType.DELETE_ORPHAN})
     @JoinColumn(name = "pool_id", insertable = false, updatable = false)
     @Where(clause = "dtype='derived'")
@@ -486,6 +522,14 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
         this.subscriptionId = subscriptionId;
     }
 
+    public String getSourceStackId() {
+        return sourceStackId;
+    }
+
+    public void setSourceStackId(String sourceStackId) {
+        this.sourceStackId = sourceStackId;
+    }
+
     /**
      * @return true if this pool represents an active subscription.
      */
@@ -501,11 +545,9 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
     }
 
     public String toString() {
-        return "EntitlementPool [id = " + getId() + ", owner = " + owner.getId() +
-            ", products = " + productId + " - " + getProvidedProducts() +
-            ", sub = " + getSubscriptionId() +
-            ", attributes = " + getAttributes() +
-            ", quantity = " + getQuantity() + ", expires = " + getEndDate() + "]";
+        return "Pool[id: " + getId() + ", owner: " + owner.getId() +
+            ", product: " + productId +
+            ", quantity: " + getQuantity() + ", expires: " + getEndDate() + "]";
     }
 
     public Set<ProvidedProduct> getProvidedProducts() {
@@ -661,6 +703,10 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
         return findAttribute(this.productAttributes, name);
     }
 
+    public String getProductAttributeValue(String name) {
+        return findAttributeValue(this.productAttributes, name);
+    }
+
     public DerivedProductPoolAttribute getDerivedProductAttribute(String name) {
         return findAttribute(this.derivedProductAttributes, name);
     }
@@ -744,5 +790,43 @@ public class Pool extends AbstractHibernateObject implements Persisted, Owned {
 
     public void setDerivedProductName(String subProductName) {
         this.derivedProductName = subProductName;
+    }
+
+    public Consumer getSourceConsumer() {
+        return sourceConsumer;
+    }
+
+    public void setSourceConsumer(Consumer sourceConsumer) {
+        this.sourceConsumer = sourceConsumer;
+    }
+
+    /**
+     * There are a number of radically different types of pools. This field is
+     * a quick indicator of what type of pool you are looking at.
+     * See PoolType comments for descriptions of types.
+     *
+     * @return pool type
+     */
+    public PoolType getType() {
+        if (hasAttribute("pool_derived")) {
+            if (getSourceEntitlement() != null) {
+                return PoolType.ENTITLEMENT_DERIVED;
+            }
+            else if (getSourceStackId() != null) {
+                return PoolType.STACK_DERIVED;
+            }
+            else {
+                return PoolType.BONUS;
+            }
+        }
+        return PoolType.NORMAL;
+    }
+
+    public boolean isStacked() {
+        return hasProductAttribute("stacking_id");
+    }
+
+    public String getStackId() {
+        return getProductAttributeValue("stacking_id");
     }
 }

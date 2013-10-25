@@ -21,6 +21,9 @@ import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.Date;
+import java.util.List;
+
 import org.candlepin.auth.Access;
 import org.candlepin.auth.ConsumerPrincipal;
 import org.candlepin.auth.Principal;
@@ -36,14 +39,11 @@ import org.candlepin.resource.PoolResource;
 import org.candlepin.resource.util.CalculatedAttributesUtil;
 import org.candlepin.test.DatabaseTestFixture;
 import org.candlepin.test.TestUtil;
-
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import java.util.List;
 
 
 /**
@@ -93,7 +93,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
         poolCurator.create(pool2);
         poolCurator.create(pool3);
 
-        poolResource = new PoolResource(poolCurator, consumerCurator, ownerCurator,
+        poolResource = new PoolResource(consumerCurator, ownerCurator,
             statisticCurator, i18n, poolManager, attrUtil);
 
         // Consumer system with too many cpu cores:
@@ -174,7 +174,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
         assertEquals(1, pools.size());
 
         verify(attrUtil).buildCalculatedAttributes(any(Pool.class),
-            eq(passConsumer));
+            eq(passConsumer), any(Date.class));
     }
 
     @Test(expected = ForbiddenException.class)
@@ -200,7 +200,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
         assertEquals(2, pools.size());
 
         verify(attrUtil, times(2)).buildCalculatedAttributes(any(Pool.class),
-            eq(passConsumer));
+            eq(passConsumer), any(Date.class));
     }
 
     @Test(expected = NotFoundException.class)
@@ -277,7 +277,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
 
     @Test
     public void testCalculatedAttributesEmpty() {
-        Pool p = poolResource.getPool(pool1.getId(), null, adminPrincipal);
+        Pool p = poolResource.getPool(pool1.getId(), null, null, adminPrincipal);
         assertTrue(p.getCalculatedAttributes().isEmpty());
     }
 
@@ -286,12 +286,12 @@ public class PoolResourceTest extends DatabaseTestFixture {
         Owner owner2 = createOwner();
         ownerCurator.create(owner2);
         poolResource.getPool(pool1.getId(), passConsumer.getUuid(),
-            setupPrincipal(owner2, Access.NONE));
+            null, setupPrincipal(owner2, Access.NONE));
     }
 
     @Test(expected = NotFoundException.class)
     public void testUnknownConsumerRequestingPool() {
-        poolResource.getPool(pool1.getId(), "xyzzy", adminPrincipal);
+        poolResource.getPool(pool1.getId(), "xyzzy", null, adminPrincipal);
     }
 
     public void testEmptyEntitlementList() {

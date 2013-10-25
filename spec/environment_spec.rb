@@ -1,18 +1,19 @@
+require 'spec_helper'
 require 'candlepin_scenarios'
 
 describe 'Environments' do
   include CandlepinMethods
-  include CandlepinScenarios
 
   before(:each) do
+    @expected_env_id = random_string('testenv1')
     @owner = create_owner random_string('test_owner')
     @org_admin = user_client(@owner, random_string('guy'))
-    @env = @org_admin.create_environment(@owner['key'], 'testenv1',
+    @env = @org_admin.create_environment(@owner['key'], @expected_env_id,
       "My Test Env 1", "For test systems only.")
   end
 
   it 'can be created by owner admin' do
-    @env['id'].should == 'testenv1'
+    @env['id'].should == @expected_env_id
     @env['owner']['key'].should == @owner['key']
     @org_admin.list_environments(@owner['key']).length.should == 1
   end
@@ -29,7 +30,7 @@ describe 'Environments' do
 
   it 'cannot be created by foreign owner admin' do
     foreign_owner = create_owner(random_string('test_owner'))
-    foreign_admin = user_client(foreign_owner, 'bill')
+    foreign_admin = user_client(foreign_owner, random_string('bill'))
     lambda {
       env = foreign_admin.create_environment(@owner['key'], 'testenv2',
         "My test env 2")
@@ -38,7 +39,7 @@ describe 'Environments' do
 
   it 'cannot be accessed by foreign owner admin' do
     foreign_owner = create_owner(random_string('test_owner'))
-    foreign_admin = user_client(foreign_owner, 'bill')
+    foreign_admin = user_client(foreign_owner, random_string('bill'))
 
     lambda {
       foreign_admin.list_environments(@owner['key'])
@@ -122,7 +123,7 @@ describe 'Environments' do
     @cp.refresh_pools(@owner['key'])
 
     pools = @cp.list_pools(:owner => @owner['id'], :product => product['id'])
-    ent = consumer_cp.consume_pool(pools[0]['id'])[0]
+    ent = consumer_cp.consume_pool(pools[0]['id'], {:quantity => 1})[0]
 
     x509 = OpenSSL::X509::Certificate.new(ent['certificates'][0]['cert'])
     extensions_hash = Hash[x509.extensions.collect { |ext| [ext.oid, ext.value] }]
@@ -157,7 +158,7 @@ describe 'Environments' do
     @cp.refresh_pools(@owner['key'])
 
     pools = @cp.list_pools(:owner => @owner['id'], :product => product['id'])
-    ent = consumer_cp.consume_pool(pools[0]['id'])[0]
+    ent = consumer_cp.consume_pool(pools[0]['id'], {:quantity => 1})[0]
 
     x509 = OpenSSL::X509::Certificate.new(ent['certificates'][0]['cert'])
     extensions_hash = Hash[x509.extensions.collect { |ext| [ext.oid, ext.value] }]

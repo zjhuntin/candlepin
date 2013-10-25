@@ -14,84 +14,12 @@
  */
 package org.candlepin.resource;
 
-import org.candlepin.audit.Event;
-import org.candlepin.audit.EventAdapter;
-import org.candlepin.audit.EventFactory;
-import org.candlepin.audit.EventSink;
-import org.candlepin.auth.Access;
-import org.candlepin.auth.Principal;
-import org.candlepin.auth.interceptor.Verify;
-import org.candlepin.controller.PoolManager;
-import org.candlepin.exceptions.BadRequestException;
-import org.candlepin.exceptions.CandlepinException;
-import org.candlepin.exceptions.ForbiddenException;
-import org.candlepin.exceptions.IseException;
-import org.candlepin.exceptions.NotFoundException;
-import org.candlepin.model.ActivationKey;
-import org.candlepin.model.ActivationKeyCurator;
-import org.candlepin.model.Consumer;
-import org.candlepin.model.ConsumerCurator;
-import org.candlepin.model.ConsumerInstalledProduct;
-import org.candlepin.model.ConsumerType;
-import org.candlepin.model.ConsumerTypeCurator;
-import org.candlepin.model.Entitlement;
-import org.candlepin.model.EntitlementCertificate;
-import org.candlepin.model.EntitlementCertificateCurator;
-import org.candlepin.model.EntitlementCurator;
-import org.candlepin.model.Environment;
-import org.candlepin.model.EnvironmentCurator;
-import org.candlepin.model.EventCurator;
-import org.candlepin.model.ExporterMetadata;
-import org.candlepin.model.ExporterMetadataCurator;
-import org.candlepin.model.ImportRecord;
-import org.candlepin.model.ImportRecordCurator;
-import org.candlepin.model.Owner;
-import org.candlepin.model.OwnerCurator;
-import org.candlepin.model.OwnerInfo;
-import org.candlepin.model.OwnerInfoCurator;
-import org.candlepin.model.OwnerPermission;
-import org.candlepin.model.OwnerPermissionCurator;
-import org.candlepin.model.Pool;
-import org.candlepin.model.PoolCurator;
-import org.candlepin.model.Statistic;
-import org.candlepin.model.StatisticCurator;
-import org.candlepin.model.Subscription;
-import org.candlepin.model.SubscriptionCurator;
-import org.candlepin.model.UeberCertificateGenerator;
-import org.candlepin.model.UpstreamConsumer;
-import org.candlepin.paging.Page;
-import org.candlepin.paging.PageRequest;
-import org.candlepin.paging.Paginate;
-import org.candlepin.pinsetter.tasks.EntitlerJob;
-import org.candlepin.pinsetter.tasks.RefreshPoolsJob;
-import org.candlepin.resource.util.CalculatedAttributesUtil;
-import org.candlepin.resource.util.ResourceDateParser;
-import org.candlepin.service.SubscriptionServiceAdapter;
-import org.candlepin.sync.ConflictOverrides;
-import org.candlepin.sync.ConsumerDto;
-import org.candlepin.sync.Importer;
-import org.candlepin.sync.ImporterException;
-import org.candlepin.sync.Meta;
-import org.candlepin.sync.SyncDataFormatException;
-
-import com.google.inject.Inject;
-import com.google.inject.persist.Transactional;
-
-import org.apache.log4j.Logger;
-import org.jboss.resteasy.annotations.providers.jaxb.Wrapped;
-import org.jboss.resteasy.plugins.providers.atom.Feed;
-import org.jboss.resteasy.plugins.providers.multipart.InputPart;
-import org.jboss.resteasy.plugins.providers.multipart.MultipartInput;
-import org.jboss.resteasy.spi.ResteasyProviderFactory;
-import org.jboss.resteasy.util.GenericType;
-import org.quartz.JobDetail;
-import org.xnap.commons.i18n.I18n;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +40,76 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.MultivaluedMap;
 
+import org.apache.log4j.Logger;
+import org.candlepin.audit.Event;
+import org.candlepin.audit.EventAdapter;
+import org.candlepin.audit.EventFactory;
+import org.candlepin.audit.EventSink;
+import org.candlepin.auth.Access;
+import org.candlepin.auth.Principal;
+import org.candlepin.auth.interceptor.Verify;
+import org.candlepin.controller.PoolManager;
+import org.candlepin.exceptions.BadRequestException;
+import org.candlepin.exceptions.CandlepinException;
+import org.candlepin.exceptions.ForbiddenException;
+import org.candlepin.exceptions.IseException;
+import org.candlepin.exceptions.NotFoundException;
+import org.candlepin.model.ActivationKey;
+import org.candlepin.model.ActivationKeyCurator;
+import org.candlepin.model.Consumer;
+import org.candlepin.model.ConsumerCurator;
+import org.candlepin.model.ConsumerType;
+import org.candlepin.model.ConsumerTypeCurator;
+import org.candlepin.model.Entitlement;
+import org.candlepin.model.EntitlementCertificate;
+import org.candlepin.model.EntitlementCertificateCurator;
+import org.candlepin.model.EntitlementCurator;
+import org.candlepin.model.Environment;
+import org.candlepin.model.EnvironmentCurator;
+import org.candlepin.model.EventCurator;
+import org.candlepin.model.ExporterMetadata;
+import org.candlepin.model.ExporterMetadataCurator;
+import org.candlepin.model.ImportRecord;
+import org.candlepin.model.ImportRecordCurator;
+import org.candlepin.model.ImportUpstreamConsumer;
+import org.candlepin.model.Owner;
+import org.candlepin.model.OwnerCurator;
+import org.candlepin.model.OwnerInfo;
+import org.candlepin.model.OwnerInfoCurator;
+import org.candlepin.model.OwnerPermission;
+import org.candlepin.model.OwnerPermissionCurator;
+import org.candlepin.model.Pool;
+import org.candlepin.model.Statistic;
+import org.candlepin.model.StatisticCurator;
+import org.candlepin.model.Subscription;
+import org.candlepin.model.SubscriptionCurator;
+import org.candlepin.model.UeberCertificateGenerator;
+import org.candlepin.model.UpstreamConsumer;
+import org.candlepin.paging.Page;
+import org.candlepin.paging.PageRequest;
+import org.candlepin.paging.Paginate;
+import org.candlepin.pinsetter.tasks.EntitlerJob;
+import org.candlepin.pinsetter.tasks.RefreshPoolsJob;
+import org.candlepin.resource.util.CalculatedAttributesUtil;
+import org.candlepin.resource.util.ResourceDateParser;
+import org.candlepin.service.SubscriptionServiceAdapter;
+import org.candlepin.sync.ConflictOverrides;
+import org.candlepin.sync.Importer;
+import org.candlepin.sync.ImporterException;
+import org.candlepin.sync.Meta;
+import org.candlepin.sync.SyncDataFormatException;
+import org.jboss.resteasy.annotations.providers.jaxb.Wrapped;
+import org.jboss.resteasy.plugins.providers.atom.Feed;
+import org.jboss.resteasy.plugins.providers.multipart.InputPart;
+import org.jboss.resteasy.plugins.providers.multipart.MultipartInput;
+import org.jboss.resteasy.spi.ResteasyProviderFactory;
+import org.jboss.resteasy.util.GenericType;
+import org.quartz.JobDetail;
+import org.xnap.commons.i18n.I18n;
+
+import com.google.inject.Inject;
+import com.google.inject.persist.Transactional;
+
 /**
  * Owner Resource
  */
@@ -120,7 +118,6 @@ public class OwnerResource {
 
     private OwnerCurator ownerCurator;
     private OwnerInfoCurator ownerInfoCurator;
-    private PoolCurator poolCurator;
     private SubscriptionCurator subscriptionCurator;
     private ActivationKeyCurator activationKeyCurator;
     private StatisticCurator statisticCurator;
@@ -147,7 +144,7 @@ public class OwnerResource {
     private static final int FEED_LIMIT = 1000;
 
     @Inject
-    public OwnerResource(OwnerCurator ownerCurator, PoolCurator poolCurator,
+    public OwnerResource(OwnerCurator ownerCurator,
         SubscriptionCurator subscriptionCurator,
         ActivationKeyCurator activationKeyCurator,
         ConsumerCurator consumerCurator,
@@ -168,7 +165,6 @@ public class OwnerResource {
 
         this.ownerCurator = ownerCurator;
         this.ownerInfoCurator = ownerInfoCurator;
-        this.poolCurator = poolCurator;
         this.subscriptionCurator = subscriptionCurator;
         this.activationKeyCurator = activationKeyCurator;
         this.consumerCurator = consumerCurator;
@@ -268,6 +264,7 @@ public class OwnerResource {
 
         sink.emitOwnerCreated(owner);
 
+        log.info("Created owner: " + owner);
         if (toReturn != null) {
             return toReturn;
         }
@@ -297,8 +294,9 @@ public class OwnerResource {
 
     private void cleanupAndDelete(Owner owner, boolean revokeCerts) {
         log.info("Cleaning up owner: " + owner);
-        for (Consumer c : consumerCurator.listByOwner(owner)) {
-            log.info("Deleting consumer: " + c);
+        List<Consumer> consumers = consumerCurator.listByOwner(owner);
+        for (Consumer c : consumers) {
+            log.info("Removing all entitlements for consumer: " + c);
 
             if (revokeCerts) {
                 poolManager.revokeAllEntitlements(c);
@@ -307,15 +305,26 @@ public class OwnerResource {
                 // otherwise just remove them without touching the CRL
                 poolManager.removeAllEntitlements(c);
             }
+        }
 
+        // Actual consumer deletion had to be moved out of
+        // the loop above since all entitlements needed to
+        // be removed before the deletion occured. This is
+        // due to the sourceConsumer that was added to Pool.
+        // Deleting an entitlement may result in the deletion
+        // of a sub pool, which would cause issues.
+        // FIXME  Perhaps this can be handled a little better.
+        for (Consumer consumer : consumers) {
             // need to check if this has been removed due to a
             // parent being deleted
             // TODO: There has to be a more efficient way to do this...
-            c = consumerCurator.find(c.getId());
-            if (c != null) {
-                consumerCurator.delete(c);
+            log.info("Deleting consumer: " + consumer);
+            Consumer next = consumerCurator.find(consumer.getId());
+            if (next != null) {
+                consumerCurator.delete(next);
             }
         }
+
         for (ActivationKey key : activationKeyCurator
             .listByOwner(owner)) {
             log.info("Deleting activation key: " + key);
@@ -329,9 +338,9 @@ public class OwnerResource {
             log.info("Deleting subscription: " + s);
             subscriptionCurator.delete(s);
         }
-        for (Pool p : poolCurator.listByOwner(owner)) {
+        for (Pool p : poolManager.listPoolsByOwner(owner)) {
             log.info("Deleting pool: " + p);
-            poolCurator.delete(p);
+            poolManager.deletePool(p);
         }
 
         cleanupUeberCert(owner);
@@ -371,9 +380,9 @@ public class OwnerResource {
             subscriptionCurator.delete(ueberSub);
         }
 
-        Pool ueberPool = poolCurator.findUeberPool(owner);
+        Pool ueberPool = poolManager.findUeberPool(owner);
         if (ueberPool != null) {
-            poolCurator.delete(ueberPool);
+            poolManager.deletePool(ueberPool);
         }
     }
 
@@ -394,7 +403,7 @@ public class OwnerResource {
 
         List<Entitlement> toReturn = new LinkedList<Entitlement>();
         for (Pool pool : owner.getPools()) {
-            toReturn.addAll(poolCurator.entitlementsIn(pool));
+            toReturn.addAll(poolManager.findEntitlements(pool));
         }
 
         return toReturn;
@@ -413,28 +422,14 @@ public class OwnerResource {
     @POST
     @Produces(MediaType.APPLICATION_JSON)
     @Path("{owner_key}/entitlements")
-    public JobDetail[] healEntire(
+    public JobDetail healEntire(
         @PathParam("owner_key") @Verify(Owner.class) String ownerKey) {
-
-        List<JobDetail> details = new LinkedList<JobDetail>();
         Owner owner = findOwner(ownerKey);
-        Set<Consumer> consumers = owner.getConsumers();
-
-        for (Consumer consumer : consumers) {
-            // would be nice to just get the ids but it is what it is
-            Set<ConsumerInstalledProduct> products = consumer.getInstalledProducts();
-
-            // TODO: write a google Function to map this
-            String[] pids = new String[products.size()];
-            int i = 0;
-            for (ConsumerInstalledProduct cip : products) {
-                pids[i++] = cip.getProductId();
-            }
-            details.add(
-                EntitlerJob.bindByProducts(pids, consumer.getUuid(), new Date()));
+        Set<String> uuids = new HashSet<String>();
+        for (Consumer consumer : owner.getConsumers()) {
+            uuids.add(consumer.getUuid());
         }
-
-        return details.toArray(new JobDetail[details.size()]);
+        return EntitlerJob.healEntireOrg(uuids, new Date());
     }
 
     /**
@@ -453,7 +448,7 @@ public class OwnerResource {
             require = Access.READ_SERVICE_LEVELS) String ownerKey) {
         Owner owner = findOwner(ownerKey);
 
-        return poolCurator.retrieveServiceLevelsForOwner(owner, false);
+        return poolManager.retrieveServiceLevelsForOwner(owner, false);
     }
 
     /**
@@ -577,7 +572,8 @@ public class OwnerResource {
         @PathParam("owner_key") @Verify(Owner.class) String ownerKey,
         @QueryParam("username") String userName,
         @QueryParam("type") String typeLabel,
-        @QueryParam("uuid") @Verify(Consumer.class) List<String> uuids,
+        @QueryParam("uuid") @Verify(value = Consumer.class, nullable = true)
+            List<String> uuids,
         @Context PageRequest pageRequest) {
 
         Owner owner = findOwner(ownerKey);
@@ -668,14 +664,14 @@ public class OwnerResource {
             }
         }
 
-        Page<List<Pool>> page = poolCurator.listAvailableEntitlementPools(c, owner,
+        Page<List<Pool>> page = poolManager.listAvailableEntitlementPools(c, owner,
             productId, activeOnDate, true, listAll, pageRequest);
         List<Pool> poolList = page.getPageData();
 
         if (c != null) {
             for (Pool p : poolList) {
                 p.setCalculatedAttributes(
-                    calculatedAttributesUtil.buildCalculatedAttributes(p, c));
+                    calculatedAttributesUtil.buildCalculatedAttributes(p, c, activeOnDate));
             }
         }
 
@@ -716,25 +712,6 @@ public class OwnerResource {
         Feed feed = this.eventAdapter.toFeed(
             this.eventCurator.listMostRecent(FEED_LIMIT, o), path);
         feed.setTitle("Event feed for owner " + o.getDisplayName());
-        return feed;
-    }
-
-    /**
-     * @return the consumer Feed
-     * @httpcode 404
-     * @httpcode 200
-     */
-    @GET
-    @Produces("application/atom+xml")
-    @Path("{owner_key}/consumers/{consumer_uuid}/atom")
-    public Feed getConsumerAtomFeed(
-        @PathParam("owner_key") @Verify(Owner.class) String ownerKey,
-        @PathParam("consumer_uuid") String consumerUuid) {
-        String path = String.format("/consumers/%s/atom", consumerUuid);
-        Consumer consumer = findConsumer(consumerUuid);
-        Feed feed = this.eventAdapter.toFeed(
-            this.eventCurator.listMostRecent(FEED_LIMIT, consumer), path);
-        feed.setTitle("Event feed for consumer " + consumer.getUuid());
         return feed;
     }
 
@@ -842,7 +819,7 @@ public class OwnerResource {
         throws BadRequestException {
         if (serviceLevel != null &&
             !serviceLevel.trim().equals("")) {
-            for (String level : poolCurator.retrieveServiceLevelsForOwner(owner, false)) {
+            for (String level : poolManager.retrieveServiceLevelsForOwner(owner, false)) {
                 if (serviceLevel.equalsIgnoreCase(level)) {
                     return;
                 }
@@ -947,6 +924,7 @@ public class OwnerResource {
         }
 
         // Clear out upstream ID so owner can import from other distributors:
+        UpstreamConsumer uc = owner.getUpstreamConsumer();
         owner.setUpstreamConsumer(null);
 
         ExporterMetadata metadata = exportCurator.lookupByTypeAndOwner(
@@ -956,7 +934,7 @@ public class OwnerResource {
         }
         exportCurator.delete(metadata);
 
-        this.recordManifestDeletion(owner, principal.getUsername());
+        this.recordManifestDeletion(owner, principal.getUsername(), uc);
 
         // Refresh pools to cleanup entitlements:
         return RefreshPoolsJob.forOwner(owner, false);
@@ -1260,14 +1238,11 @@ public class OwnerResource {
 
         ImportRecord record = new ImportRecord(owner);
         Meta meta = (Meta) data.get("meta");
-        ConsumerDto consumer = (ConsumerDto) data.get("consumer");
         if (meta != null) {
             record.setGeneratedBy(meta.getPrincipalName());
             record.setGeneratedDate(meta.getCreated());
         }
-        if (consumer != null) {
-            record.setUpstreamId(consumer.getUuid());
-        }
+        record.setUpstreamConsumer(createImportUpstreamConsumer(owner, null));
         record.setFileName(filename);
 
         String msg = i18n.tr("{0} file imported successfully.", owner.getKey());
@@ -1284,15 +1259,12 @@ public class OwnerResource {
         String filename) {
         ImportRecord record = new ImportRecord(owner);
         Meta meta = (Meta) data.get("meta");
-        ConsumerDto consumer = (ConsumerDto) data.get("consumer");
         log.error("Recording import failure", error);
         if (meta != null) {
             record.setGeneratedBy(meta.getPrincipalName());
             record.setGeneratedDate(meta.getCreated());
         }
-        if (consumer != null) {
-            record.setUpstreamId(consumer.getUuid());
-        }
+        record.setUpstreamConsumer(createImportUpstreamConsumer(owner, null));
         record.setFileName(filename);
 
         record.recordStatus(ImportRecord.Status.FAILURE, error.getMessage());
@@ -1300,15 +1272,33 @@ public class OwnerResource {
         this.importRecordCurator.create(record);
     }
 
-    private void recordManifestDeletion(Owner owner, String username) {
+    private void recordManifestDeletion(Owner owner, String username,
+        UpstreamConsumer uc) {
         ImportRecord record = new ImportRecord(owner);
         record.setGeneratedBy(username);
         record.setGeneratedDate(new Date());
         String msg = i18n.tr("Subscriptions deleted by {0}", username);
         record.recordStatus(ImportRecord.Status.DELETE, msg);
-
+        record.setUpstreamConsumer(createImportUpstreamConsumer(owner, uc));
 
         this.importRecordCurator.create(record);
     }
 
+    private ImportUpstreamConsumer createImportUpstreamConsumer(Owner owner,
+        UpstreamConsumer uc) {
+        ImportUpstreamConsumer iup = null;
+        if (uc == null) {
+            uc = owner.getUpstreamConsumer();
+        }
+        if (uc != null) {
+            iup = new ImportUpstreamConsumer();
+            iup.setOwnerId(uc.getOwnerId());
+            iup.setName(uc.getName());
+            iup.setUuid(uc.getUuid());
+            iup.setType(uc.getType());
+            iup.setWebUrl(uc.getWebUrl());
+            iup.setApiUrl(uc.getApiUrl());
+        }
+        return iup;
+    }
 }

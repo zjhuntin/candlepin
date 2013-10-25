@@ -416,7 +416,7 @@ public class InstalledProductStatusCalculatorTest {
 
     // Stacking becomes involved here.
     @Test
-    public void validRangeNullWhenOnlyPartialEntitlement() {
+    public void validRangeNotNullWhenOnlyPartialEntitlement() {
         Consumer c = mockConsumer(PRODUCT_1);
 
         Calendar cal = Calendar.getInstance();
@@ -434,7 +434,125 @@ public class InstalledProductStatusCalculatorTest {
             new ConsumerInstalledProductEnricher(c, status, compliance);
         Product p = new Product(PRODUCT_1, "Awesome Product");
         DateRange validRange = calculator.getValidDateRange(p);
-        assertNull(validRange);
+        assertNotNull(validRange);
+        assertEquals(range.getStartDate(), validRange.getStartDate());
+        assertEquals(range.getEndDate(), validRange.getEndDate());
+    }
+
+    @Test
+    public void validRangeCorrectPartialEntitlementNoGap() {
+        Consumer c = mockConsumer(PRODUCT_1);
+
+        Calendar cal = Calendar.getInstance();
+        Date now = cal.getTime();
+        DateRange range1 = rangeRelativeToDate(now, -4, 4);
+        DateRange range2 = rangeRelativeToDate(now, 4, 9);
+
+        c.addEntitlement(mockStackedEntitlement(c, range1, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+        c.addEntitlement(mockStackedEntitlement(c, range2, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+
+        List<Entitlement> ents = new LinkedList<Entitlement>(c.getEntitlements());
+        when(entCurator.listByConsumer(eq(c))).thenReturn(ents);
+
+        ComplianceStatus status = compliance.getStatus(c, now);
+        ConsumerInstalledProductEnricher calculator =
+            new ConsumerInstalledProductEnricher(c, status, compliance);
+        Product p = new Product(PRODUCT_1, "Awesome Product");
+        DateRange validRange = calculator.getValidDateRange(p);
+        assertNotNull(validRange);
+        assertEquals(range1.getStartDate(), validRange.getStartDate());
+        assertEquals(range2.getEndDate(), validRange.getEndDate());
+    }
+
+    @Test
+    public void validRangeCorrectPartialEntitlementGap() {
+        Consumer c = mockConsumer(PRODUCT_1);
+
+        Calendar cal = Calendar.getInstance();
+        Date now = cal.getTime();
+        DateRange range1 = rangeRelativeToDate(now, -4, 4);
+        DateRange range2 = rangeRelativeToDate(now, 5, 9);
+
+        c.addEntitlement(mockStackedEntitlement(c, range1, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+        c.addEntitlement(mockStackedEntitlement(c, range2, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+
+        List<Entitlement> ents = new LinkedList<Entitlement>(c.getEntitlements());
+        when(entCurator.listByConsumer(eq(c))).thenReturn(ents);
+
+        ComplianceStatus status = compliance.getStatus(c, now);
+        ConsumerInstalledProductEnricher calculator =
+            new ConsumerInstalledProductEnricher(c, status, compliance);
+        Product p = new Product(PRODUCT_1, "Awesome Product");
+        DateRange validRange = calculator.getValidDateRange(p);
+        assertNotNull(validRange);
+        assertEquals(range1.getStartDate(), validRange.getStartDate());
+        assertEquals(range1.getEndDate(), validRange.getEndDate());
+    }
+
+    @Test
+    public void multiEntGreenNowYellowFutureWithOverlap() {
+        Consumer c = mockConsumer(PRODUCT_1);
+
+        Calendar cal = Calendar.getInstance();
+        Date now = cal.getTime();
+
+        DateRange range1 = rangeRelativeToDate(now, -4, 12);
+        DateRange range2 = rangeRelativeToDate(now, 11, 24);
+
+        // Two entitlements make us green right now, both have same start/end date:
+        c.addEntitlement(mockStackedEntitlement(c, range1, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+        c.addEntitlement(mockStackedEntitlement(c, range1, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+        c.addEntitlement(mockStackedEntitlement(c, range2, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+
+        List<Entitlement> ents = new LinkedList<Entitlement>(c.getEntitlements());
+        when(entCurator.listByConsumer(eq(c))).thenReturn(ents);
+
+        ComplianceStatus status = compliance.getStatus(c, now);
+        ConsumerInstalledProductEnricher calculator =
+            new ConsumerInstalledProductEnricher(c, status, compliance);
+        Product p = new Product(PRODUCT_1, "Awesome Product");
+        DateRange validRange = calculator.getValidDateRange(p);
+        assertEquals(range1.getStartDate(), validRange.getStartDate());
+        assertEquals(range1.getEndDate(), validRange.getEndDate());
+    }
+
+    @Test
+    public void multiEntGreenNowInnerDatesYellowFutureWithOverlap() {
+        Consumer c = mockConsumer(PRODUCT_1);
+
+        Calendar cal = Calendar.getInstance();
+        Date now = cal.getTime();
+
+        DateRange range1 = rangeRelativeToDate(now, -4, 12);
+        DateRange range2 = rangeRelativeToDate(now, -3, 10);
+        DateRange range3 = rangeRelativeToDate(now, 11, 24);
+
+        // Two entitlements make us green right now, one has a later start date,
+        // but an earlier end date:
+        c.addEntitlement(mockStackedEntitlement(c, range3, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+        c.addEntitlement(mockStackedEntitlement(c, range1, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+        c.addEntitlement(mockStackedEntitlement(c, range2, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
+
+        List<Entitlement> ents = new LinkedList<Entitlement>(c.getEntitlements());
+        when(entCurator.listByConsumer(eq(c))).thenReturn(ents);
+
+        ComplianceStatus status = compliance.getStatus(c, now);
+        ConsumerInstalledProductEnricher calculator =
+            new ConsumerInstalledProductEnricher(c, status, compliance);
+        Product p = new Product(PRODUCT_1, "Awesome Product");
+        DateRange validRange = calculator.getValidDateRange(p);
+        assertEquals(range2.getStartDate(), validRange.getStartDate());
+        assertEquals(range2.getEndDate(), validRange.getEndDate());
     }
 
     //Test valid range with a full stack where one stacked entitlement provides the product
@@ -473,13 +591,13 @@ public class InstalledProductStatusCalculatorTest {
         DateRange range3 = rangeRelativeToDate(now, -3, -1);
         DateRange range4 = rangeRelativeToDate(range1.getEndDate(), 0, 10);
 
+        c.addEntitlement(mockStackedEntitlement(c, range4, STACK_ID_1, PRODUCT_1, 1,
+            PRODUCT_1));
         c.addEntitlement(mockStackedEntitlement(c, range1, STACK_ID_1, PRODUCT_1, 1,
             PRODUCT_1));
         c.addEntitlement(mockStackedEntitlement(c, range2, STACK_ID_1, PRODUCT_1, 1,
             PRODUCT_1));
         c.addEntitlement(mockStackedEntitlement(c, range3, STACK_ID_1, PRODUCT_1, 1,
-            PRODUCT_1));
-        c.addEntitlement(mockStackedEntitlement(c, range4, STACK_ID_1, PRODUCT_1, 1,
             PRODUCT_1));
 
         List<Entitlement> ents = new LinkedList<Entitlement>(c.getEntitlements());
@@ -604,7 +722,7 @@ public class InstalledProductStatusCalculatorTest {
         Pool p = new Pool(owner, productId, productId, provided,
             new Long(1000), range.getStartDate(), range.getEndDate(), "1000", "1000",
             "1000");
-        Entitlement e = new Entitlement(p, consumer, p.getStartDate(), p.getEndDate(), 1);
+        Entitlement e = new Entitlement(p, consumer, 1);
 
         Random gen = new Random();
         int id = gen.nextInt(Integer.MAX_VALUE);

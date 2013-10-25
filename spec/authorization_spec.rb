@@ -1,3 +1,4 @@
+require 'spec_helper'
 require 'candlepin_scenarios'
 
 require 'rubygems'
@@ -5,7 +6,6 @@ require 'rest_client'
 
 describe 'Authorization' do
   include CandlepinMethods
-  include CandlepinScenarios
 
   before(:each) do
     @owner = create_owner random_string('test_owner')
@@ -27,6 +27,9 @@ describe 'Authorization' do
     consumer_cp.list_entitlements()
     consumer = @cp.get_consumer(consumer_cp.uuid)
     last_checkin1 = consumer['lastCheckin']
+
+    # MySQL before 5.6.4 doesn't store fractional seconds on timestamps.
+    sleep 1
 
     # Do something as the consumer, should cause last checkin time to be updated:
     consumer_cp.list_entitlements()

@@ -20,6 +20,8 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import org.codehaus.jackson.annotate.JsonProperty;
+
 /**
  * Product
  */
@@ -30,6 +32,8 @@ public class Product {
     private String id;
     private String name;
     private String version;
+    @JsonProperty("brand_type")
+    private String brandType;
     private List<String> architectures;
     private List<Content> content;
 
@@ -54,6 +58,12 @@ public class Product {
         this.version = version;
     }
 
+    /**
+     * @param isOs
+     */
+    public void setBrandType(String brandType) {
+        this.brandType = brandType;
+    }
     /**
      * @param archList
      */

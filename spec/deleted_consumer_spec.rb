@@ -1,15 +1,10 @@
-# encoding: utf-8
-
+require 'spec_helper'
 require 'candlepin_scenarios'
-
-require 'rubygems'
-require 'rest_client'
 require 'time'
 
 describe 'Deleted Consumer Resource' do
 
   include CandlepinMethods
-  include CandlepinScenarios
 
   it 'find all deleted consumers' do
     date = Time.now.utc.iso8601
@@ -23,8 +18,7 @@ describe 'Deleted Consumer Resource' do
     @cp.unregister(consumer1.uuid)
 
     deleted_consumers = @cp.get_deleted_consumers(date=date)
-    deleted_consumers.length.should_not == 0
-    deleted_consumers.first.consumerUuid.should == uuid
+    deleted_consumers.map { |i| i['consumerUuid'] }.should include(uuid)
   end
 
 end

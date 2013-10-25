@@ -1,5 +1,5 @@
 # encoding: utf-8
-
+require 'spec_helper'
 require 'candlepin_scenarios'
 
 require 'rubygems'
@@ -8,11 +8,10 @@ require 'rest_client'
 describe 'Owner Resource' do
 
   include CandlepinMethods
-  include CandlepinScenarios
 
   it 'allows consumers to view their service levels' do
     owner = create_owner random_string('owner1')
-    owner_admin = user_client(owner, 'bill')
+    owner_admin = user_client(owner, random_string('bill'))
     owner2 = create_owner random_string('owner2')
 
     consumer = owner_admin.register('somesystem')
@@ -78,7 +77,10 @@ describe 'Owner Resource' do
   it "lets owners be created and refreshed at the same time" do
     owner_key = random_string("new_owner1")
     @cp.refresh_pools(owner_key, false, true)
+
     new_owner = @cp.get_owner(owner_key)
+    @owners << new_owner # this will clean up new_owner at the end of the test.
+
     new_owner['key'].should == owner_key
     pools = @cp.list_owner_pools(owner_key)
     pools.length.should == 0
@@ -239,7 +241,7 @@ describe 'Owner Resource' do
 
   it 'allows service level exempt service levels to be filtered out' do
     owner = create_owner random_string('owner1')
-    owner_admin = user_client(owner, 'bill')
+    owner_admin = user_client(owner, random_string('bill'))
 
     consumer = owner_admin.register('somesystem')
     consumer_client = Candlepin.new(username=nil, password=nil,
@@ -276,11 +278,38 @@ describe 'Owner Resource' do
     @cp.create_subscription(owner['key'], product.id, 10)
     @cp.refresh_pools(owner['key'])
 
-    user = user_client(owner, "billy")
+    user = user_client(owner, random_string("billy"))
     system = consumer_client(user, "system")
 
     pools = @cp.list_owner_pools(owner['key'], {:consumer => system.uuid})
     pool = pools.select { |p| p['owner']['key'] == owner['key'] }.first
     pool['calculatedAttributes']['suggested_quantity'].should == "1"
+  end
+
+  it 'should not double bind when healing an org' do
+    # BZ 988549
+    owner = create_owner(random_string("owner1"))
+    product = create_product(random_string("test_id"),
+      random_string("test_name"))
+    @cp.create_subscription(owner['key'], product.id, 10)
+    @cp.refresh_pools(owner['key'])
+
+    user = user_client(owner, "robot ninja")
+    system = consumer_client(user, "system")
+    installed = [{'productId' => product.id, 'productName' => product.name}]
+    system.update_consumer({:installedProducts => installed})
+
+    job = user.autoheal_org(owner['key'])
+    wait_for_job(job['id'], 30)
+    c = @cp.get_consumer(system.uuid)
+    c['entitlementCount'].should == 1
+
+    @cp.create_subscription(owner['key'], product.id, 10)
+    @cp.refresh_pools(owner['key'])
+
+    job = user.autoheal_org(owner['key'])
+    wait_for_job(job['id'], 30)
+    c = @cp.get_consumer(system.uuid)
+    c['entitlementCount'].should == 1
   end
 end

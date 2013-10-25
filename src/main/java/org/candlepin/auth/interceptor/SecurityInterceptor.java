@@ -47,6 +47,7 @@ import com.google.inject.Provider;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 import org.apache.log4j.Logger;
+import org.apache.log4j.MDC;
 import org.xnap.commons.i18n.I18n;
 
 import java.lang.annotation.Annotation;
@@ -199,6 +200,17 @@ public class SecurityInterceptor implements MethodInterceptor {
                     List entities = new ArrayList();
 
                     Object argument = invocation.getArguments()[i];
+
+                    // if the argument is null, we don't have to check anything
+                    if (argument == null && ((Verify) a).nullable()) {
+                        continue;
+                    }
+                    else if (argument == null) {
+                        log.info("null argument is not allowed");
+                        throw new NotFoundException(i18n.tr(
+                            "{0} with id {1} could not be found.",
+                            Util.getClassName(verifyType), null));
+                    }
                     if (argument instanceof String) {
                         String verifyParam = (String) argument;
                         log.debug("Verifying " + requiredAccess +
@@ -236,10 +248,26 @@ public class SecurityInterceptor implements MethodInterceptor {
                         }
                     }
 
+                    String orgKey = null;
                     for (Object entity : entities) {
                         if (!principal.canAccess(entity, requiredAccess)) {
                             denyAccess(principal, invocation);
                         }
+                        else {
+                            // Access granted, grab the org key for logging purposes:
+                            String foundOrgKey = storeMap.get(verifyType).
+                                getOwnerKey((Persisted) entity);
+                            if (foundOrgKey != null) {
+                                if (orgKey != null && foundOrgKey != orgKey) {
+                                    log.warn("Found entities from multiple orgs in " +
+                                        "one request.");
+                                }
+                                orgKey = foundOrgKey;
+                            }
+                        }
+                    }
+                    if (orgKey != null) {
+                        MDC.put("org", orgKey);
                     }
                 }
             }
@@ -254,6 +282,7 @@ public class SecurityInterceptor implements MethodInterceptor {
     private interface EntityStore<E extends Persisted> {
         E lookup(String key);
         List<E> lookup(Collection<String> keys);
+        String getOwnerKey(E entity);
     }
 
     private class OwnerStore implements EntityStore<Owner> {
@@ -276,6 +305,11 @@ public class SecurityInterceptor implements MethodInterceptor {
             initialize();
             return ownerCurator.lookupByKeys(keys);
         }
+
+        @Override
+        public String getOwnerKey(Owner entity) {
+            return entity.getKey();
+        }
     }
 
     private class EnvironmentStore implements EntityStore<Environment> {
@@ -297,6 +331,11 @@ public class SecurityInterceptor implements MethodInterceptor {
         public List<Environment> lookup(Collection<String> keys) {
             initialize();
             return envCurator.listAllByIds(keys);
+        }
+
+        @Override
+        public String getOwnerKey(Environment entity) {
+            return entity.getOwner().getKey();
         }
     }
 
@@ -334,6 +373,11 @@ public class SecurityInterceptor implements MethodInterceptor {
             // the requested items is deleted.
             return consumerCurator.findByUuids(keys);
         }
+
+        @Override
+        public String getOwnerKey(Consumer entity) {
+            return entity.getOwner().getKey();
+        }
     }
 
     private class EntitlementStore implements EntityStore<Entitlement> {
@@ -355,6 +399,11 @@ public class SecurityInterceptor implements MethodInterceptor {
         public List<Entitlement> lookup(Collection<String> keys) {
             initialize();
             return entitlementCurator.listAllByIds(keys);
+        }
+
+        @Override
+        public String getOwnerKey(Entitlement entity) {
+            return entity.getOwner().getKey();
         }
     }
 
@@ -378,6 +427,11 @@ public class SecurityInterceptor implements MethodInterceptor {
             initialize();
             return poolCurator.listAllByIds(keys);
         }
+
+        @Override
+        public String getOwnerKey(Pool entity) {
+            return entity.getOwner().getKey();
+        }
     }
 
     private class ActivationKeyStore implements EntityStore<ActivationKey> {
@@ -399,6 +453,11 @@ public class SecurityInterceptor implements MethodInterceptor {
         public List<ActivationKey> lookup(Collection<String> keys) {
             initialize();
             return activationKeyCurator.listAllByIds(keys);
+        }
+
+        @Override
+        public String getOwnerKey(ActivationKey entity) {
+            return entity.getOwner().getKey();
         }
     }
 
@@ -422,6 +481,12 @@ public class SecurityInterceptor implements MethodInterceptor {
             initialize();
             return productCurator.listAllByIds(keys);
         }
+
+        @Override
+        public String getOwnerKey(Product entity) {
+            // Products do not belong to an org:
+            return null;
+        }
     }
 
     private static class UserStore implements EntityStore<User> {
@@ -441,6 +506,12 @@ public class SecurityInterceptor implements MethodInterceptor {
             }
 
             return users;
+        }
+
+        @Override
+        public String getOwnerKey(User entity) {
+            // Users do not (necessarily) belong to a specific org:
+            return null;
         }
     }
 

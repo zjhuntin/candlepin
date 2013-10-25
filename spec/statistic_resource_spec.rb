@@ -1,9 +1,9 @@
+require 'spec_helper'
 require 'candlepin_scenarios'
 
 describe 'Statistic Resource' do
 
   include CandlepinMethods
-  include CandlepinScenarios
 
   it 'view statistics for created pool and product' do
     owner1 = create_owner random_string('test_owner')
@@ -17,7 +17,7 @@ describe 'Statistic Resource' do
 
     consumer_client = consumer_client(owner1_client, random_string('testsystem'))
     p = consumer_client.get_pool(pool.id)
-    consumer_client.consume_pool(p.id)
+    consumer_client.consume_pool(p.id, {:quantity => 1})
 
     @cp.generate_statistics
 
