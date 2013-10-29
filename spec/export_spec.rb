@@ -47,8 +47,8 @@ describe 'Candlepin Export', :serial => true do
   end
 
   it 'exports CDN URL' do
-   exported_meta = parse_file(File.join(@export_dir, 'meta.json'))
-   exported_meta['cdnKey'].should == @cdn_key
+   exported_meta = parse_file(File.join(@cp_export.export_dir, 'meta.json'))
+   exported_meta['cdnKey'].should == @exporter.cdn_key
   end
 
   it 'should not include consumer json in entitlements' do

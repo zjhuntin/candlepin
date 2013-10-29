@@ -290,7 +290,7 @@ describe 'Candlepin Import', :serial => true do
     consumer = consumer_client(@import_owner_client, 'system6')
     entitlement = consumer.consume_pool(pool.id, {:quantity => 1})[0]
     ent =  @cp.get_subscription_cert_by_ent_id entitlement.id
-    ent.cdn['key'].should == @cdn_key
+    ent.cdn['key'].should == @cp_export.cdn_key
     ent.subCert == cert.should
   end
 
@@ -320,7 +320,7 @@ describe 'Candlepin Import', :serial => true do
 
   it 'should put the cdn from the manifest into the created subscriptions' do
     @cp.list_subscriptions(@import_owner['key']).find_all do |sub|
-        sub['cdn']['key'].should == @cdn_key
+        sub['cdn']['key'].should == @cp_export.cdn_key
     end
   end
 end
