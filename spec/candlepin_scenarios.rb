@@ -85,7 +85,13 @@ module CandlepinMethods
 
   def update_content_delivery_network(key, name, url, cert=nil)
     content_delivery_network = @cp.update_content_delivery_network(key, name, url, cert)
-    @content_delivery_networks << content_delivery_network
+    found = false
+    @content_delivery_networks.each do |cdn|
+        found |= cdn['key'] == key
+    end
+    if not found
+        @content_delivery_networks << content_delivery_network
+    end
 
     return content_delivery_network
   end
@@ -257,8 +263,9 @@ class Exporter
   # has subscriptions to the product.  The best way to deal with this is to
   # allow the after(:each) block in spec_helper.rb to clean up the import
   # owner and then clean up all the exporters in an after(:all) block.
-  def initialize
+  def initialize(opts={})
     cleanup_before()
+    @opts |= opts
     @orig_working_dir = Dir.pwd()
     @exports = []
 
@@ -270,11 +277,16 @@ class Exporter
 
     @candlepin_client = consumer_client(owner_client, random_string('test_client'),
         "candlepin", user['username'])
+    @cdn_key = random_string("test-cdn")
+    @cdn = create_content_delivery_network(@cdn_key,
+	                               "Test CDN",
+	                               "https://cdn.test.com")
+
   end
 
   def create_candlepin_export
-    export = Export.new
-    export.export_filename = @candlepin_client.export_consumer(export.tmp_dir)
+    export = Export.new({:cdn_key => @cdn_key, :webapp_prefix => "webapp1", :api_url => "api1"})
+    export.export_filename = @candlepin_client.export_consumer(export.tmp_dir, @opts)
     export.extract()
     @exports << export
     export
@@ -371,52 +383,10 @@ class StandardExporter < Exporter
     @candlepin_client.update_consumer({:facts => {"distributor_version" => "sam-1.3"}})
     @candlepin_consumer = @candlepin_client.get_consumer()
 
-<<<<<<< HEAD
-    @entitlement1 = @candlepin_client.consume_pool(pool1.id)[0]
-    @entitlement2 = @candlepin_client.consume_pool(pool2.id)[0]
-    @candlepin_client.consume_pool(pool3.id)
-    @entitlement3 = @candlepin_client.consume_pool(pool4.id)[0]
-    @entitlement_up = @candlepin_client.consume_pool(@pool_up.id)[0]
-
-    if @cdn == nil
-        @cdn_key = random_string("test-cdn")
-        @cdn = @cp.create_content_delivery_network(@cdn_key,
-                                               "Test CDN",
-                                               "https://cdn.test.com")
-    end
-
-
-    # Make a temporary directory where we can safely extract our archive:
-    @tmp_dir = File.join(Dir.tmpdir, random_string('candlepin-rspec'))
-    @export_dir = File.join(@tmp_dir, "export")
-    Dir.mkdir(@tmp_dir)
-
-    @export_filename = @candlepin_client.export_consumer(@tmp_dir, {:cdn_key => @cdn_key,
-        :webapp_prefix => "webapp1", :api_url => "api1"})
-    # Save current working dir so we can return later:
-    @orig_working_dir = Dir.pwd()
-
-    File.exist?(@export_filename).should == true
-    unzip_export_file(@export_filename, @tmp_dir)
-    unzip_export_file(File.join(@tmp_dir, "consumer_export.zip"), @tmp_dir)
-  end
-
-  def create_certificate_export
-    ## Use the same consumer, and only grab the entitlements
-
-    # Make a temporary directory where we can safely extract our archive:
-    @tmp_dir_certs = File.join(Dir.tmpdir, random_string('candlepin-certs-rspec'))
-    @export_dir_certs = File.join(@tmp_dir_certs, "export")
-    Dir.mkdir(@tmp_dir_certs)
-
-    @certs_export_filename = @candlepin_client.export_certificates(@tmp_dir_certs)
-    @orig_working_dir = Dir.pwd()
-=======
     ent_names = ["entitlement1", "entitlement2", "entitlement3", "entitlement_up"]
     ent_names.zip([@pool1, @pool2, @pool4, @pool_up]).each do |ent_name, pool|
       instance_variable_set("@#{ent_name}", @candlepin_client.consume_pool(pool.id, {:quantity => 1})[0])
     end
->>>>>>> master
 
     # pool3 is special
     @candlepin_client.consume_pool(@pool3.id, {:quantity => 1})
