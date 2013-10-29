@@ -23,7 +23,7 @@
             <column name="created" type="TIMESTAMP WITHOUT TIME ZONE"/>
             <column name="updated" type="TIMESTAMP WITHOUT TIME ZONE"/>
             <column name="quantity" type="int8">
-                <constraints nullable="false"/>
+                <constraints nullable="true"/>
             </column>
             <column name="key_id" type="VARCHAR(32)">
                 <constraints nullable="false"/>
@@ -1137,4 +1137,7 @@
     <include file="db/changelog/20130916125243-create-mysql-schema.xml" />
     <include file="db/changelog/20130912153356-create-import-upstream-consumer.xml" />
     <include file="db/changelog/20130920132949-add-delete-cascade-pool-products.xml" />
+    <include file="db/changelog/20131002150608-consumer-content-override.xml" />
+    <include file="db/changelog/20131007121855-add_class_to_jobstatus.xml" />
+    <include file="db/changelog/20131025111347-migrate-import-upstream-consumer.xml" />
 </databaseChangeLog>

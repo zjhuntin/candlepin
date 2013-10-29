@@ -408,7 +408,7 @@ class Candlepin
   end
 
   def create_content(name, id, label, type, vendor,
-      params={})
+      params={}, post=true)
 
     metadata_expire = params[:metadata_expire] || nil
     required_tags = params[:required_tags] || nil
@@ -430,7 +430,15 @@ class Candlepin
     }
     content['metadataExpire'] = metadata_expire if not metadata_expire.nil?
     content['requiredTags'] = required_tags if not required_tags.nil?
-    post("/content", content)
+    if post
+      post("/content", content)
+    else
+      return content
+    end
+  end
+
+  def create_batch_content(contents=[])
+    post("/content/batch", contents)
   end
 
   def list_content
@@ -447,6 +455,14 @@ class Candlepin
 
   def add_content_to_product(product_id, content_id, enabled=true)
     post("/products/#{product_id}/content/#{content_id}?enabled=#{enabled}")
+  end
+
+  def add_batch_content_to_product(product_id, content_ids, enabled=true)
+    data = {}
+    content_ids.each do |id|
+      data[id] = enabled
+    end
+    post("/products/#{product_id}/batch_content", data)
   end
 
   def remove_content_from_product(product_id, content_id)
@@ -1010,6 +1026,17 @@ class Candlepin
 
   def get_content_delivery_networks()
     get("/content_delivery_network")
+
+  def add_content_overrides(uuid, overrides=[])
+    put("consumers/#{uuid}/content_overrides", overrides)
+  end
+
+  def delete_content_overrides(uuid, overrides=[])
+    delete("consumers/#{uuid}/content_overrides", overrides)
+  end
+
+  def get_content_overrides(uuid)
+    get("consumers/#{uuid}/content_overrides")
   end
 
   # Assumes a zip archive currently. Returns filename (random#.zip) of the
@@ -1058,11 +1085,15 @@ class Candlepin
     return JSON.parse(response.body) unless response.body.empty?
   end
 
-  def delete(uri)
+  def delete(uri, data=nil)
     puts ("DELETE #{uri}") if @verbose
-    response = get_client(uri, Net::HTTP::Delete, :delete)[URI.escape(uri)].delete
+    client = get_client(uri, Net::HTTP::Delete, :delete)
+    client.options[:payload] = data.to_json if not data.nil?
+    response = client[URI.escape(uri)].delete(:content_type => :json, :accepts => :json)
     return JSON.parse(response.body) unless response.body.empty?
   end
+
+  
 
   protected
 

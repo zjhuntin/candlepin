@@ -41,7 +41,6 @@ import java.io.IOException;
 import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 /**
@@ -56,18 +55,6 @@ public class EntitlerJobTest {
     public void init() {
         consumerUuid = "49bd6a8f-e9f8-40cc-b8d7-86cafd687a0e";
         e = mock(Entitler.class);
-    }
-
-    @Test
-    public void bindByProductsSetup() {
-        String[] pids = {"pid1", "pid2", "pid3"};
-
-        JobDetail detail = EntitlerJob.bindByProducts(pids, consumerUuid, null);
-        assertNotNull(detail);
-        String[] resultpids = (String[]) detail.getJobDataMap().get("product_ids");
-        assertEquals("pid2", resultpids[1]);
-        assertEquals(consumerUuid, detail.getJobDataMap().get(JobStatus.TARGET_ID));
-        assertTrue(detail.getKey().getName().startsWith("bind_by_products_"));
     }
 
     @Test
@@ -92,42 +79,10 @@ public class EntitlerJobTest {
         List<Entitlement> ents = new ArrayList<Entitlement>();
         when(e.bindByPool(eq(pool), eq(consumerUuid), eq(1))).thenReturn(ents);
 
-        EntitlerJob job = new EntitlerJob(e, null);
+        EntitlerJob job = new EntitlerJob(e, null, null);
         job.execute(ctx);
         verify(e).bindByPool(eq(pool), eq(consumerUuid), eq(1));
         verify(e).sendEvents(eq(ents));
-    }
-
-    @Test
-    public void bindByProductsExec() throws JobExecutionException {
-        String[] pids = {"pid1", "pid2", "pid3"};
-
-        JobDetail detail = EntitlerJob.bindByProducts(pids, consumerUuid, null);
-        JobExecutionContext ctx = mock(JobExecutionContext.class);
-        when(ctx.getMergedJobDataMap()).thenReturn(detail.getJobDataMap());
-        List<Entitlement> ents = new ArrayList<Entitlement>();
-        when(e.bindByProducts(eq(pids), eq(consumerUuid),
-            eq((Date) null))).thenReturn(ents);
-
-        EntitlerJob job = new EntitlerJob(e, null);
-        job.execute(ctx);
-        verify(e).bindByProducts(eq(pids), eq(consumerUuid), eq((Date) null));
-        verify(e).sendEvents(eq(ents));
-    }
-
-    /**
-     * At first glance this seems like a stupid test of Quartz functionality,
-     * but its intent is to ensure that what we put into the JobDataMap can
-     * be serialized to the database for Quartz clustering. If this test fails
-     * 9/10 times one of the objects added does not implement the Serializable
-     * interface.
-     * @throws IOException
-     */
-    @Test
-    public void serializeJobDataMapForProducts() throws IOException {
-        String[] pids = {"pid1", "pid2", "pid3"};
-        JobDetail detail = EntitlerJob.bindByProducts(pids, consumerUuid, null);
-        serialize(detail.getJobDataMap());
     }
 
     /**
@@ -166,7 +121,7 @@ public class EntitlerJobTest {
         when(e.bindByPool(eq(pool), eq(consumerUuid), eq(1))).thenThrow(
             new ForbiddenException("job should fail"));
 
-        EntitlerJob job = new EntitlerJob(e, null);
+        EntitlerJob job = new EntitlerJob(e, null, null);
         job.execute(ctx);
     }
 

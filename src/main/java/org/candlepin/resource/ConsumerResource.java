@@ -71,11 +71,14 @@ import org.candlepin.model.CdnCurator;
 import org.candlepin.model.CertificateSerialDto;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCapability;
+import org.candlepin.model.ConsumerContentOverride;
+import org.candlepin.model.ConsumerContentOverrideCurator;
 import org.candlepin.model.ConsumerCurator;
 import org.candlepin.model.ConsumerInstalledProduct;
 import org.candlepin.model.ConsumerType;
 import org.candlepin.model.ConsumerType.ConsumerTypeEnum;
 import org.candlepin.model.ConsumerTypeCurator;
+import org.candlepin.model.ContentCurator;
 import org.candlepin.model.DeleteResult;
 import org.candlepin.model.DeletedConsumer;
 import org.candlepin.model.DeletedConsumerCurator;
@@ -100,11 +103,14 @@ import org.candlepin.model.User;
 import org.candlepin.paging.Page;
 import org.candlepin.paging.PageRequest;
 import org.candlepin.paging.Paginate;
+import org.candlepin.pinsetter.tasks.EntitleByProductsJob;
 import org.candlepin.pinsetter.tasks.EntitlerJob;
 import org.candlepin.policy.js.compliance.ComplianceRules;
 import org.candlepin.policy.js.compliance.ComplianceStatus;
 import org.candlepin.policy.js.consumer.ConsumerRules;
+import org.candlepin.policy.js.override.OverrideRules;
 import org.candlepin.policy.js.quantity.QuantityRules;
+import org.candlepin.policy.js.quantity.SuggestedQuantity;
 import org.candlepin.resource.util.ConsumerInstalledProductEnricher;
 import org.candlepin.resource.util.ResourceDateParser;
 import org.candlepin.service.EntitlementCertServiceAdapter;
@@ -134,6 +140,7 @@ public class ConsumerResource {
     private Pattern consumerPersonNamePattern;
 
     private static Logger log = Logger.getLogger(ConsumerResource.class);
+    private ConsumerContentOverrideCurator consumerContentOverrideCurator;
     private ConsumerCurator consumerCurator;
     private ConsumerTypeCurator consumerTypeCurator;
     private ProductServiceAdapter productAdapter;
@@ -161,6 +168,7 @@ public class ConsumerResource {
     private CdnCurator cdnCurator;
     private Config config;
     private QuantityRules quantityRules;
+    private OverrideRules overrideRules;
 
     @Inject
     public ConsumerResource(ConsumerCurator consumerCurator,
@@ -178,8 +186,10 @@ public class ConsumerResource {
         ComplianceRules complianceRules, DeletedConsumerCurator deletedConsumerCurator,
         EnvironmentCurator environmentCurator,
         DistributorVersionCurator distributorVersionCurator,
-        CdnCurator cdnCurator, QuantityRules quantityRules,
-        Config config) {
+        Config config, QuantityRules quantityRules,
+        ConsumerContentOverrideCurator consumerContentOverrideCurator,
+        ContentCurator contentCurator, OverrideRules overrideRules,
+        CdnCurator cdnCurator) {
 
         this.consumerCurator = consumerCurator;
         this.consumerTypeCurator = consumerTypeCurator;
@@ -211,6 +221,8 @@ public class ConsumerResource {
             ConfigProperties.CONSUMER_SYSTEM_NAME_PATTERN));
         this.config = config;
         this.quantityRules = quantityRules;
+        this.consumerContentOverrideCurator = consumerContentOverrideCurator;
+        this.overrideRules = overrideRules;
     }
 
     /**
@@ -342,8 +354,7 @@ public class ConsumerResource {
         // API:registerConsumer
         Set<String> keyStrings = splitKeys(activationKeys);
 
-        // Only let NoAuth principals through if there are activation keys to
-        // consider:
+        // Only let NoAuth principals through if there are activation keys to consider:
         if ((principal instanceof NoAuthPrincipal) && (keyStrings.size() == 0)) {
             throw new ForbiddenException(i18n.tr("Insufficient permissions"));
         }
@@ -432,20 +443,7 @@ public class ConsumerResource {
 
             sink.emitConsumerCreated(consumer);
 
-            // Process activation keys.
-            for (ActivationKey ak : keys) {
-                for (ActivationKeyPool akp : ak.getPools()) {
-                    List<Entitlement> entitlements = null;
-
-                    String poolId = Util.assertNotNull(akp.getPool().getId(),
-                        i18n.tr("Pool ID must be provided"));
-                    entitlements = entitler.bindByPool(poolId, consumer, akp
-                        .getQuantity().intValue());
-
-                    // Trigger events:
-                    entitler.sendEvents(entitlements);
-                }
-            }
+            handleActivationKeys(consumer, keys);
 
             ComplianceStatus compliance = complianceRules.getStatus(consumer,
                 Calendar.getInstance().getTime());
@@ -468,6 +466,24 @@ public class ConsumerResource {
                 "Problem creating unit {0}", consumer));
         }
     }
+
+    private void handleActivationKeys(Consumer consumer, List<ActivationKey> keys) {
+        // Process activation keys.
+        for (ActivationKey ak : keys) {
+            for (ActivationKeyPool akp : ak.getPools()) {
+                List<Entitlement> entitlements = null;
+                String poolId = Util.assertNotNull(akp.getPool().getId(),
+                    i18n.tr("Pool ID must be provided"));
+                int quantity = (akp.getQuantity() == null) ?
+                    getQuantityToBind(akp.getPool(), consumer) :
+                    akp.getQuantity().intValue();
+                entitlements = entitler.bindByPool(poolId, consumer, quantity);
+                // Trigger events:
+                entitler.sendEvents(entitlements);
+            }
+        }
+    }
+
     /**
      * @param consumer
      * @param principal
@@ -846,7 +862,7 @@ public class ConsumerResource {
         }
 
         if (changesMade) {
-            log.info("Consumer " + toUpdate.getUuid() + " updated.");
+            log.debug("Consumer " + toUpdate.getUuid() + " updated.");
 
             ComplianceStatus compliance = complianceRules.getStatus(toUpdate,
                 Calendar.getInstance().getTime());
@@ -1371,13 +1387,7 @@ public class ConsumerResource {
         if (poolIdString != null && quantity == null) {
             Pool pool = poolManager.find(poolIdString);
             if (pool != null) {
-                Date now = new Date();
-                // If the pool is being attached in the future, calculate
-                // suggested quantity on the start date
-                Date onDate = now.before(pool.getStartDate()) ?
-                    pool.getStartDate() : now;
-                quantity = Math.max(1, quantityRules.getSuggestedQuantity(pool,
-                    consumer, onDate).getSuggested().intValue());
+                quantity = getQuantityToBind(pool, consumer);
             }
             else {
                 quantity = 1;
@@ -1393,7 +1403,7 @@ public class ConsumerResource {
                 detail = EntitlerJob.bindByPool(poolIdString, consumerUuid, quantity);
             }
             else {
-                detail = EntitlerJob.bindByProducts(productIds,
+                detail = EntitleByProductsJob.bindByProducts(productIds,
                         consumerUuid, entitleDate);
             }
 
@@ -1964,5 +1974,124 @@ public class ConsumerResource {
                 "Deletion record for hypervisor ''{0}'' not found.", uuid));
         }
         deletedConsumerCurator.delete(dc);
+    }
+
+    /*
+    * Add override for content set
+    *
+    * @param uuid
+    *
+    * @httpcode 404
+    * @httpcode 200
+    */
+    @PUT
+    @Path("{consumer_uuid}/content_overrides")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    public List<ConsumerContentOverride> addContentOverrides(
+        @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid,
+        List<ConsumerContentOverride> entries) {
+        Consumer consumer = verifyAndLookupConsumer(consumerUuid);
+        List<String> errors = new ArrayList<String>();
+        for (ConsumerContentOverride entry : entries) {
+            if (overrideRules.canOverrideForConsumer(consumer, entry.getName())) {
+                ConsumerContentOverride cco = consumerContentOverrideCurator.retrieve(
+                    consumer, entry.getContentLabel(), entry.getName());
+                if (cco != null) {
+                    cco.setValue(entry.getValue());
+                    cco.setUpdated(null);
+                    consumerContentOverrideCurator.merge(cco);
+                }
+                else {
+                    entry.setConsumer(consumer);
+                    consumerContentOverrideCurator.create(entry);
+                }
+            }
+            else {
+                errors.add(i18n.tr(
+                    "The value for name ''{0}'' is not allowed to be overridden.",
+                    entry.getName()));
+            }
+        }
+        if (errors.size() > 0) {
+            throw new BadRequestException(errors.toString());
+        }
+        return consumerContentOverrideCurator.getList(consumer);
+    }
+
+    /*
+    * Remove override based on included criteria
+    *
+    * @param uuid
+    *
+    * @httpcode 404
+    * @httpcode 200
+    */
+    @DELETE
+    @Path("{consumer_uuid}/content_overrides")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Transactional
+    public List<ConsumerContentOverride> deleteContentOverrides(
+        @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid,
+        List<ConsumerContentOverride> entries) {
+
+        Consumer consumer = verifyAndLookupConsumer(consumerUuid);
+        if (entries.size() == 0) {
+            consumerContentOverrideCurator.removeByConsumer(consumer);
+        }
+        else {
+            for (ConsumerContentOverride entry : entries) {
+                String label = entry.getContentLabel();
+                if (StringUtils.isBlank(label)) {
+                    consumerContentOverrideCurator.removeByConsumer(consumer);
+                }
+                else {
+                    String name = entry.getName();
+                    if (StringUtils.isBlank(name)) {
+                        consumerContentOverrideCurator.removeByContentLabel(
+                            consumer, entry.getContentLabel());
+                    }
+                    else {
+                        consumerContentOverrideCurator.removeByName(consumer,
+                            entry.getContentLabel(), name);
+                    }
+                }
+            }
+        }
+        return consumerContentOverrideCurator.getList(consumer);
+    }
+
+    /*
+    * Get the list of content set overrides for this consumer
+    *
+    * @param uuid
+    *
+    * @httpcode 404
+    * @httpcode 200
+    */
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @Path("{consumer_uuid}/content_overrides")
+    public List<ConsumerContentOverride> getContentOverrideList(
+        @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid) {
+        Consumer consumer = verifyAndLookupConsumer(consumerUuid);
+        return consumerContentOverrideCurator.getList(consumer);
+    }
+
+    private int getQuantityToBind(Pool pool, Consumer consumer) {
+        Date now = new Date();
+        // If the pool is being attached in the future, calculate
+        // suggested quantity on the start date
+        Date onDate = now.before(pool.getStartDate()) ?
+            pool.getStartDate() : now;
+        SuggestedQuantity suggested = quantityRules.getSuggestedQuantity(pool,
+            consumer, onDate);
+        int quantity = Math.max(suggested.getIncrement().intValue(),
+            suggested.getSuggested().intValue());
+        //It's possible that increment is greater than the number available
+        //but whatever we do here, the bind will fail
+        return quantity;
     }
 }
