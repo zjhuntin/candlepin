@@ -1026,6 +1026,7 @@ class Candlepin
 
   def get_content_delivery_networks()
     get("/content_delivery_network")
+  end
 
   def add_content_overrides(uuid, overrides=[])
     put("consumers/#{uuid}/content_overrides", overrides)
