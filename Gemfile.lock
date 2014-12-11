@@ -34,7 +34,6 @@ GEM
     method_source (0.8.2)
     mime-types (1.25.1)
     minitar (0.5.4)
-    minitest (5.4.3)
     net-sftp (2.1.2)
       net-ssh (>= 2.6.5)
     net-ssh (2.7.0)
@@ -59,7 +58,6 @@ GEM
       diff-lcs (>= 1.1.3, < 2.0)
     rspec-mocks (2.14.3)
     rubyzip (0.9.9)
-    shoulda-context (1.2.1)
     slop (3.6.0)
     stringex (2.5.2)
     webrick (1.3.1)
@@ -74,13 +72,10 @@ DEPENDENCIES
   buildr-findBugs
   httpclient
   mime-types (~> 1.25.0)
-  minitest
   oauth
   parallel_tests
   pmd
   pry
-  rest-client (~> 1.6.0)
   rspec
-  shoulda-context
   stringex
   webrick
