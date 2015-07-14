@@ -12,6 +12,7 @@ gem 'pmd'
 gem 'stringex'
 gem 'pry'
 gem 'httpclient'
+gem 'activesupport'
 
 group :development do
   gem 'webrick'
