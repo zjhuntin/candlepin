@@ -940,15 +940,13 @@ public class ComplianceSnapshotCurator extends BaseCurator<Compliance> {
                     "WHERE " +
                         "ComplianceStatusSnapP.id = ComplianceStatusSnap.id " +
                         "AND (" +
-                            "Installed.productId = CProduct " +
-                            "OR Installed.productId = NCProduct " +
-                            "OR Installed.productId = PCProduct " +
+                            "Installed.productId = CProduct.productId " +
+                            "OR Installed.productId = NCProduct.productId " +
+                            "OR Installed.productId = PCProduct.productId " +
                         ")" +
                     ")",
                     ++counter
                 ));
-
-                log.debug("CRITERIA: {}", criteria.get(criteria.size() - 1));
 
                 parameters.add(productName);
             }
