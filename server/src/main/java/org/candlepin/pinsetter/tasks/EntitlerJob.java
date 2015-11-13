@@ -37,7 +37,7 @@ import java.util.List;
 /**
  * EntitlerJob
  */
-public class EntitlerJob extends KingpinJob {
+public class EntitlerJob extends UniqueByConsumerJob {
 
     private static Logger log = LoggerFactory.getLogger(EntitlerJob.class);
     protected Entitler entitler;
