@@ -10,11 +10,12 @@ gem 'parallel_tests'
 gem 'buildr-findBugs'
 gem 'pmd'
 gem 'stringex'
-gem 'pry'
 gem 'httpclient'
 gem 'activesupport'
 
 group :development do
   gem 'webrick'
   gem 'pry'
+  gem 'pry-byebug'
+  gem 'pry-stack_explorer'
 end
