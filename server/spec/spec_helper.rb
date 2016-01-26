@@ -53,22 +53,31 @@ module SpecUtils
     JSON.parse(body)
   end
 
-  def new_owner(key = nil)
-    key ||= rand_string('owner')
-    user_client.create_owner(
-      :owner => key,
-      :display_name => key,
-    ).ok_content
+  def new_owner(opts = {})
+    client = opts[:client] || user_client
+    opts = opts.except(:client)
+
+    opts[:key] ||= rand_string('owner')
+    opts[:display_name] ||= opts[:key]
+
+    o = client.create_owner(**opts).ok_content
+    @owners << o
+    return o
   end
 
-  def new_owner_user(owner, super_admin = false)
-    key = owner.is_a?(Hash) ? owner[:key] : owner
-    user_client.create_user_under_owner(
-      :username => rand_string('owner_user'),
-      :password => rand_string,
-      :owner => key,
-      :super_admin => super_admin,
-    )
+  def new_owner_user(opts = {})
+    client = opts[:client] || user_client
+    opts = opts.except(:client)
+
+    o = opts[:owner] || owner
+    # Allow users to send in the entire owner json
+    opts[:owner] = o.is_a?(Hash) ? o[:key] : o
+    opts[:username] ||= rand_string('owner_user')
+    opts[:password] ||= rand_string
+
+    u = client.create_user_under_owner(**opts)
+    @users << u
+    return u
   end
 end
 
@@ -76,7 +85,6 @@ module CleanupHooks
   include SpecUtils
 
   def cleanup_before
-    @cp = Candlepin::BasicAuthClient.new
     @owners = []
     @created_products = []
     @dist_versions = []
@@ -87,28 +95,29 @@ module CleanupHooks
   end
 
   def cleanup_after
+    cp = Candlepin::BasicAuthClient.new
     @roles.reverse_each do |r|
-      @cp.delete_role(:role_id => r[:id])
+      cp.delete_role(:role_id => r[:id])
     end
     @owners.reverse_each do |owner|
-      @cp.delete_owner(:owner => owner[:key])
+      cp.delete_owner(:owner => owner[:key])
     end
     @users.reverse_each do |user|
-      @cp.delete_user(:username => user[:username])
+      cp.delete_user(:username => user[:username])
     end
     @dist_versions.reverse_each do |dist|
-      @cp.delete_distributor_version(:id => dist[:id])
+      cp.delete_distributor_version(:id => dist[:id])
     end
     @cdns.reverse_each do |cdn|
-      @cp.delete_cdn(:lable => cdn[:label])
+      cp.delete_cdn(:lable => cdn[:label])
     end
 
     # restore the original rules
-    @cp.delete_rules if @rules
-    status = @cp.get_status.ok_content
+    cp.delete_rules if @rules
+    status = cp.get_status.ok_content
     unless status[:standalone]
       begin
-        @cp.delete('/hostedtest/subscriptions/')
+        cp.delete('/hostedtest/subscriptions/')
       rescue
         puts "Skipping hostedtest cleanup"
       end

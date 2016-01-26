@@ -15,7 +15,7 @@ shared_context "standard" do
   end
 
   let(:owner_user) do
-    new_owner_user(owner)
+    new_owner_user(:owner => owner[:key])
   end
 
   let(:role) do
