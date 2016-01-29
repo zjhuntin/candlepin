@@ -443,7 +443,7 @@ public class Entitler {
         private Product sku;
         private Map<String, Product> provided;
 
-        public DeveloperProducts(String expectedSku, List<Product> products) {
+        DeveloperProducts(String expectedSku, List<Product> products) {
             provided = new HashMap<String, Product>();
             for (Product prod : products) {
                 if (expectedSku.equals(prod.getId())) {
