@@ -69,15 +69,51 @@ module SpecUtils
     client = opts[:client] || user_client
     opts = opts.except(:client)
 
-    o = opts[:owner] || owner
-    # Allow users to send in the entire owner json
-    opts[:owner] = o.is_a?(Hash) ? o[:key] : o
+    opts[:owner] ||= owner[:key]
     opts[:username] ||= rand_string('owner_user')
     opts[:password] ||= rand_string
 
     u = client.create_user_under_owner(**opts)
     @users << u
     return u
+  end
+
+  def new_content(opts = {})
+    client = opts[:client] || user_client
+    opts = opts.except(:client)
+
+    content_id = rand_string('content')
+    opts[:content_id] ||= content_id
+    opts[:name] ||= "Content #{content_id}"
+    opts[:label] ||= content_id
+    opts[:owner] ||= owner[:key]
+
+    client.create_owner_content(**opts).ok_content
+  end
+
+  def new_product(opts = {})
+    client = opts[:client] || user_client
+    opts = opts.except(:client)
+
+    product_id = rand_string('product')
+    opts[:product_id] ||= product_id
+    opts[:name] ||= "Product #{product_id}"
+    opts[:owner] ||= owner[:key]
+
+    p = client.create_product(**opts).ok_content
+    @created_products << p
+    return p
+  end
+
+  def new_role(opts = {})
+    client = opts[:client] || user_client
+    opts = opts.except(:client)
+
+    opts[:name] ||= rand_string('role')
+
+    r = client.create_role(**opts).ok_content
+    @roles << r
+    return r
   end
 end
 
@@ -156,6 +192,12 @@ RSpec::Matchers.define :be_success do
   end
 end
 
+RSpec::Matchers.define :be_bad_request do
+  match do |res|
+    res.status_code == 400
+  end
+end
+
 RSpec::Matchers.define :be_unauthorized do
   match do |res|
     res.status_code == 401
@@ -171,5 +213,11 @@ end
 RSpec::Matchers.define :be_missing do
   match do |res|
     res.status_code == 404
+  end
+end
+
+RSpec::Matchers.define :be_gone do
+  match do |res|
+    res.status_code == 410
   end
 end

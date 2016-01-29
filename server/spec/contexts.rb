@@ -15,36 +15,18 @@ shared_context "standard" do
   end
 
   let(:owner_user) do
-    new_owner_user(:owner => owner[:key])
+    new_owner_user(:owner => owner[:key], :super_admin => true)
   end
 
   let(:role) do
-    res = user_client.create_role(
-      :name => rand_string('role'),
-    )
-    raise "Could not create role for test" unless res.ok?
-    res.content
+    new_role
   end
 
   let(:content) do
-    res = user_client.create_owner_content(
-      :content_id => "hello",
-      :name => "Hello",
-      :label => "hello",
-      :owner => owner[:key],
-    )
-    raise "Could not create content for test" unless res.ok?
-    res.content
+    new_content
   end
 
   let(:product) do
-    p = rand_string('product')
-    res = user_client.create_product(
-      :product_id => p,
-      :name => "Product #{p}",
-      :owner => owner[:key],
-    )
-    raise "Could not create product for test" unless res.ok?
-    res.content
+    new_product
   end
 end
