@@ -13,3 +13,5 @@
 
   vars:
     ansible_user: vagrant
+    #setup_yourkit: True
+    #yourkit_library: /path/to/libyjpagent.so
