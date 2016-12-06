@@ -14,6 +14,10 @@ set -e
 
 source /etc/profile
 
+if [ -f /root/setup-db.sh ]; then
+  source /root/setup-db.sh
+fi
+
 export HOME=/root
 
 export SUPERVISOR=1
@@ -257,13 +261,13 @@ fi
 
 if [ "$QPID" == "1" ]; then
     echo "Setting up Qpid"
-    pushd . 
+    pushd .
     cd ../server/bin/qpid
-    # Do a cleanup 
+    # Do a cleanup
     ./configure-qpid.sh -c
     # Reconfigure
     ./configure-qpid.sh
-    popd 
+    popd
 fi
 
 
@@ -284,11 +288,16 @@ if [ "$DEPLOY" == "1" ]; then
     if [ "$VERBOSE" == "1" ]; then
         DEPLOY_FLAGS="$DEPLOY_FLAGS -v"
     fi
-    
+
     if [ "$QPID" == "1" ]; then
         DEPLOY_FLAGS="$DEPLOY_FLAGS -q"
     fi
-    
+
+
+    # set up the database from setup-db.sh
+    # only runs if function is defined
+    /usr/bin/type -f setup_database &>/dev/null && setup_database
+
     bin/deploy $DEPLOY_FLAGS
     sleep 7
 fi
