@@ -32,6 +32,7 @@ GEM
       buildr (>= 1.4.0)
     byebug (8.2.4)
     coderay (1.1.1)
+    concurrent-ruby (1.0.5)
     debug_inspector (0.0.2)
     diff-lcs (1.2.4)
     digest-murmurhash (1.1.1)
@@ -110,6 +111,7 @@ DEPENDENCIES
   builder
   buildr (= 1.4.24)
   buildr-findBugs
+  concurrent-ruby (~> 1.0)
   digest-murmurhash
   httpclient
   mime-types (~> 1.25.0)

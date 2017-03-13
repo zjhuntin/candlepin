@@ -14,6 +14,7 @@ gem 'digest-murmurhash'
 gem 'httpclient'
 gem 'activesupport', '~> 4.2'
 gem 'qpid_proton'
+gem 'concurrent-ruby', '~> 1.0'
 
 # Remove this once we are fully using the new Ruby bindings
 gem 'rest-client', '~> 1.6.0'
