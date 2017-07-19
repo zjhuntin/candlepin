@@ -25,6 +25,7 @@ import org.candlepin.common.config.Configuration;
 import org.candlepin.common.paging.Page;
 import org.candlepin.common.paging.PageRequest;
 import org.candlepin.config.ConfigProperties;
+import org.candlepin.config.DatabaseConfigFactory;
 import org.candlepin.model.Branding;
 import org.candlepin.model.CandlepinQuery;
 import org.candlepin.model.Consumer;
@@ -1682,6 +1683,12 @@ public class CandlepinPoolManager implements PoolManager {
     }
 
     @Override
+    @Transactional
+    public void revokeEntitlement(Entitlement entitlement) {
+        revokeEntitlements(Collections.singletonList(entitlement));
+    }
+
+    @Override
     public void revokeEntitlements(List<Entitlement> entsToRevoke) {
         revokeEntitlements(entsToRevoke, null, true);
     }
@@ -1900,12 +1907,6 @@ public class CandlepinPoolManager implements PoolManager {
                 poolRules.updatePoolsFromStack(entry.getKey(), subPools, alreadyDeletedPools, true);
             }
         }
-    }
-
-    @Override
-    @Transactional
-    public void revokeEntitlement(Entitlement entitlement) {
-        revokeEntitlements(Collections.singletonList(entitlement));
     }
 
     @Override

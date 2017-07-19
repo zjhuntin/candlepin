@@ -246,6 +246,46 @@ describe "Multi Org Shares" do
     expect(owner2_prod['uuid']).to eq(owner1_prod['uuid'])
   end
 
+  it 'creates an unmapped guest pool' do
+    product = create_product(nil, nil,
+        {:attributes => {:virt_limit => "4",
+                         :host_limited => 'true'},
+        :owner => @owner1['key']})
+    create_pool_and_subscription(@owner1['key'], product.id, 10, [])
+    all_pools = @cp.list_owner_pools(@owner1['key'])
+    expect(all_pools.length).to eq(2)
+    shareable_pool = all_pools.find {|p| p.type != 'UNMAPPED_GUEST'}
+    @user_client.consume_pool(shareable_pool['id'], :uuid => share_consumer['uuid'])
+
+    recipient_pools = @cp.list_owner_pools(@owner2['key'])
+    expect(recipient_pools.length).to eq(2)
+    host_restricted_pool = recipient_pools.find {|p| p.type == 'SHARE_DERIVED'}
+    expect(host_restricted_pool).to_not be_empty
+    unmapped_pool = recipient_pools.find {|p| p.type == 'UNMAPPED_GUEST'}
+    expect(unmapped_pool).to_not be_empty
+  end
+
+  it 'revokes the derived unmapped guest pool' do
+    product = create_product(nil, nil,
+        {:attributes => {:virt_limit => "4",
+                         :host_limited => 'true'},
+        :owner => @owner1['key']})
+    create_pool_and_subscription(@owner1['key'], product.id, 10, [])
+    all_pools = @cp.list_owner_pools(@owner1['key'])
+    expect(all_pools.length).to eq(2)
+    shareable_pool = all_pools.find {|p| p.type != 'UNMAPPED_GUEST'}
+
+    @user_client.consume_pool(shareable_pool['id'], :uuid => share_consumer['uuid'])
+    recipient_pools = @cp.list_owner_pools(@owner2['key'])
+    pp recipient_pools
+    expect(recipient_pools.length).to eq(2)
+
+    @cp.revoke_all_entitlements(share_consumer['uuid'])
+    recipient_pools = @cp.list_owner_pools(@owner2['key'])
+    pp recipient_pools
+    expect(recipient_pools.length).to eq(0)
+  end
+
   it 'does not allow to over share a pool' do
     prod = create_product(nil, nil, :owner => @owner1['key'],
         :attributes => {"multi-entitlement" => "yes"})

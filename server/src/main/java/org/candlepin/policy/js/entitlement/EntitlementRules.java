@@ -686,13 +686,9 @@ public class EntitlementRules implements Enforcer {
                 sharedPool.getBranding().add(new Branding(b.getProductId(), b.getType(),
                     b.getName()));
             }
-            sharedPoolsToCreate.add(sharedPool);
-        }
 
-        /* TODO Create temporary guest pool in OrgB */
-
-        if (CollectionUtils.isNotEmpty(sharedPoolsToCreate)) {
-            poolManager.createPools(sharedPoolsToCreate);
+            // Create temporary guest pool in OrgB and persist
+            poolManager.createAndEnrichPools(sharedPool);
         }
     }
 

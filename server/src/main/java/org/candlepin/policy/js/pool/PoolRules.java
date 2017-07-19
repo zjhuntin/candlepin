@@ -148,7 +148,7 @@ public class PoolRules {
      * temporary use of unmapped guests. (current behavior for any pool with
      * virt_limit)
      */
-    private Pool createBonusPool(Pool masterPool, List<Pool> existingPools) {
+    public Pool createBonusPool(Pool masterPool, List<Pool> existingPools) {
         Map<String, String> attributes = masterPool.getProductAttributes();
 
         String virtQuantity = getVirtQuantity(
@@ -172,6 +172,9 @@ public class PoolRules {
             virtAttributes.put(Pool.Attributes.PHYSICAL_ONLY, "false");
             if (hostLimited || config.getBoolean(ConfigProperties.STANDALONE)) {
                 virtAttributes.put(Pool.Attributes.UNMAPPED_GUESTS_ONLY, "true");
+            }
+            if ("true".equals(masterPool.getAttributeValue(Pool.Attributes.SHARE))) {
+                virtAttributes.put(Pool.Attributes.SHARE, "true");
             }
 
             // Make sure the virt pool does not have a virt_limit,
