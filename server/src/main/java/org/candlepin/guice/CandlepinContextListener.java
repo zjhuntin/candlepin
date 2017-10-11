@@ -32,6 +32,7 @@ import org.candlepin.config.DatabaseConfigFactory;
 import org.candlepin.controller.SuspendModeTransitioner;
 import org.candlepin.logging.LoggerContextListener;
 import org.candlepin.pinsetter.core.PinsetterContextListener;
+import org.candlepin.pki.impl.BouncyCastleProviderLoader;
 import org.candlepin.resteasy.ResourceLocatorMap;
 import org.candlepin.swagger.CandlepinSwaggerModelConverter;
 import org.candlepin.util.Util;
@@ -43,6 +44,7 @@ import com.google.inject.Stage;
 import com.google.inject.util.Modules;
 
 import org.apache.commons.lang.StringUtils;
+import org.bouncycastle.crypto.fips.FipsStatus;
 import org.hibernate.cfg.beanvalidation.BeanValidationEventListener;
 import org.hibernate.dialect.PostgreSQLDialect;
 import org.hibernate.event.service.spi.EventListenerRegistry;
@@ -111,6 +113,10 @@ public class CandlepinContextListener extends GuiceResteasyBootstrapServletConte
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         log.info("Candlepin initializing context.");
+
+        BouncyCastleProviderLoader.addProvider();
+        log.info("FIPS 140-2 status: {}", FipsStatus.getStatusMessage());
+
         I18nManager.getInstance().setDefaultLocale(Locale.US);
         servletContext = sce.getServletContext();
 

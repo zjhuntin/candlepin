@@ -14,7 +14,7 @@
  */
 package org.candlepin.util;
 
-import static org.candlepin.test.MatchesPattern.matchesPattern;
+import static org.candlepin.test.MatchesPattern.*;
 import static org.junit.Assert.*;
 
 import org.candlepin.TestingModules;
@@ -26,7 +26,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 
 import org.apache.commons.io.IOUtils;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import org.hamcrest.Description;
 import org.hamcrest.TypeSafeMatcher;
 import org.junit.After;
@@ -58,7 +58,7 @@ import javax.inject.Inject;
 @RunWith(MockitoJUnitRunner.class)
 public class CrlFileUtilTest {
 
-    private static final BouncyCastleProvider BC = new BouncyCastleProvider();
+    private static final BouncyCastleFipsProvider BCFIPS = new BouncyCastleFipsProvider();
     private CrlFileUtil cfu;
 
     @Inject private PKIReader pkiReader;
@@ -225,7 +225,7 @@ public class CrlFileUtilTest {
             try {
                 in = new BufferedInputStream(new FileInputStream(f));
                 x509crl = (X509CRL) CertificateFactory.getInstance("X.509").generateCRL(in);
-                x509crl.verify(pkiReader.getCACert().getPublicKey(), BC.PROVIDER_NAME);
+                x509crl.verify(pkiReader.getCACert().getPublicKey(), BCFIPS.PROVIDER_NAME);
                 Set<BigInteger> s = new HashSet<BigInteger>();
 
                 for (X509CRLEntry entry : x509crl.getRevokedCertificates()) {
