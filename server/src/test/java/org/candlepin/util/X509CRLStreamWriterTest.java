@@ -14,11 +14,8 @@
  */
 package org.candlepin.util;
 
-import static org.candlepin.pki.impl.BouncyCastleProviderLoader.*;
 import static org.candlepin.test.MatchesPattern.*;
 import static org.junit.Assert.*;
-
-import org.candlepin.pki.impl.BouncyCastleProviderLoader;
 
 import org.apache.commons.io.FileUtils;
 import org.bouncycastle.asn1.ASN1Integer;
@@ -61,6 +58,7 @@ import java.math.BigInteger;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PublicKey;
+import java.security.Security;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509CRL;
 import java.security.cert.X509CRLEntry;
@@ -74,6 +72,8 @@ import java.util.Set;
 
 
 public class X509CRLStreamWriterTest {
+    private static final BouncyCastleFipsProvider BCFIPS = new BouncyCastleFipsProvider();
+
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
@@ -86,10 +86,6 @@ public class X509CRLStreamWriterTest {
     private File outfile;
 
     private KeyPairGenerator generator;
-
-    static {
-        BouncyCastleProviderLoader.addProvider();
-    }
 
     @Before
     public void setUp() throws Exception {
@@ -104,6 +100,7 @@ public class X509CRLStreamWriterTest {
             .build(keyPair.getPrivate());
 
         outfile = new File(folder.getRoot(), "new.crl");
+        Security.addProvider(BCFIPS);
     }
 
     private X509v2CRLBuilder createCRLBuilder() throws Exception {
@@ -189,7 +186,7 @@ public class X509CRLStreamWriterTest {
             }
 
             if (pemObj instanceof PEMKeyPair) {
-                keyPair = new JcaPEMKeyConverter().setProvider(BCFIPS).getKeyPair((PEMKeyPair) pemObj);
+                keyPair = new JcaPEMKeyConverter().getKeyPair((PEMKeyPair) pemObj);
             }
             else {
                 crl.close();
@@ -715,10 +712,10 @@ public class X509CRLStreamWriterTest {
     }
 
     @Test
-    public void testSha1Signature() throws Exception {
+    public void testUpgradesSignature() throws Exception {
         X509v2CRLBuilder crlBuilder = createCRLBuilder();
 
-        String signingAlg = "SHA1WithRSAEncryption";
+        String signingAlg = "SHA1WithRSA";
         ContentSigner sha1Signer = new JcaContentSignerBuilder(signingAlg)
             .setProvider(BCFIPS)
             .build(keyPair.getPrivate());
@@ -729,6 +726,7 @@ public class X509CRLStreamWriterTest {
 
         X509CRLStreamWriter stream = new X509CRLStreamWriter(crlToChange,
             (RSAPrivateKey) keyPair.getPrivate(), (RSAPublicKey) keyPair.getPublic());
+        stream.setSigningAlgorithm("SHA256WithRSA");
         stream.add(new BigInteger("9000"), new Date(), 0);
         stream.preScan(crlToChange).lock();
         OutputStream o = new BufferedOutputStream(new FileOutputStream(outfile));
