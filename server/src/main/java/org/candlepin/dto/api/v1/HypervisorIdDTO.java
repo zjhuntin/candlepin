@@ -14,41 +14,37 @@
  */
 package org.candlepin.dto.api.v1;
 
-import org.candlepin.dto.CandlepinDTO;
-
-import io.swagger.annotations.ApiModel;
-
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
-
+import io.swagger.annotations.ApiModel;
 
 /**
- * A DTO representation of the ConsumerType entity.
+ * A DTO representation of the HypervisorId entity
  */
-@ApiModel(parent = CandlepinDTO.class, description = "DTO representing a consumer type")
-public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
+@ApiModel(parent = TimestampedCandlepinDTO.class, description = "DTO representing a consumer capability")
+public class HypervisorIdDTO extends TimestampedCandlepinDTO<HypervisorIdDTO> {
     public static final long serialVersionUID = 1L;
 
     protected String id;
-    protected String label;
-    protected Boolean manifest;
+    protected String hypervisorId;
+    protected String reporterId;
 
     /**
-     * Initializes a new ConsumerTypeDTO instance with null values.
+     * Initializes a new HypervisorDTO instance with null values.
      */
-    public ConsumerTypeDTO() {
+    public HypervisorIdDTO() {
         // Intentionally left empty
     }
 
     /**
-     * Initializes a new ConsumerTypeDTO instance which is a shallow copy of the provided
+     * Initializes a new HypervisorDTO instance which is a shallow copy of the provided
      * source entity.
      *
      * @param source
      *  The source entity to copy
      */
-    public ConsumerTypeDTO(ConsumerTypeDTO source) {
+    public HypervisorIdDTO(HypervisorIdDTO source) {
         super(source);
     }
 
@@ -56,37 +52,38 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
         return this.id;
     }
 
-    public ConsumerTypeDTO setId(String id) {
+    public HypervisorIdDTO setId(String id) {
         this.id = id;
         return this;
     }
 
-    public String getLabel() {
-        return this.label;
+    public String getHypervisorId() {
+        return this.hypervisorId;
     }
 
-    public ConsumerTypeDTO setLabel(String label) {
-        this.label = label;
+    public HypervisorIdDTO setHypervisorId(String hypervisorId) {
+        this.hypervisorId = hypervisorId;
         return this;
     }
 
-    public Boolean isManifest() {
-        return this.manifest;
+    public String getReporterId() {
+        return this.reporterId;
     }
 
-    public ConsumerTypeDTO setManifest(Boolean manifest) {
-        this.manifest = manifest;
+    public HypervisorIdDTO setReporterId(String reporterId) {
+        this.reporterId = reporterId;
         return this;
     }
-
 
     /**
      * {@inheritDoc}
      */
     @Override
     public String toString() {
-        return String.format("ConsumerTypeDTO [id: %s, label: %s, manifest: %b]",
-            this.getId(), this.getLabel(), this.isManifest());
+
+        return String.format(
+            "HypervisorIdDTO [id: %s, hypervisorId: %s, reporterId: %s]",
+            this.getId(), this.getHypervisorId(), this.getReporterId());
     }
 
     /**
@@ -98,13 +95,13 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
             return true;
         }
 
-        if (obj instanceof ConsumerTypeDTO) {
-            ConsumerTypeDTO that = (ConsumerTypeDTO) obj;
+        if (obj instanceof HypervisorIdDTO && super.equals(obj)) {
+            HypervisorIdDTO that = (HypervisorIdDTO) obj;
 
             EqualsBuilder builder = new EqualsBuilder()
                 .append(this.getId(), that.getId())
-                .append(this.getLabel(), that.getLabel())
-                .append(this.isManifest(), that.isManifest());
+                .append(this.getHypervisorId(), that.getHypervisorId())
+                .append(this.getReporterId(), that.getReporterId());
 
             return builder.isEquals();
         }
@@ -118,9 +115,10 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
     @Override
     public int hashCode() {
         HashCodeBuilder builder = new HashCodeBuilder(37, 7)
+            .append(super.hashCode())
             .append(this.getId())
-            .append(this.getLabel())
-            .append(this.isManifest());
+            .append(this.getHypervisorId())
+            .append(this.getReporterId());
 
         return builder.toHashCode();
     }
@@ -129,8 +127,7 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
      * {@inheritDoc}
      */
     @Override
-    public ConsumerTypeDTO clone() {
-        // Nothing to do here; all the fields are immutable types.
+    public HypervisorIdDTO clone() {
         return super.clone();
     }
 
@@ -138,12 +135,12 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
      * {@inheritDoc}
      */
     @Override
-    public ConsumerTypeDTO populate(ConsumerTypeDTO source) {
+    public HypervisorIdDTO populate(HypervisorIdDTO source) {
         super.populate(source);
 
         this.setId(source.getId());
-        this.setLabel(source.getLabel());
-        this.setManifest(source.isManifest());
+        this.setHypervisorId(source.getHypervisorId());
+        this.setReporterId(source.getReporterId());
 
         return this;
     }

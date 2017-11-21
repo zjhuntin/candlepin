@@ -109,7 +109,7 @@ public class ConsumerTypeResource {
         return this.translator.translateQuery(query, ConsumerTypeDTO.class);
     }
 
-    @ApiOperation(notes = "Retrieves a single Consumer Type", value = "getConsumerType")
+    @ApiOperation(notes = "Retrieves a single Consumer Type", value = "getType")
     @ApiResponses({ @ApiResponse(code = 404, message = "") })
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -130,7 +130,7 @@ public class ConsumerTypeResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public ConsumerTypeDTO create(
-        @ApiParam(name = "consumerType", required = true) ConsumerTypeDTO dto) throws BadRequestException {
+        @ApiParam(name = "type", required = true) ConsumerTypeDTO dto) throws BadRequestException {
         try {
             ConsumerType type = new ConsumerType();
 
@@ -151,7 +151,7 @@ public class ConsumerTypeResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public ConsumerTypeDTO update(
-        @ApiParam(name = "consumerType", required = true) ConsumerTypeDTO dto) throws BadRequestException {
+        @ApiParam(name = "type", required = true) ConsumerTypeDTO dto) throws BadRequestException {
         ConsumerType type = consumerTypeCurator.find(dto.getId());
 
         if (type == null) {

@@ -14,41 +14,40 @@
  */
 package org.candlepin.dto.api.v1;
 
-import org.candlepin.dto.CandlepinDTO;
-
-import io.swagger.annotations.ApiModel;
-
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
+import io.swagger.annotations.ApiModel;
 
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * A DTO representation of the ConsumerType entity.
+ * A DTO representation of the GuestId entity
  */
-@ApiModel(parent = CandlepinDTO.class, description = "DTO representing a consumer type")
-public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
+@ApiModel(parent = TimestampedCandlepinDTO.class, description = "DTO representing a consumer capability")
+public class GuestIdDTO extends TimestampedCandlepinDTO<GuestIdDTO> {
     public static final long serialVersionUID = 1L;
 
     protected String id;
-    protected String label;
-    protected Boolean manifest;
+    protected String guestIds;
+    protected Map<String, String> attributes;
 
     /**
-     * Initializes a new ConsumerTypeDTO instance with null values.
+     * Initializes a new GuestIdDTO instance with null values.
      */
-    public ConsumerTypeDTO() {
+    public GuestIdDTO() {
         // Intentionally left empty
     }
 
     /**
-     * Initializes a new ConsumerTypeDTO instance which is a shallow copy of the provided
+     * Initializes a new GuestIdDTO instance which is a shallow copy of the provided
      * source entity.
      *
      * @param source
      *  The source entity to copy
      */
-    public ConsumerTypeDTO(ConsumerTypeDTO source) {
+    public GuestIdDTO(GuestIdDTO source) {
         super(source);
     }
 
@@ -56,37 +55,38 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
         return this.id;
     }
 
-    public ConsumerTypeDTO setId(String id) {
+    public GuestIdDTO setId(String id) {
         this.id = id;
         return this;
     }
 
-    public String getLabel() {
-        return this.label;
+    public String getGuestIds() {
+        return this.guestIds;
     }
 
-    public ConsumerTypeDTO setLabel(String label) {
-        this.label = label;
+    public GuestIdDTO setGuestIds(String guestIds) {
+        this.guestIds = guestIds;
         return this;
     }
 
-    public Boolean isManifest() {
-        return this.manifest;
+    public Map<String, String> getAttributes() {
+        return attributes;
     }
 
-    public ConsumerTypeDTO setManifest(Boolean manifest) {
-        this.manifest = manifest;
+    public GuestIdDTO setAttributes(Map<String, String> attributes) {
+        this.attributes = attributes;
         return this;
     }
-
 
     /**
      * {@inheritDoc}
      */
     @Override
     public String toString() {
-        return String.format("ConsumerTypeDTO [id: %s, label: %s, manifest: %b]",
-            this.getId(), this.getLabel(), this.isManifest());
+
+        return String.format(
+            "GuestIdDTO [id: %s, guestIds: %s]",
+            this.getId(), this.getGuestIds());
     }
 
     /**
@@ -98,14 +98,13 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
             return true;
         }
 
-        if (obj instanceof ConsumerTypeDTO) {
-            ConsumerTypeDTO that = (ConsumerTypeDTO) obj;
+        if (obj instanceof GuestIdDTO && super.equals(obj)) {
+            GuestIdDTO that = (GuestIdDTO) obj;
 
             EqualsBuilder builder = new EqualsBuilder()
                 .append(this.getId(), that.getId())
-                .append(this.getLabel(), that.getLabel())
-                .append(this.isManifest(), that.isManifest());
-
+                .append(this.getGuestIds(), that.getGuestIds())
+                .append(this.getAttributes(), that.getAttributes());
             return builder.isEquals();
         }
 
@@ -118,9 +117,10 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
     @Override
     public int hashCode() {
         HashCodeBuilder builder = new HashCodeBuilder(37, 7)
+            .append(super.hashCode())
             .append(this.getId())
-            .append(this.getLabel())
-            .append(this.isManifest());
+            .append(this.getGuestIds())
+            .append(this.getAttributes());
 
         return builder.toHashCode();
     }
@@ -129,22 +129,25 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
      * {@inheritDoc}
      */
     @Override
-    public ConsumerTypeDTO clone() {
-        // Nothing to do here; all the fields are immutable types.
-        return super.clone();
+    public GuestIdDTO clone() {
+        GuestIdDTO copy = super.clone();
+        Map<String, String> attributes = this.getAttributes();
+        if (attributes != null) {
+            copy.setAttributes(new HashMap<String, String>(attributes));
+        }
+        return copy;
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public ConsumerTypeDTO populate(ConsumerTypeDTO source) {
+    public GuestIdDTO populate(GuestIdDTO source) {
         super.populate(source);
 
         this.setId(source.getId());
-        this.setLabel(source.getLabel());
-        this.setManifest(source.isManifest());
-
+        this.setGuestIds(source.getGuestIds());
+        this.setAttributes(source.getAttributes());
         return this;
     }
 }

@@ -577,7 +577,7 @@ public class ConsumerCurator extends AbstractHibernateCurator<Consumer> {
      * This is an insecure query, because we need to know whether or not the
      * consumer exists
      *
-     * We do not require that the hypervisor be consumerType hypervisor
+     * We do not require that the hypervisor be type hypervisor
      * because we need to allow regular consumers to be given
      * HypervisorIds to be updated via hypervisorResource
      *

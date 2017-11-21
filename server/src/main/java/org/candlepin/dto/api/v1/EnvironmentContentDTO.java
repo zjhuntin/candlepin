@@ -14,41 +14,37 @@
  */
 package org.candlepin.dto.api.v1;
 
-import org.candlepin.dto.CandlepinDTO;
-
-import io.swagger.annotations.ApiModel;
-
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
-
+import io.swagger.annotations.ApiModel;
 
 /**
- * A DTO representation of the ConsumerType entity.
+ * A DTO representation of the Environment Content entity
  */
-@ApiModel(parent = CandlepinDTO.class, description = "DTO representing a consumer type")
-public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
+@ApiModel(parent = TimestampedCandlepinDTO.class, description = "DTO representing an environment content")
+public class EnvironmentContentDTO extends TimestampedCandlepinDTO<EnvironmentContentDTO> {
     public static final long serialVersionUID = 1L;
 
     protected String id;
-    protected String label;
-    protected Boolean manifest;
+    protected ContentDTO content;
+    protected Boolean enabled;
 
     /**
-     * Initializes a new ConsumerTypeDTO instance with null values.
+     * Initializes a new EnvironmentContentDTO instance with null values.
      */
-    public ConsumerTypeDTO() {
+    public EnvironmentContentDTO() {
         // Intentionally left empty
     }
 
     /**
-     * Initializes a new ConsumerTypeDTO instance which is a shallow copy of the provided
+     * Initializes a new EnvironmentContentDTO instance which is a shallow copy of the provided
      * source entity.
      *
      * @param source
      *  The source entity to copy
      */
-    public ConsumerTypeDTO(ConsumerTypeDTO source) {
+    public EnvironmentContentDTO(EnvironmentContentDTO source) {
         super(source);
     }
 
@@ -56,37 +52,40 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
         return this.id;
     }
 
-    public ConsumerTypeDTO setId(String id) {
+    public EnvironmentContentDTO setId(String id) {
         this.id = id;
         return this;
     }
 
-    public String getLabel() {
-        return this.label;
+    public ContentDTO getContent() {
+        return this.content;
     }
 
-    public ConsumerTypeDTO setLabel(String label) {
-        this.label = label;
+    public EnvironmentContentDTO setContent(ContentDTO content) {
+        this.content = content;
         return this;
     }
 
-    public Boolean isManifest() {
-        return this.manifest;
+    public Boolean isEnabled() {
+        return this.enabled;
     }
 
-    public ConsumerTypeDTO setManifest(Boolean manifest) {
-        this.manifest = manifest;
+    public EnvironmentContentDTO setEnabled(Boolean enabled) {
+        this.enabled = enabled;
         return this;
     }
-
 
     /**
      * {@inheritDoc}
      */
     @Override
     public String toString() {
-        return String.format("ConsumerTypeDTO [id: %s, label: %s, manifest: %b]",
-            this.getId(), this.getLabel(), this.isManifest());
+
+        String contentId = content != null ? content.getId() : null;
+
+        return String.format(
+            "EnvironmentContentDTO [id: %s, content: %s, enabled: %s]",
+            this.getId(), contentId, enabled);
     }
 
     /**
@@ -98,13 +97,15 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
             return true;
         }
 
-        if (obj instanceof ConsumerTypeDTO) {
-            ConsumerTypeDTO that = (ConsumerTypeDTO) obj;
+        if (obj instanceof EnvironmentContentDTO && super.equals(obj)) {
+            EnvironmentContentDTO that = (EnvironmentContentDTO) obj;
+            String thisContentId = content != null ? content.getId() : null;
+            String thatContentId = that.getContent() != null ? that.getContent().getId() : null;
 
             EqualsBuilder builder = new EqualsBuilder()
                 .append(this.getId(), that.getId())
-                .append(this.getLabel(), that.getLabel())
-                .append(this.isManifest(), that.isManifest());
+                .append(thisContentId, thatContentId)
+                .append(this.enabled, that.enabled);
 
             return builder.isEquals();
         }
@@ -117,10 +118,13 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
      */
     @Override
     public int hashCode() {
+        String thisContentId = content != null ? content.getId() : null;
+
         HashCodeBuilder builder = new HashCodeBuilder(37, 7)
+            .append(super.hashCode())
             .append(this.getId())
-            .append(this.getLabel())
-            .append(this.isManifest());
+            .append(thisContentId)
+            .append(this.enabled);
 
         return builder.toHashCode();
     }
@@ -129,8 +133,7 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
      * {@inheritDoc}
      */
     @Override
-    public ConsumerTypeDTO clone() {
-        // Nothing to do here; all the fields are immutable types.
+    public EnvironmentContentDTO clone() {
         return super.clone();
     }
 
@@ -138,12 +141,12 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
      * {@inheritDoc}
      */
     @Override
-    public ConsumerTypeDTO populate(ConsumerTypeDTO source) {
+    public EnvironmentContentDTO populate(EnvironmentContentDTO source) {
         super.populate(source);
 
         this.setId(source.getId());
-        this.setLabel(source.getLabel());
-        this.setManifest(source.isManifest());
+        this.setContent(source.getContent());
+        this.setEnabled(source.isEnabled());
 
         return this;
     }
