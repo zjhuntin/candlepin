@@ -185,6 +185,11 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
         return this;
     }
 
+    public ConsumerDTO setFact(String key, String value) {
+        this.facts.put(key, value);
+        return this;
+    }
+
     public Date getLastCheckin() {
         return this.lastCheckin;
     }

@@ -15,6 +15,7 @@
 package org.candlepin.dto.api.v1;
 
 import org.candlepin.dto.CandlepinDTO;
+import org.candlepin.model.ConsumerType.ConsumerTypeEnum;
 
 import io.swagger.annotations.ApiModel;
 
@@ -39,6 +40,11 @@ public class ConsumerTypeDTO extends CandlepinDTO<ConsumerTypeDTO> {
      */
     public ConsumerTypeDTO() {
         // Intentionally left empty
+    }
+
+    public ConsumerTypeDTO(ConsumerTypeEnum type) {
+        this.label = type.getLabel();
+        this.manifest = type.isManifest();
     }
 
     /**

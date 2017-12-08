@@ -16,7 +16,7 @@ package org.candlepin.dto;
 
 import org.candlepin.model.CandlepinQuery;
 
-
+import java.util.Collection;
 
 /**
  * The ModelTranslator interface defines common functionality required by every ModelTranslator
@@ -159,6 +159,30 @@ public interface ModelTranslator {
      *  a newly translated instance of the input object, or null if the input object is null
      */
     <I, O> O translate(I input, Class<O> outputClass);
+
+    /**
+     * Builds a new instance for each of the given input object in the input collection using the translators
+     * registered to translator to process the object and any nested objects it contains. If this factory does
+     * not have a registered translator which can process the input object and its nested objects, this
+     * method throws a TransformationException. If the input object is null, this method returns null.
+     *
+     * @param input
+     *  The input object collection for which to build DTOs
+     *
+     * @param outputClass
+     *  The DTO class to translate to
+     *
+     * @param outputCollection
+     *  The non null collection to populate the translated entities with.
+     *
+     * #throws TranslationException
+     *  if a translator cannot be found for the input object or any of its nested objects
+     *
+     * @return
+     *  the same collection passed as argument outputCollection, populated with translated DTO objects, if
+     *  any.
+     */
+    <I, O> Collection<O> translate(Collection<I> input, Class<O> outputClass, Collection<O> outputCollection);
 
     /**
      * Applies a translate to the specified query that uses this ModelTranslator to translate the

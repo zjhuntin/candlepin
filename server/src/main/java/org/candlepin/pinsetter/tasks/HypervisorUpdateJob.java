@@ -240,7 +240,7 @@ public class HypervisorUpdateJob extends KingpinJob {
                         log.debug("Registering new host consumer for hypervisor ID: {}", hypervisorId);
                         Consumer newHost = createConsumerForHypervisorId(hypervisorId, owner, principal);
                         consumerResource.performConsumerUpdates(incoming, newHost, guestConsumersMap, false);
-                        consumerResource.create(newHost, principal, null, owner.getKey(), null, false);
+                        consumerResource.createConsumerFromEntity(newHost, principal, null, owner.getKey(), null, false);
                         hypervisorConsumersMap.add(hypervisorId, newHost);
                         result.created(updateCheckinTime(newHost));
                         reportedOnConsumer = newHost;

@@ -42,6 +42,11 @@ import org.candlepin.controller.AutobindDisabledForOwnerException;
 import org.candlepin.controller.Entitler;
 import org.candlepin.controller.ManifestManager;
 import org.candlepin.controller.PoolManager;
+import org.candlepin.dto.ModelTranslator;
+import org.candlepin.dto.api.v1.CertificateDTO;
+import org.candlepin.dto.api.v1.ConsumerDTO;
+import org.candlepin.dto.api.v1.OwnerDTO;
+import org.candlepin.dto.api.v1.ReleaseVerDTO;
 import org.candlepin.model.CandlepinQuery;
 import org.candlepin.model.CdnCurator;
 import org.candlepin.model.Certificate;
@@ -206,6 +211,7 @@ public class ConsumerResource {
     private FactValidator factValidator;
     private ConsumerTypeValidator consumerTypeValidator;
     private ConsumerEnricher consumerEnricher;
+    private ModelTranslator translator;
 
     @Inject
     @SuppressWarnings({"checkstyle:parameternumber"})
@@ -231,7 +237,8 @@ public class ConsumerResource {
         ContentAccessCertServiceAdapter contentAccessCertService,
         FactValidator factValidator,
         ConsumerTypeValidator consumerTypeValidator,
-        ConsumerEnricher consumerEnricher) {
+        ConsumerEnricher consumerEnricher,
+        ModelTranslator translator) {
 
         this.consumerCurator = consumerCurator;
         this.consumerTypeCurator = consumerTypeCurator;
@@ -269,6 +276,7 @@ public class ConsumerResource {
         this.factValidator = factValidator;
         this.consumerTypeValidator = consumerTypeValidator;
         this.consumerEnricher = consumerEnricher;
+        this.translator = translator;
     }
 
     /**
@@ -350,7 +358,7 @@ public class ConsumerResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Wrapped(element = "consumers")
     @SuppressWarnings("checkstyle:indentation")
-    public CandlepinQuery<Consumer> list(@QueryParam("username") String userName,
+    public CandlepinQuery<ConsumerDTO> list(@QueryParam("username") String userName,
         @QueryParam("type") Set<String> typeLabels,
         @QueryParam("owner") String ownerKey,
         @QueryParam("uuid") List<String> uuids,
@@ -376,10 +384,11 @@ public class ConsumerResource {
 
         List<ConsumerType> types =  consumerTypeValidator.findAndValidateTypeLabels(typeLabels);
 
-        return this.consumerCurator.searchOwnerConsumers(
+        CandlepinQuery<Consumer> query = this.consumerCurator.searchOwnerConsumers(
             owner, userName, types, uuids, hypervisorIds, attrFilters,
             Collections.<String>emptyList(), Collections.<String>emptyList(),
             Collections.<String>emptyList());
+        return this.translator.translateQuery(query, ConsumerDTO.class);
     }
 
     @ApiOperation(
@@ -404,7 +413,7 @@ public class ConsumerResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("{consumer_uuid}")
-    public Consumer getConsumer(
+    public ConsumerDTO getConsumer(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String uuid) {
         Consumer consumer = consumerCurator.verifyAndLookupConsumer(uuid);
 
@@ -430,10 +439,33 @@ public class ConsumerResource {
             this.consumerEnricher.enrich(consumer);
         }
 
-        return consumer;
+        return this.translator.translate(consumer, ConsumerDTO.class);
     }
 
-    @ApiOperation(notes = "Creates a Consumer. NOTE: Opening this method up " +
+    /**
+     * Populates the specified entity with data from the provided DTO. This method will not set the
+     * ID, uuid.
+     *
+     * @param entity
+     *  The entity instance to populate
+     *
+     * @param dto
+     *  The DTO containing the data with which to populate the entity
+     *
+     * @throws IllegalArgumentException
+     *  if either entity or dto are null
+     */
+    protected void populateEntity(Consumer entity, ConsumerDTO dto) {
+        if (entity == null) {
+            throw new IllegalArgumentException("the consumer model entity is null");
+        }
+
+        if (dto == null) {
+            throw new IllegalArgumentException("the owner dto is null");
+        }
+    }
+
+        @ApiOperation(notes = "Creates a Consumer. NOTE: Opening this method up " +
         "to everyone, as we have nothing we can reliably " +
         "verify in the method signature. Instead we have to " +
         "figure out what owner this consumer is destined for " +
@@ -447,14 +479,29 @@ public class ConsumerResource {
     @Produces(MediaType.APPLICATION_JSON)
     @SecurityHole(noAuth = true)
     @Transactional
-    public Consumer create(
-        @ApiParam(name = "consumer", required = true) Consumer consumer,
+    public ConsumerDTO create(
+        @ApiParam(name = "consumer", required = true) ConsumerDTO dto,
         @Context Principal principal,
         @QueryParam("username") String userName,
         @QueryParam("owner") String ownerKey,
         @QueryParam("activation_keys") String activationKeys,
         @QueryParam("identity_cert_creation") @DefaultValue("true") boolean identityCertCreation)
         throws BadRequestException {
+
+        Consumer consumer = new Consumer();
+        populateEntity(consumer, dto);
+        return translator.translate(createConsumerFromEntity(consumer,
+                principal,
+                userName,
+                ownerKey,
+                activationKeys,
+                identityCertCreation),
+            ConsumerDTO.class);
+    }
+
+    public Consumer createConsumerFromEntity(Consumer consumer, Principal principal, String userName, String ownerKey,
+        String activationKeys, boolean identityCertCreation) throws BadRequestException {
+
         // API:registerConsumer
         Set<String> keyStrings = splitKeys(activationKeys);
 
@@ -1003,15 +1050,17 @@ public class ConsumerResource {
     @UpdateConsumerCheckIn
     public void updateConsumer(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String uuid,
-        @ApiParam(name = "consumer", required = true) Consumer consumer,
+        @ApiParam(name = "consumer", required = true) ConsumerDTO dto,
         @Context Principal principal) {
 
         Consumer toUpdate = consumerCurator.verifyAndLookupConsumer(uuid);
+        Consumer incoming = new Consumer();
+        populateEntity(incoming, dto);
 
         VirtConsumerMap guestConsumerMap = new VirtConsumerMap();
-        if (consumer.getGuestIds() != null) {
+        if (incoming.getGuestIds() != null) {
             Set<String> allGuestIds = new HashSet<String>();
-            for (GuestId gid : consumer.getGuestIds()) {
+            for (GuestId gid : incoming.getGuestIds()) {
                 allGuestIds.add(gid.getGuestId());
             }
 
@@ -1019,13 +1068,13 @@ public class ConsumerResource {
         }
 
         // Sanitize the inbound facts before applying the update
-        this.sanitizeConsumerFacts(consumer);
+        this.sanitizeConsumerFacts(incoming);
 
-        if (toUpdate.isShare() || consumer.isShare()) {
-            validateShareConsumerUpdate(toUpdate, consumer, principal);
+        if (toUpdate.isShare() || incoming.isShare()) {
+            validateShareConsumerUpdate(toUpdate, incoming, principal);
         }
 
-        if (performConsumerUpdates(consumer, toUpdate, guestConsumerMap)) {
+        if (performConsumerUpdates(incoming, toUpdate, guestConsumerMap)) {
             try {
                 consumerCurator.update(toUpdate);
             }
@@ -1035,7 +1084,7 @@ public class ConsumerResource {
             }
             catch (Exception e) {
                 log.error("Problem updating unit:", e);
-                throw new BadRequestException(i18n.tr("Problem updating unit {0}", consumer));
+                throw new BadRequestException(i18n.tr("Problem updating unit {0}", incoming));
             }
         }
     }
@@ -1453,7 +1502,7 @@ public class ConsumerResource {
     @Path("{consumer_uuid}/certificates")
     @Produces(MediaType.APPLICATION_JSON)
     @UpdateConsumerCheckIn
-    public List<Certificate> getEntitlementCertificates(
+    public List<CertificateDTO> getEntitlementCertificates(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid,
         @QueryParam("serials") String serials) {
 
@@ -1462,7 +1511,7 @@ public class ConsumerResource {
 
         if (consumer.isShare()) {
             logShareConsumerRequestWarning("cert fetch", consumer);
-            return new ArrayList<Certificate>();
+            return new ArrayList<CertificateDTO>();
         }
 
         checkForGuestMigration(consumer);
@@ -1493,7 +1542,8 @@ public class ConsumerResource {
             throw new BadRequestException(i18n.tr("Cannot retrieve content access certificate"), gse);
         }
 
-        return returnCerts;
+        return (List<CertificateDTO>) translator.translate(returnCerts, CertificateDTO.class,
+            new ArrayList<CertificateDTO>());
     }
 
     @ApiOperation(notes = "Retrieves the body of the Content Access Certificate for the Consumer",
@@ -1918,11 +1968,11 @@ public class ConsumerResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{consumer_uuid}/owner")
-    public Owner getOwner(
+    public OwnerDTO getOwner(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid) {
 
         Consumer consumer = consumerCurator.verifyAndLookupConsumer(consumerUuid);
-        return consumer.getOwner();
+        return translator.translate(consumer.getOwner(), OwnerDTO.class);
     }
 
     @ApiOperation(
@@ -2262,14 +2312,15 @@ public class ConsumerResource {
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.WILDCARD)
     @Path("{consumer_uuid}")
-    public Consumer regenerateIdentityCertificates(
+    public ConsumerDTO regenerateIdentityCertificates(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String uuid) {
         Consumer c = consumerCurator.verifyAndLookupConsumer(uuid);
         if (c.isShare()) {
             logShareConsumerRequestWarning("regenerate identity certificate", c);
-            return c;
+        } else {
+            c = regenerateIdentityCertificate(c);
         }
-        return regenerateIdentityCertificate(c);
+        return translator.translate(c, ConsumerDTO.class);
     }
 
     /**
@@ -2346,10 +2397,11 @@ public class ConsumerResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{consumer_uuid}/guests")
-    public List<Consumer> getGuests(
+    public List<ConsumerDTO> getGuests(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid) {
         Consumer consumer = consumerCurator.verifyAndLookupConsumer(consumerUuid);
-        return consumerCurator.getGuests(consumer);
+        List<Consumer> consumers = consumerCurator.getGuests(consumer);
+        return (List<ConsumerDTO>) translator.translate(consumers, ConsumerDTO.class, new ArrayList<ConsumerDTO>());
     }
 
     @ApiOperation(notes = "Retrieves a Host Consumer of a Consumer", value = "getHost")
@@ -2357,7 +2409,7 @@ public class ConsumerResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{consumer_uuid}/host")
-    public Consumer getHost(
+    public ConsumerDTO getHost(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid,
         @Context Principal principal) {
         Consumer consumer = consumerCurator.verifyAndLookupConsumer(consumerUuid);
@@ -2372,7 +2424,7 @@ public class ConsumerResource {
         // The host would be in a different organization if a host-restricted pool has been shared into the
         // current organization.
         if (host == null || principal.canAccess(host.getOwner(), SubResource.CONSUMERS, Access.READ_ONLY)) {
-            return host;
+            return translator.translate(host, ConsumerDTO.class);
         }
 
         throw new ForbiddenException(
@@ -2384,15 +2436,14 @@ public class ConsumerResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Path("/{consumer_uuid}/release")
-    public Release getRelease(
+    public ReleaseVerDTO getRelease(
         @PathParam("consumer_uuid") @Verify(Consumer.class) String consumerUuid) {
         Consumer consumer = consumerCurator.verifyAndLookupConsumer(consumerUuid);
         if (consumer.getReleaseVer() != null) {
-            return consumer.getReleaseVer();
+            return translator.translate(consumer.getReleaseVer(), ReleaseVerDTO.class);
         }
-        return new Release("");
+        return new ReleaseVerDTO().setReleaseVer("");
     }
-
 
     @ApiOperation(notes = "Retireves the Compliance Status of a Consumer.", value = "getComplianceStatus")
     @ApiResponses({ @ApiResponse(code = 404, message = "") })

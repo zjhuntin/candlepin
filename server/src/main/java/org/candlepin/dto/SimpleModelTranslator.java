@@ -17,9 +17,14 @@ package org.candlepin.dto;
 import org.candlepin.model.CandlepinQuery;
 import org.candlepin.util.ElementTransformer;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -294,20 +299,40 @@ public class SimpleModelTranslator implements ModelTranslator {
      * {@inheritDoc}
      */
     public <I, O> O translate(I input, Class<O> outputClass) {
+
+        List<O> outputCollection = new LinkedList<O>();
+        outputCollection = (List<O>) translate(Collections.singleton(input), outputClass, outputCollection);
+        if (CollectionUtils.isNotEmpty(outputCollection)) {
+            return outputCollection.get(0);
+        }
+        return null;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public <I, O> Collection<O> translate(Collection<I> inputCollection, Class<O> outputClass,
+        Collection<O> outputCollection) {
         if (outputClass == null) {
             throw new IllegalArgumentException("outputClass is null");
+        }
+        if (outputCollection == null) {
+            throw new IllegalArgumentException("outputCollection is null");
         }
 
         O output = null;
 
-        if (input != null) {
+        if (CollectionUtils.isNotEmpty(inputCollection)) {
             ObjectTranslator<I, O> translator = this.findTranslatorByClass(
-                (Class<I>) input.getClass(), outputClass);
+                (Class<I>) inputCollection.getClass(), outputClass);
 
-            output = translator.translate(this, input);
+            for (I input : inputCollection) {
+                output = translator.translate(this, input);
+                outputCollection.add(output);
+            }
         }
 
-        return output;
+        return outputCollection;
     }
 
     /**

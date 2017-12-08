@@ -23,6 +23,7 @@ import org.candlepin.common.exceptions.BadRequestException;
 import org.candlepin.common.exceptions.ConflictException;
 import org.candlepin.common.exceptions.NotFoundException;
 import org.candlepin.controller.PoolManager;
+import org.candlepin.dto.api.v1.ConsumerDTO;
 import org.candlepin.model.CandlepinQuery;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCurator;
@@ -386,7 +387,7 @@ public class EnvironmentResource {
 
         Environment e = lookupEnvironment(envId);
         consumer.setEnvironment(e);
-        return this.consumerResource.create(consumer, principal, userName, e.getOwner().getKey(),
+        return this.consumerResource.createConsumerFromEntity(consumer, principal, userName, e.getOwner().getKey(),
             activationKeys, true);
     }
 

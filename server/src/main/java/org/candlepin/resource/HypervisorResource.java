@@ -21,6 +21,12 @@ import org.candlepin.auth.Verify;
 import org.candlepin.auth.UpdateConsumerCheckIn;
 import org.candlepin.common.exceptions.BadRequestException;
 import org.candlepin.common.exceptions.NotFoundException;
+import org.candlepin.dto.ModelTranslator;
+import org.candlepin.dto.api.v1.ConsumerDTO;
+import org.candlepin.dto.api.v1.ConsumerTypeDTO;
+import org.candlepin.dto.api.v1.GuestIdDTO;
+import org.candlepin.dto.api.v1.HypervisorIdDTO;
+import org.candlepin.dto.api.v1.OwnerDTO;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCurator;
 import org.candlepin.model.ConsumerType;
@@ -80,14 +86,16 @@ public class HypervisorResource {
     private ConsumerResource consumerResource;
     private I18n i18n;
     private OwnerCurator ownerCurator;
+    private ModelTranslator translator;
 
     @Inject
     public HypervisorResource(ConsumerResource consumerResource,
-        ConsumerCurator consumerCurator, I18n i18n, OwnerCurator ownerCurator) {
+        ConsumerCurator consumerCurator, I18n i18n, OwnerCurator ownerCurator, ModelTranslator translator) {
         this.consumerResource = consumerResource;
         this.consumerCurator = consumerCurator;
         this.i18n = i18n;
         this.ownerCurator = ownerCurator;
+        this.translator = translator;
     }
 
     /**
@@ -314,7 +322,7 @@ public class HypervisorResource {
         HypervisorId hypervisorId = new HypervisorId(consumer, incHypervisorId);
         consumer.setHypervisorId(hypervisorId);
         // Create Consumer
-        return consumerResource.create(consumer, principal, null, owner.getKey(), null, false);
+        return consumerResource.createConsumerFromEntity(consumer, principal, null, owner.getKey(), null, false);
     }
 
 }
