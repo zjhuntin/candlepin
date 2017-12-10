@@ -23,7 +23,10 @@ import org.candlepin.common.exceptions.BadRequestException;
 import org.candlepin.common.exceptions.ConflictException;
 import org.candlepin.common.exceptions.NotFoundException;
 import org.candlepin.controller.PoolManager;
+import org.candlepin.dto.ModelTranslator;
 import org.candlepin.dto.api.v1.ConsumerDTO;
+import org.candlepin.dto.api.v1.EnvironmentContentDTO;
+import org.candlepin.dto.api.v1.EnvironmentDTO;
 import org.candlepin.model.CandlepinQuery;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCurator;
@@ -91,12 +94,13 @@ public class EnvironmentResource {
     private ConsumerCurator consumerCurator;
     private OwnerContentCurator ownerContentCurator;
     private RdbmsExceptionTranslator rdbmsExceptionTranslator;
+    private ModelTranslator translator;
 
     @Inject
     public EnvironmentResource(EnvironmentCurator envCurator, I18n i18n,
         EnvironmentContentCurator envContentCurator, ConsumerResource consumerResource,
         PoolManager poolManager, ConsumerCurator consumerCurator, OwnerContentCurator ownerContentCurator,
-        RdbmsExceptionTranslator rdbmsExceptionTranslator) {
+        RdbmsExceptionTranslator rdbmsExceptionTranslator, ModelTranslator translator) {
 
         this.envCurator = envCurator;
         this.i18n = i18n;
@@ -106,6 +110,7 @@ public class EnvironmentResource {
         this.consumerCurator = consumerCurator;
         this.ownerContentCurator = ownerContentCurator;
         this.rdbmsExceptionTranslator = rdbmsExceptionTranslator;
+        this.translator = translator;
     }
 
     @ApiOperation(notes = "Retrieves a single Environment", value = "getEnv")
@@ -113,13 +118,13 @@ public class EnvironmentResource {
     @GET
     @Path("/{env_id}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Environment getEnv(
+    public EnvironmentDTO getEnv(
         @PathParam("env_id") @Verify(Environment.class) String envId) {
         Environment e = envCurator.find(envId);
         if (e == null) {
             throw new NotFoundException(i18n.tr("No such environment: {0}", envId));
         }
-        return e;
+        return translator.translate(e, EnvironmentDTO.class);
     }
 
     @ApiOperation(
@@ -156,8 +161,8 @@ public class EnvironmentResource {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @Wrapped(element = "environments")
-    public CandlepinQuery<Environment> getEnvironments() {
-        return this.envCurator.listAll();
+    public CandlepinQuery<EnvironmentDTO> getEnvironments() {
+        return translator.translateQuery(this.envCurator.listAll(), EnvironmentDTO.class);
     }
 
     /**
@@ -195,6 +200,23 @@ public class EnvironmentResource {
 
         return resolved;
     }
+    /**
+     * Populates the specified entity with data from the provided DTO. This method will not set the
+     * ID field.
+     *
+     * @param entities
+     *  The entity instance to populate
+     *
+     * @param dtos
+     *  The DTO containing the data with which to populate the entity
+     *
+     * @throws IllegalArgumentException
+     *  if either entity or dto are null
+     */
+    protected void populateEntity(List<org.candlepin.model.dto.EnvironmentContent> entities,
+        List<EnvironmentContentDTO> dtos) {
+
+    }
 
 
     @ApiOperation(notes = "Promotes a Content into an Environment. This call accepts multiple " +
@@ -212,12 +234,15 @@ public class EnvironmentResource {
     @Path("/{env_id}/content")
     public JobDetail promoteContent(
         @PathParam("env_id") @Verify(Environment.class) String envId,
-        @ApiParam(name = "contentToPromote", required = true)
-        List<org.candlepin.model.dto.EnvironmentContent> contentToPromote,
+        @ApiParam(name = "contentToPromote", required = true) List<EnvironmentContentDTO> contentDTOs,
         @QueryParam("lazy_regen") @DefaultValue("true") Boolean lazyRegen) {
 
         Environment env = lookupEnvironment(envId);
 
+        List<org.candlepin.model.dto.EnvironmentContent> contentToPromote =
+            new ArrayList<org.candlepin.model.dto.EnvironmentContent>();
+
+        populateEntity(contentToPromote, contentDTOs);
 
         // Make sure this content has not already been promoted within this environment
         // Impl note:
@@ -378,16 +403,16 @@ public class EnvironmentResource {
     @Produces(MediaType.APPLICATION_JSON)
     @SecurityHole(noAuth = true)
     @Path("/{env_id}/consumers")
-    public Consumer create(@PathParam("env_id") String envId,
-        @ApiParam(name = "consumer", required = true) Consumer consumer,
+    public ConsumerDTO create(@PathParam("env_id") String envId,
+        @ApiParam(name = "consumer", required = true) ConsumerDTO consumer,
         @Context Principal principal, @QueryParam("username") String userName,
         @QueryParam("owner") String ownerKey,
         @QueryParam("activation_keys") String activationKeys)
         throws BadRequestException {
 
         Environment e = lookupEnvironment(envId);
-        consumer.setEnvironment(e);
-        return this.consumerResource.createConsumerFromEntity(consumer, principal, userName, e.getOwner().getKey(),
+        consumer.setEnvironment(translator.translate(e, EnvironmentDTO.class));
+        return this.consumerResource.create(consumer, principal, userName, e.getOwner().getKey(),
             activationKeys, true);
     }
 
