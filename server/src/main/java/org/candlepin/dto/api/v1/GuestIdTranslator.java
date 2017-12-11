@@ -57,7 +57,7 @@ public class GuestIdTranslator extends
         dest = super.populate(translator, source, dest);
 
         dest.setId(source.getId());
-        dest.setGuestIds(source.getGuestId());
+        dest.setGuestId(source.getGuestId());
         dest.setAttributes(source.getAttributes());
         return dest;
     }

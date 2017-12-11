@@ -30,7 +30,7 @@ public class GuestIdDTO extends TimestampedCandlepinDTO<GuestIdDTO> {
     public static final long serialVersionUID = 1L;
 
     protected String id;
-    protected String guestIds;
+    protected String guestId;
     protected Map<String, String> attributes;
 
     /**
@@ -60,12 +60,12 @@ public class GuestIdDTO extends TimestampedCandlepinDTO<GuestIdDTO> {
         return this;
     }
 
-    public String getGuestIds() {
-        return this.guestIds;
+    public String getGuestId() {
+        return this.guestId;
     }
 
-    public GuestIdDTO setGuestIds(String guestIds) {
-        this.guestIds = guestIds;
+    public GuestIdDTO setGuestId(String guestId) {
+        this.guestId = guestId;
         return this;
     }
 
@@ -85,8 +85,8 @@ public class GuestIdDTO extends TimestampedCandlepinDTO<GuestIdDTO> {
     public String toString() {
 
         return String.format(
-            "GuestIdDTO [id: %s, guestIds: %s]",
-            this.getId(), this.getGuestIds());
+            "GuestIdDTO [id: %s, guestId: %s]",
+            this.getId(), this.getGuestId());
     }
 
     /**
@@ -103,7 +103,7 @@ public class GuestIdDTO extends TimestampedCandlepinDTO<GuestIdDTO> {
 
             EqualsBuilder builder = new EqualsBuilder()
                 .append(this.getId(), that.getId())
-                .append(this.getGuestIds(), that.getGuestIds())
+                .append(this.getGuestId(), that.getGuestId())
                 .append(this.getAttributes(), that.getAttributes());
             return builder.isEquals();
         }
@@ -119,7 +119,7 @@ public class GuestIdDTO extends TimestampedCandlepinDTO<GuestIdDTO> {
         HashCodeBuilder builder = new HashCodeBuilder(37, 7)
             .append(super.hashCode())
             .append(this.getId())
-            .append(this.getGuestIds())
+            .append(this.getGuestId())
             .append(this.getAttributes());
 
         return builder.toHashCode();
@@ -146,7 +146,7 @@ public class GuestIdDTO extends TimestampedCandlepinDTO<GuestIdDTO> {
         super.populate(source);
 
         this.setId(source.getId());
-        this.setGuestIds(source.getGuestIds());
+        this.setGuestId(source.getGuestId());
         this.setAttributes(source.getAttributes());
         return this;
     }

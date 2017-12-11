@@ -200,6 +200,7 @@ public class EnvironmentResource {
 
         return resolved;
     }
+
     /**
      * Populates the specified entity with data from the provided DTO. This method will not set the
      * ID field.
