@@ -487,23 +487,14 @@ public class OwnerResource {
             throw new IllegalArgumentException("the environment dto is null");
         }
 
+        if (dto.getEnvironmentContent() != null) {
+            throw new IllegalArgumentException("can not specify environment content at creation time");
+        }
+
         entity.setId(dto.getId() != null ? dto.getId() : null);
         entity.setName(dto.getName() != null ? dto.getName() : null);
         entity.setDescription(dto.getDescription() != null ? dto.getDescription() : null);
         entity.setOwner(lookupOwnerFromDto(dto.getOwner()));
-        if (dto.getEnvironmentContent() != null) {
-            if (dto.getEnvironmentContent().isEmpty()) {
-                entity.setEnvironmentContent(new HashSet<EnvironmentContent>());
-            }
-            for (EnvironmentContentDTO environmentContentDTO : dto.getEnvironmentContent()) {
-                if (environmentContentDTO != null) {
-                    entity.getEnvironmentContent().add(new EnvironmentContent(entity,
-                        null,
-                        environmentContentDTO.isEnabled()));
-
-                }
-            }
-        }
     }
 
     private Pool findPool(String poolId) {

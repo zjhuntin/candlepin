@@ -201,25 +201,6 @@ public class EnvironmentResource {
         return resolved;
     }
 
-    /**
-     * Populates the specified entity with data from the provided DTO. This method will not set the
-     * ID field.
-     *
-     * @param entities
-     *  The entity instance to populate
-     *
-     * @param dtos
-     *  The DTO containing the data with which to populate the entity
-     *
-     * @throws IllegalArgumentException
-     *  if either entity or dto are null
-     */
-    protected void populateEntity(List<org.candlepin.model.dto.EnvironmentContent> entities,
-        List<EnvironmentContentDTO> dtos) {
-
-    }
-
-
     @ApiOperation(notes = "Promotes a Content into an Environment. This call accepts multiple " +
         "content sets to promote at once, after which all affected certificates for consumers" +
         " in the environment will be regenerated. Consumers registered to this environment " +
@@ -235,15 +216,11 @@ public class EnvironmentResource {
     @Path("/{env_id}/content")
     public JobDetail promoteContent(
         @PathParam("env_id") @Verify(Environment.class) String envId,
-        @ApiParam(name = "contentToPromote", required = true) List<EnvironmentContentDTO> contentDTOs,
+        @ApiParam(name = "contentToPromote", required = true)
+            List<org.candlepin.model.dto.EnvironmentContent> contentToPromote,
         @QueryParam("lazy_regen") @DefaultValue("true") Boolean lazyRegen) {
 
         Environment env = lookupEnvironment(envId);
-
-        List<org.candlepin.model.dto.EnvironmentContent> contentToPromote =
-            new ArrayList<org.candlepin.model.dto.EnvironmentContent>();
-
-        populateEntity(contentToPromote, contentDTOs);
 
         // Make sure this content has not already been promoted within this environment
         // Impl note:
