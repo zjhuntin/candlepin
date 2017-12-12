@@ -121,10 +121,9 @@ public class GuestIdResource {
     }
 
     /**
-     * Populates the specified entity with data from the provided DTO. This method will not set the
-     * ID field.
+     * Populates the specified entity with data from the provided DTO.
      *
-     * @param entity
+     * @param guestId
      *  The entity instance to populate
      *
      * @param dto
@@ -133,8 +132,50 @@ public class GuestIdResource {
      * @throws IllegalArgumentException
      *  if either entity or dto are null
      */
-    protected void populateEntities(List<GuestId> entity, List<GuestIdDTO> dto) {
+    protected void populateEntity(GuestId guestId, GuestIdDTO dto) {
+        if (guestId == null) {
+            throw new IllegalArgumentException("the owner model entity is null");
+        }
 
+        if (dto == null) {
+            throw new IllegalArgumentException("the owner dto is null");
+        }
+
+        guestId.setId(dto.getId() != null ? dto.getId() : null);
+        guestId.setGuestId(dto.getGuestId() != null ? dto.getGuestId() : null);
+        guestId.setAttributes(dto.getAttributes() != null ? dto.getAttributes() : null);
+    }
+
+    /**
+     * Populates the specified entities with data from the provided DTOs.
+     *
+     * @param entities
+     *  The entities instance to populate
+     *
+     * @param dtos
+     *  The DTO containing the data with which to populate the entity
+     *
+     * @throws IllegalArgumentException
+     *  if either entity or dto are null
+     */
+    protected void populateEntities(List<GuestId> entities, List<GuestIdDTO> dtos) {
+        if (entities == null) {
+            throw new IllegalArgumentException("the owner model entity is null");
+        }
+
+        if (dtos == null) {
+            throw new IllegalArgumentException("the owner dto is null");
+        }
+
+        for (GuestIdDTO dto : dtos) {
+            if (dto == null) {
+                continue;
+            }
+
+            GuestId guestId = new GuestId();
+            populateEntity(guestId, dto);
+            entities.add(guestId);
+        }
     }
 
     @ApiOperation(notes = "Updates the List of Guests on a Consumer This method should work " +
@@ -205,7 +246,7 @@ public class GuestIdResource {
 
         Consumer consumer = consumerCurator.verifyAndLookupConsumer(consumerUuid);
         GuestId guestIdEntity = new GuestId();
-        populateEntities(Collections.singletonList(guestIdEntity), Collections.singletonList(updatedDTO));
+        populateEntity(guestIdEntity, updatedDTO);
         guestIdEntity.setConsumer(consumer);
         GuestId toUpdate = guestIdCurator.findByGuestIdAndOrg(guestId, consumer.getOwner());
         if (toUpdate != null) {

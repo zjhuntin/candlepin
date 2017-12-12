@@ -41,6 +41,7 @@ import org.candlepin.controller.PoolManager;
 import org.candlepin.dto.ModelTranslator;
 import org.candlepin.dto.api.v1.ActivationKeyDTO;
 import org.candlepin.dto.api.v1.ConsumerDTO;
+import org.candlepin.dto.api.v1.EnvironmentContentDTO;
 import org.candlepin.dto.api.v1.EnvironmentDTO;
 import org.candlepin.dto.api.v1.OwnerDTO;
 import org.candlepin.dto.api.v1.UpstreamConsumerDTO;
@@ -54,6 +55,7 @@ import org.candlepin.model.EntitlementCertificateCurator;
 import org.candlepin.model.EntitlementCurator;
 import org.candlepin.model.EntitlementFilterBuilder;
 import org.candlepin.model.Environment;
+import org.candlepin.model.EnvironmentContent;
 import org.candlepin.model.EnvironmentCurator;
 import org.candlepin.model.EventCurator;
 import org.candlepin.model.ExporterMetadata;
@@ -384,23 +386,7 @@ public class OwnerResource {
         }
 
         if (dto.getOwner() != null) {
-            OwnerDTO ownerDto = dto.getOwner();
-            Owner owner = null;
-
-            if (ownerDto.getId() != null) {
-                // look up by ID
-                owner = this.ownerCurator.find(ownerDto.getId());
-            }
-            else if (ownerDto.getKey() != null) {
-                // look up by key
-                owner = this.ownerCurator.lookupByKey(ownerDto.getKey());
-            }
-
-            if (owner == null) {
-                throw new NotFoundException(i18n.tr("Unable to find owner: {0}", ownerDto));
-            }
-
-            entity.setOwner(owner);
+            entity.setOwner(lookupOwnerFromDto(dto.getOwner()));
         }
 
         if (dto.getServiceLevel() != null) {
@@ -461,6 +447,23 @@ public class OwnerResource {
         }
     }
 
+    private Owner lookupOwnerFromDto(OwnerDTO ownerDto) {
+
+        Owner owner = null;
+        if (ownerDto.getId() != null) {
+            // look up by ID
+            owner = this.ownerCurator.find(ownerDto.getId());
+        }
+        else if (ownerDto.getKey() != null) {
+            // look up by key
+            owner = this.ownerCurator.lookupByKey(ownerDto.getKey());
+        }
+        if (owner == null) {
+            throw new NotFoundException(i18n.tr("Unable to find owner: {0}", ownerDto));
+        }
+        return owner;
+    }
+
     /**
      * Populates the specified entity with data from the provided DTO. This method will not set the
      * ID field.
@@ -476,6 +479,31 @@ public class OwnerResource {
      */
     protected void populateEntity(Environment entity, EnvironmentDTO dto) {
 
+        if (entity == null) {
+            throw new IllegalArgumentException("the environment model entity is null");
+        }
+
+        if (dto == null) {
+            throw new IllegalArgumentException("the environment dto is null");
+        }
+
+        entity.setId(dto.getId() != null ? dto.getId() : null);
+        entity.setName(dto.getName() != null ? dto.getName() : null);
+        entity.setDescription(dto.getDescription() != null ? dto.getDescription() : null);
+        entity.setOwner(lookupOwnerFromDto(dto.getOwner()));
+        if (dto.getEnvironmentContent() != null) {
+            if (dto.getEnvironmentContent().isEmpty()) {
+                entity.setEnvironmentContent(new HashSet<EnvironmentContent>());
+            }
+            for (EnvironmentContentDTO environmentContentDTO : dto.getEnvironmentContent()) {
+                if (environmentContentDTO != null) {
+                    entity.getEnvironmentContent().add(new EnvironmentContent(entity,
+                        null,
+                        environmentContentDTO.isEnabled()));
+
+                }
+            }
+        }
     }
 
     private Pool findPool(String poolId) {
