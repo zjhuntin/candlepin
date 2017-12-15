@@ -42,9 +42,13 @@ import org.candlepin.controller.AutobindDisabledForOwnerException;
 import org.candlepin.controller.Entitler;
 import org.candlepin.controller.ManifestManager;
 import org.candlepin.controller.PoolManager;
+import org.candlepin.dto.CandlepinDTO;
 import org.candlepin.dto.ModelTranslator;
+import org.candlepin.dto.api.v1.CapabilityDTO;
 import org.candlepin.dto.api.v1.CertificateDTO;
 import org.candlepin.dto.api.v1.ConsumerDTO;
+import org.candlepin.dto.api.v1.ConsumerInstalledProductDTO;
+import org.candlepin.dto.api.v1.GuestIdDTO;
 import org.candlepin.dto.api.v1.OwnerDTO;
 import org.candlepin.dto.api.v1.ReleaseVerDTO;
 import org.candlepin.model.CandlepinQuery;
@@ -132,6 +136,7 @@ import java.io.File;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -281,73 +286,71 @@ public class ConsumerResource {
 
     /**
      * Sanitizes inbound consumer facts, truncating long facts and dropping invalid or untracked
-     * facts. The consumer will be updated in-place.
+     * facts. The entity will be updated in-place.
      *
-     * @param consumer
+     * @param entity
      *  The consumer containing the facts to sanitize
      */
-    private void sanitizeConsumerFacts(Consumer consumer) {
-        if (consumer != null) {
-            Map<String, String> facts = consumer.getFacts();
+    private void sanitizeConsumerFacts(Consumer entity, ConsumerDTO dto) {
+        Map<String, String> facts = dto.getFacts();
 
-            if (facts != null && facts.size() > 0) {
-                log.debug("Sanitizing facts for consumer {}", consumer.getName());
-                Map<String, String> sanitized = new HashMap<String, String>();
-                Set<String> lowerCaseKeys = new HashSet<String>();
+        if (facts != null && facts.size() > 0) {
+            log.debug("Sanitizing facts for consumer {}", dto.getName());
+            Map<String, String> sanitized = new HashMap<String, String>();
+            Set<String> lowerCaseKeys = new HashSet<String>();
 
-                String factPattern = config.getString(ConfigProperties.CONSUMER_FACTS_MATCHER);
-                Pattern pattern = Pattern.compile(factPattern);
+            String factPattern = config.getString(ConfigProperties.CONSUMER_FACTS_MATCHER);
+            Pattern pattern = Pattern.compile(factPattern);
 
-                for (Map.Entry<String, String> fact : facts.entrySet()) {
-                    String key = fact.getKey();
-                    String value = fact.getValue();
+            for (Map.Entry<String, String> fact : facts.entrySet()) {
+                String key = fact.getKey();
+                String value = fact.getValue();
 
                     // Check for null fact keys (discard and continue)
-                    if (key == null) {
-                        log.warn("  Consumer contains a fact using a null key. Discarding fact...");
-                        continue;
-                    }
-
-                    // facts are case insensitive
-                    String lowerCaseKey = key.toLowerCase();
-                    if (lowerCaseKeys.contains(lowerCaseKey)) {
-                        log.warn("  Consumer contains duplicate fact. Discarding fact \"{}\"" +
-                            " with value \"{}\"", key, value);
-                        continue;
-                    }
-
-                    // Check for fact match (discard and continue)
-                    if (!pattern.matcher(key).matches()) {
-                        log.warn("  Consumer fact \"{}\" does not match pattern \"{}\"", key, factPattern);
-                        log.warn("  Discarding fact \"{}\"...", key);
-                        continue;
-                    }
-
-                    // Check for long keys or values, truncating as necessary
-                    if (key.length() > FactValidator.FACT_MAX_LENGTH) {
-                        key = key.substring(0, FactValidator.FACT_MAX_LENGTH - 3) + "...";
-                    }
-
-                    if (value != null && value.length() > FactValidator.FACT_MAX_LENGTH) {
-                        value = value.substring(0, FactValidator.FACT_MAX_LENGTH - 3) + "...";
-                    }
-
-                    // Validate fact (discarding malformed facts) (discard and continue)
-                    try {
-                        this.factValidator.validate(key, value);
-                    }
-                    catch (PropertyValidationException e) {
-                        log.warn("  {}", e.getMessage());
-                        log.warn("  Discarding fact \"{}\"...", key);
-                        continue;
-                    }
-
-                    sanitized.put(key, value);
-                    lowerCaseKeys.add(lowerCaseKey);
+                if (key == null) {
+                    log.warn("  Consumer contains a fact using a null key. Discarding fact...");
+                    continue;
                 }
 
-                consumer.setFacts(sanitized);
+                // facts are case insensitive
+                String lowerCaseKey = key.toLowerCase();
+                if (lowerCaseKeys.contains(lowerCaseKey)) {
+                    log.warn("  Consumer contains duplicate fact. Discarding fact \"{}\"" +
+                        " with value \"{}\"", key, value);
+                    continue;
+                }
+
+                // Check for fact match (discard and continue)
+                if (!pattern.matcher(key).matches()) {
+                    log.warn("  Consumer fact \"{}\" does not match pattern \"{}\"", key, factPattern);
+                    log.warn("  Discarding fact \"{}\"...", key);
+                    continue;
+                }
+
+                // Check for long keys or values, truncating as necessary
+                if (key.length() > FactValidator.FACT_MAX_LENGTH) {
+                    key = key.substring(0, FactValidator.FACT_MAX_LENGTH - 3) + "...";
+                }
+
+                if (value != null && value.length() > FactValidator.FACT_MAX_LENGTH) {
+                    value = value.substring(0, FactValidator.FACT_MAX_LENGTH - 3) + "...";
+                }
+
+                // Validate fact (discarding malformed facts) (discard and continue)
+                try {
+                    this.factValidator.validate(key, value);
+                }
+                catch (PropertyValidationException e) {
+                    log.warn("  {}", e.getMessage());
+                    log.warn("  Discarding fact \"{}\"...", key);
+                    continue;
+                }
+
+                sanitized.put(key, value);
+                lowerCaseKeys.add(lowerCaseKey);
             }
+
+            entity.setFacts(sanitized);
         }
     }
 
@@ -444,7 +447,7 @@ public class ConsumerResource {
 
     /**
      * Populates the specified entity with data from the provided DTO. This method will not set the
-     * ID, uuid.
+     * ID.
      *
      * @param entity
      *  The entity instance to populate
@@ -455,13 +458,166 @@ public class ConsumerResource {
      * @throws IllegalArgumentException
      *  if either entity or dto are null
      */
-    protected void populateEntity(Consumer entity, ConsumerDTO dto) {
+    protected void populateEntity(Consumer entity, ConsumerDTO dto, Principal principal) {
         if (entity == null) {
             throw new IllegalArgumentException("the consumer model entity is null");
         }
 
         if (dto == null) {
-            throw new IllegalArgumentException("the owner dto is null");
+            throw new IllegalArgumentException("the consumer dto is null");
+        }
+
+        if (dto.getUuid() != null) {
+            entity.setUuid(dto.getUuid());
+        }
+
+        if (dto.getType() != null) {
+            String label = dto.getType().getLabel();
+            ConsumerType type = consumerTypeCurator.lookupByLabel(label);
+            if (type == null) {
+                throw new BadRequestException(i18n.tr("Unit type ''{0}'' could not be found.", label));
+            }
+            entity.setType(type);
+        }
+
+        // for now this applies to both types consumer
+        if (dto.getName() != null) {
+            if (dto.getName().indexOf('#') == 0) {
+                // this is a bouncycastle restriction
+                throw new BadRequestException(i18n.tr("System name cannot begin with # character"));
+            }
+            int max = Consumer.MAX_LENGTH_OF_CONSUMER_NAME;
+            if (dto.getName().length() > max) {
+                String m = "Name of the consumer should be shorter than {0} characters.";
+                throw new BadRequestException(i18n.tr(m, Integer.toString(max + 1)));
+            }
+            entity.setName(dto.getName());
+        }
+
+        // Sanitize the inbound facts
+        sanitizeConsumerFacts(entity, dto);
+
+        if (dto.getUsername() != null) {
+            entity.setUsername(dto.getUsername());
+        }
+
+        Owner owner = entity.getOwner();
+
+        // TODO Vritant move this out
+        // If no service level was specified, and the owner has a default set, use it:
+        if (StringUtils.isEmpty(dto.getServiceLevel())) {
+            if (owner.getDefaultServiceLevel() != null && !entity.isShare()) {
+                entity.setServiceLevel(owner.getDefaultServiceLevel());
+            }
+            else {
+                entity.setServiceLevel("");
+            }
+        }
+        else {
+           entity.setServiceLevel(dto.getServiceLevel());
+        }
+        consumerBindUtil.validateServiceLevel(owner, entity.getServiceLevel());
+
+        if (dto.getReleaseVer() != null) {
+            entity.setReleaseVer(new Release(dto.getReleaseVer()));
+        }
+        else {
+            // TODO Vritant: impact on update of adding empty in stead of null?
+            entity.setReleaseVer(new Release(""));
+        }
+
+        if (dto.getEnvironment() != null) {
+            Environment env = environmentCurator.find(dto.getEnvironment().getId());
+            if (env == null) {
+                throw new BadRequestException(i18n.tr("Environment ''{0}'' could not be found.",
+                    dto.getEnvironment().getId()));
+            }
+            entity.setEnvironment(env);
+        }
+
+        entity.setEntitlementCount(0l);
+
+        if (dto.getLastCheckin() != null) {
+            entity.setLastCheckin(dto.getLastCheckin());
+        }
+
+        if (CollectionUtils.isNotEmpty(dto.getCapabilities())) {
+            Set<ConsumerCapability> capabilities = new HashSet<ConsumerCapability>();
+            for (CapabilityDTO capabilityDTO : dto.getCapabilities()) {
+                if (capabilityDTO != null) {
+                    capabilities.add(new ConsumerCapability(entity, capabilityDTO.getName()));
+                }
+            }
+            entity.setCapabilities(capabilities);
+        }
+
+        if (CollectionUtils.isNotEmpty(dto.getGuestIds())) {
+            List<GuestId> guestIds = new ArrayList<GuestId>();
+            for (GuestIdDTO guestIdDTO : dto.getGuestIds()) {
+                if (guestIdDTO != null) {
+                    guestIds.add(new GuestId(guestIdDTO.getGuestId(),
+                        entity,
+                        guestIdDTO.getAttributes()));
+                }
+            }
+            entity.setGuestIds(guestIds);
+        }
+
+        if (dto.getHypervisorId() != null &&
+            StringUtils.isNotEmpty(dto.getHypervisorId().getHypervisorId())) {
+            HypervisorId hypervisorId = new HypervisorId(entity, dto.getHypervisorId().getHypervisorId(),
+                dto.getHypervisorId().getReporterId());
+            entity.setHypervisorId(hypervisorId);
+        }
+
+        if (CollectionUtils.isNotEmpty(dto.getContentTags())) {
+            entity.setContentTags(dto.getContentTags());
+        }
+
+        if (dto.getContentAccessMode() != null) {
+            entity.setContentAccessMode(dto.getContentAccessMode());
+        }
+        validateContentAccessMode(entity);
+
+        if (dto.getRecipientOwnerKey() != null) {
+            entity.setRecipientOwnerKey(dto.getRecipientOwnerKey());
+        }
+
+        if (dto.getAnnotations() != null) {
+            entity.setAnnotations(dto.getAnnotations());
+        }
+
+        if (entity.isShare()) {
+            // Share consumers do not need identity certificates so refuse to create them.
+            identityCertCreation = false;
+            validateShareConsumer(dto, principal, keys);
+            entity.setAutoheal(false);
+
+        }
+        else {
+            entity.setCanActivate(subAdapter.canActivateSubscription(entity));
+            entity.setAutoheal(true); // this is the default
+        }
+
+        if (dto.getInstalledProducts() != null) {
+
+            Set<ConsumerInstalledProduct> installedProducts =
+                new HashSet<ConsumerInstalledProduct>();
+            for (ConsumerInstalledProductDTO installedProductDTO : dto.getInstalledProducts()) {
+                if (installedProductDTO != null) {
+                    ConsumerInstalledProduct installedProduct =
+                        new ConsumerInstalledProduct(installedProductDTO.getProductId(),
+                            installedProductDTO.getProductName(),
+                            entity,
+                            installedProductDTO.getVersion(),
+                            installedProductDTO.getArch(),
+                            installedProductDTO.getStatus(),
+                            installedProductDTO.getStartDate(),
+                            installedProductDTO.getEndDate());
+                    installedProducts.add(installedProduct);
+                }
+            }
+            entity.setInstalledProducts(installedProducts);
         }
     }
 
@@ -489,132 +645,77 @@ public class ConsumerResource {
         throws BadRequestException {
 
         Consumer consumer = new Consumer();
-        populateEntity(consumer, dto);
-        return translator.translate(createConsumerFromEntity(consumer,
-                principal,
-                userName,
-                ownerKey,
-                activationKeys,
-                identityCertCreation),
-            ConsumerDTO.class);
-    }
-
-    public Consumer createConsumerFromEntity(Consumer consumer, Principal principal, String userName, String ownerKey,
-        String activationKeys, boolean identityCertCreation) throws BadRequestException {
 
         // API:registerConsumer
         Set<String> keyStrings = splitKeys(activationKeys);
-
         // Only let NoAuth principals through if there are activation keys to consider:
         if ((principal instanceof NoAuthPrincipal) && keyStrings.isEmpty()) {
             throw new ForbiddenException(i18n.tr("Insufficient permissions"));
         }
-
         validateOnKeyStrings(keyStrings, ownerKey, userName);
 
         Owner owner = setupOwner(principal, ownerKey);
+        consumer.setOwner(owner);
         // Raise an exception if none of the keys specified exist for this owner.
         List<ActivationKey> keys = checkActivationKeys(principal, owner, keyStrings);
 
-        userName = setUserName(consumer, principal, userName);
-        checkConsumerName(consumer);
+        populateEntity(consumer, dto, principal);
 
-        ConsumerType type = lookupConsumerType(consumer.getType().getLabel());
-        validateViaConsumerType(consumer, type, keys, owner, userName, principal);
-
-        if (consumer.isShare()) {
-            // Share consumers do not need identity certificates so refuse to create them.
-            identityCertCreation = false;
-            validateShareConsumer(consumer, principal, keys);
-            consumer.setAutoheal(false);
-
-        }
-        else {
-            consumer.setCanActivate(subAdapter.canActivateSubscription(consumer));
-            consumer.setAutoheal(true); // this is the default
+        if (consumer.getUsername() == null) {
+            consumer.setUsername(principal.getUsername());
         }
 
-        consumer.setOwner(owner);
-        consumer.setType(type);
-
-        if (consumer.getServiceLevel() == null) {
-            consumer.setServiceLevel("");
+        if (consumer.getType() == null) {
+            throw new BadRequestException(i18n.tr("Unit type can not be null"));
         }
 
-        // Sanitize the inbound facts
-        this.sanitizeConsumerFacts(consumer);
-
-        // If no service level was specified, and the owner has a default set, use it:
-        if (consumer.getServiceLevel().equals("") && owner.getDefaultServiceLevel() != null &&
-            !consumer.isShare()) {
-
-            consumer.setServiceLevel(owner.getDefaultServiceLevel());
-        }
+        validateViaConsumerType(consumer, consumer.getType(), keys, owner, userName, principal);
 
         updateCapabilities(consumer, null);
         logNewConsumerDebugInfo(consumer, keys, type);
 
-        if (consumer.getInstalledProducts() != null) {
-            for (ConsumerInstalledProduct p : consumer.getInstalledProducts()) {
-                p.setConsumer(consumer);
+
+
+            try {
+                Date createdDate = consumer.getCreated();
+                Date lastCheckIn = consumer.getLastCheckin();
+                // create sets created to current time.
+                consumer = consumerCurator.create(consumer);
+                //  If we sent in a created date, we want it persisted at the update below
+                if (createdDate != null) {
+                    consumer.setCreated(createdDate);
+                }
+                if (lastCheckIn != null) {
+                    log.info("Creating with specific last check-in time: {}", consumer.getLastCheckin());
+                    consumer.setLastCheckin(lastCheckIn);
+                }
+                if (identityCertCreation) {
+                    IdentityCertificate idCert = generateIdCert(consumer, false);
+                    consumer.setIdCert(idCert);
+                }
+                sink.emitConsumerCreated(consumer);
+
+                if (keys.size() > 0) {
+                    consumerBindUtil.handleActivationKeys(consumer, keys, owner.isAutobindDisabled());
+                }
+
+                // Don't allow complianceRules to update entitlementStatus, because we're about to perform
+                // an update unconditionally.
+                complianceRules.getStatus(consumer, null, false, false);
+                consumerCurator.update(consumer);
+
+                log.info("Consumer {} created in org {}", consumer.getUuid(), consumer.getOwner().getKey());
+
+                return translator.translate(consumer);
             }
-        }
-
-        if (consumer.getGuestIds() != null) {
-            for (GuestId g : consumer.getGuestIds()) {
-                g.setConsumer(consumer);
+            catch (CandlepinException ce) {
+                // If it is one of ours, rethrow it.
+                throw ce;
             }
-        }
-
-        HypervisorId hvsrId = consumer.getHypervisorId();
-        if (hvsrId != null && hvsrId.getHypervisorId() != null && !hvsrId.getHypervisorId().isEmpty()) {
-            // If a hypervisorId is supplied, make sure the consumer and owner are correct
-            hvsrId.setConsumer(consumer);
-        }
-
-        validateContentAccessMode(consumer);
-        consumerBindUtil.validateServiceLevel(owner, consumer.getServiceLevel());
-
-        try {
-            Date createdDate = consumer.getCreated();
-            Date lastCheckIn = consumer.getLastCheckin();
-            // create sets created to current time.
-            consumer = consumerCurator.create(consumer);
-            //  If we sent in a created date, we want it persisted at the update below
-            if (createdDate != null) {
-                consumer.setCreated(createdDate);
+            catch (Exception e) {
+                log.error("Problem creating unit:", e);
+                throw new BadRequestException(i18n.tr("Problem creating unit {0}", consumer));
             }
-            if (lastCheckIn != null) {
-                log.info("Creating with specific last check-in time: {}", consumer.getLastCheckin());
-                consumer.setLastCheckin(lastCheckIn);
-            }
-            if (identityCertCreation) {
-                IdentityCertificate idCert = generateIdCert(consumer, false);
-                consumer.setIdCert(idCert);
-            }
-            sink.emitConsumerCreated(consumer);
-
-            if (keys.size() > 0) {
-                consumerBindUtil.handleActivationKeys(consumer, keys, owner.isAutobindDisabled());
-            }
-
-            // Don't allow complianceRules to update entitlementStatus, because we're about to perform
-            // an update unconditionally.
-            complianceRules.getStatus(consumer, null, false, false);
-            consumerCurator.update(consumer);
-
-            log.info("Consumer {} created in org {}", consumer.getUuid(), consumer.getOwner().getKey());
-
-            return consumer;
-        }
-        catch (CandlepinException ce) {
-            // If it is one of ours, rethrow it.
-            throw ce;
-        }
-        catch (Exception e) {
-            log.error("Problem creating unit:", e);
-            throw new BadRequestException(i18n.tr("Problem creating unit {0}", consumer));
-        }
     }
 
     /**
@@ -647,45 +748,45 @@ public class ConsumerResource {
     }
     /**
      * Ensure that certain fields remain unset when creating a share consumer.
-     * @param consumer the consumer to validate
+     * @param dto the consumer to validate
      * @param principal the principal performing the operation
      * @param keys any provided activation keys
      * @throws BadRequestException if any validations fail
      */
-    private void validateShareConsumer(Consumer consumer, Principal principal, List<ActivationKey> keys)
+    private void validateShareConsumer(ConsumerDTO dto, Principal principal, List<ActivationKey> keys)
         throws BadRequestException {
         if (keys.size() > 0) {
             throw new BadRequestException(
                 i18n.tr("A unit type of \"share\" cannot be used with activation keys"));
         }
-        if (StringUtils.isNotBlank(consumer.getServiceLevel())) {
+        if (StringUtils.isNotBlank(dto.getServiceLevel())) {
             throw new BadRequestException(i18n.tr("A unit type of \"share\" cannot have a service level"));
         }
-        if (!consumer.getReleaseVer().equals(new Release(null))) {
+        if (!dto.getReleaseVer().equals(new Release(null))) {
             throw new BadRequestException(i18n.tr("A unit type of \"share\" cannot have a release version"));
         }
-        if (!consumer.getInstalledProducts().isEmpty()) {
+        if (CollectionUtils.isNotEmpty(dto.getInstalledProducts())) {
             throw new BadRequestException(i18n.tr("A unit type of \"share\" cannot have installed products"));
         }
-        if (StringUtils.isNotBlank(consumer.getContentAccessMode())) {
+        if (StringUtils.isNotBlank(dto.getContentAccessMode())) {
             throw new BadRequestException(
                 i18n.tr("A unit type of \"share\" cannot have a content access mode"));
         }
-        if (consumer.getGuestIds() != null && !consumer.getGuestIds().isEmpty()) {
+        if (CollectionUtils.isNotEmpty(dto.getGuestIds()) {
             throw new BadRequestException(i18n.tr("A unit type of \"share\" cannot have guest IDs"));
         }
-        if (consumer.getHypervisorId() != null) {
+        if (dto.getHypervisorId() != null) {
             throw new BadRequestException(i18n.tr("A unit type of \"share\" cannot have a hypervisor ID"));
         }
-        if (consumer.getRecipientOwnerKey() == null) {
+        if (StringUtils.isEmpty(dto.getRecipientOwnerKey()) {
             throw new BadRequestException(
                 i18n.tr("A unit type of \"share\" must specify a recipient org key"));
         }
-        if (consumer.isGuest()) {
+        if (dto.isGuest()) {
             throw new BadRequestException(i18n.tr("A unit type of \"share\" cannot be a virtual guest"));
         }
 
-        String recipient = consumer.getRecipientOwnerKey();
+        String recipient = dto.getRecipientOwnerKey();
         Owner recipientOwner = ownerCurator.lookupByKey(recipient);
         if (recipientOwner == null) {
             throw new NotFoundException(i18n.tr("owner with key: {0} was not found.", recipient));
@@ -725,8 +826,8 @@ public class ConsumerResource {
         }
     }
 
-    private void validateViaConsumerType(Consumer consumer, ConsumerType type, List<ActivationKey> keys,
-        Owner owner, String userName, Principal principal) {
+    private void validateViaConsumerType(Consumer consumer, ConsumerType type,
+        List<ActivationKey> keys, Owner owner, String userName, Principal principal) {
         if (type.isType(ConsumerTypeEnum.PERSON)) {
             if (keys.size() > 0) {
                 throw new BadRequestException(
@@ -773,24 +874,6 @@ public class ConsumerResource {
                 i18n.tr("None of the activation keys specified exist for this org."));
         }
         return keys;
-    }
-
-    /**
-     * @param consumer
-     * @param principal
-     * @param userName
-     * @return a String object
-     */
-    private String setUserName(Consumer consumer, Principal principal,
-        String userName) {
-        if (userName == null) {
-            userName = principal.getUsername();
-        }
-
-        if (userName != null) {
-            consumer.setUsername(userName);
-        }
-        return userName;
     }
 
     /**
@@ -850,26 +933,6 @@ public class ConsumerResource {
             log.debug("Capability list either null or does not contain changes.");
         }
         return change;
-    }
-
-    /**
-     * @param consumer
-     * @return a String object
-     */
-    private void checkConsumerName(Consumer consumer) {
-        // for now this applies to both types consumer
-        if (consumer.getName() != null) {
-            if (consumer.getName().indexOf('#') == 0) {
-                // this is a bouncycastle restriction
-                throw new BadRequestException(i18n.tr("System name cannot begin with # character"));
-            }
-
-            int max = Consumer.MAX_LENGTH_OF_CONSUMER_NAME;
-            if (consumer.getName().length() > max) {
-                String m = "Name of the consumer should be shorter than {0} characters.";
-                throw new BadRequestException(i18n.tr(m, Integer.toString(max + 1)));
-            }
-        }
     }
 
     private void logNewConsumerDebugInfo(Consumer consumer,

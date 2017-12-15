@@ -21,6 +21,7 @@ import org.candlepin.model.GuestId;
 import org.candlepin.model.HypervisorId;
 import org.candlepin.model.Release;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
@@ -49,7 +50,7 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
     protected String username;
     protected String entitlementStatus;
     protected String serviceLevel;
-    protected ReleaseVerDTO releaseVer;
+    protected String releaseVer;
     protected OwnerDTO owner;
     protected EnvironmentDTO environment;
     protected Long entitlementCount;
@@ -140,11 +141,11 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
         return this;
     }
 
-    public ReleaseVerDTO getReleaseVer() {
+    public String getReleaseVer() {
         return releaseVer;
     }
 
-    public ConsumerDTO setReleaseVer(ReleaseVerDTO releaseVer) {
+    public ConsumerDTO setReleaseVer(String releaseVer) {
         this.releaseVer = releaseVer;
         return this;
     }
@@ -308,9 +309,31 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
         return new ArrayList<String>();
     }
 
+    @JsonIgnore
+    public List<GuestIdDTO> getGuestIds() {
+        return this.guestIds;
+    }
+
     public ConsumerDTO setGuestIds(List<GuestIdDTO> guestIds) {
         this.guestIds = guestIds;
         return this;
+    }
+
+    @JsonIgnore
+    public boolean isGuest() {
+        return "true".equalsIgnoreCase(this.getFact("virt.is_guest"));
+    }
+
+    /**
+     * Returns the value of the fact with the given key.
+     * @param factKey specific fact to retrieve.
+     * @return the value of the fact with the given key.
+     */
+    public String getFact(String factKey) {
+        if (facts != null) {
+            return facts.get(factKey);
+        }
+        return null;
     }
 
     /**
@@ -360,9 +383,6 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
             String thisHypervisorId = this.getHypervisorId() != null ? this.getHypervisorId().getId() : null;
             String thatHypervisorId = that.getHypervisorId() != null ? that.getHypervisorId().getId() : null;
 
-            String thisReleaseVer = this.getReleaseVer() != null ? this.getReleaseVer().getReleaseVer() : null;
-            String thatReleaseVer = that.getReleaseVer() != null ? that.getReleaseVer().getReleaseVer() : null;
-
             EqualsBuilder builder = new EqualsBuilder()
                 .append(this.getId(), that.getId())
                 .append(this.getUuid(), that.getUuid())
@@ -370,7 +390,7 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
                 .append(this.getUsername(), that.getUsername())
                 .append(this.getEntitlementStatus(), that.getEntitlementStatus())
                 .append(this.getServiceLevel(), that.getServiceLevel())
-                .append(thisReleaseVer, thatReleaseVer)
+                .append(this.getReleaseVer(), that.getReleaseVer())
                 .append(thisOid, thatOid)
                 .append(thisEnvId, thatEnvId)
                 .append(this.getEntitlementCount(), that.getEntitlementCount())
@@ -403,7 +423,6 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
         String oid = this.getOwner() != null ? this.getOwner().getId() : null;
         String envId = this.getEnvironment() != null ? this.getEnvironment().getId() : null;
         String hypervisorId = this.getHypervisorId() != null ? this.getHypervisorId().getId() : null;
-        String releaseVer = this.getReleaseVer() != null ? this.getReleaseVer().getReleaseVer() : null;
 
         HashCodeBuilder builder = new HashCodeBuilder(37, 7)
             .append(super.hashCode())
@@ -413,7 +432,7 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
             .append(this.getUsername())
             .append(this.getEntitlementStatus())
             .append(this.getServiceLevel())
-            .append(releaseVer)
+            .append(this.getReleaseVer())
             .append(oid)
             .append(envId)
             .append(this.getEntitlementCount())
@@ -449,9 +468,6 @@ public class ConsumerDTO extends TimestampedCandlepinDTO<ConsumerDTO> implements
 
         Map<String, String> facts = this.getFacts();
         copy.facts = facts != null ? new HashMap<String, String>(facts) : null;
-
-        ReleaseVerDTO releaseVerDTO = this.getReleaseVer();
-        copy.releaseVer = releaseVerDTO != null ? (ReleaseVerDTO) releaseVerDTO.clone() : null;
 
         Set<ConsumerInstalledProductDTO> installedProducts = this.getInstalledProducts();
         if (installedProducts != null) {
