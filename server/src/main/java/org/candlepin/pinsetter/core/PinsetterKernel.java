@@ -42,31 +42,24 @@ import org.apache.commons.lang.StringUtils;
 import org.quartz.CronTrigger;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
-import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
-import org.quartz.JobListener;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
-import org.quartz.TriggerListener;
 import org.quartz.impl.JobDetailImpl;
-import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
-import org.quartz.spi.JobFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
+
+import javax.inject.Named;
 
 /**
  * Pinsetter Kernel.
@@ -83,10 +76,10 @@ public class PinsetterKernel implements ModeChangeListener {
     };
 
     private static Logger log = LoggerFactory.getLogger(PinsetterKernel.class);
-    private Scheduler scheduler;
     private Configuration config;
     private JobCurator jobCurator;
     private ModeManager modeManager;
+    private JobRealm cronJobRealm;
 
     /**
      * Kernel main driver behind Pinsetter
@@ -95,43 +88,13 @@ public class PinsetterKernel implements ModeChangeListener {
      * initialized.
      */
     @Inject
-    public PinsetterKernel(Configuration conf, JobFactory jobFactory,
-        JobListener listener, JobCurator jobCurator,
-        StdSchedulerFactory fact,
-        TriggerListener triggerListener,
-        ModeManager modeManager) throws InstantiationException {
+    public PinsetterKernel(Configuration conf, JobCurator jobCurator,
+        @Named("cronJobRealm") JobRealm cronJobRealm, ModeManager modeManager) {
 
         this.config = conf;
         this.jobCurator = jobCurator;
         this.modeManager = modeManager;
-        /*
-         * Did your unit test get an NPE here?
-         * this will help:
-         * when(config.subset(eq("org.quartz"))).thenReturn(
-         * new MapConfiguration(ConfigProperties.DEFAULT_PROPERTIES));
-         *
-         * TODO: We should probably be clearing up what's happening here. Not a fan of a comment
-         * explaining what should be handled by something like an illegal arg or illegal state
-         * exception. -C
-         */
-        Properties props = config.subset("org.quartz").toProperties();
-
-        // create a schedulerFactory
-        try {
-            fact.initialize(props);
-            scheduler = fact.getScheduler();
-            scheduler.setJobFactory(jobFactory);
-
-            if (listener != null) {
-                scheduler.getListenerManager().addJobListener(listener);
-            }
-            if (triggerListener != null) {
-                scheduler.getListenerManager().addTriggerListener(triggerListener);
-            }
-        }
-        catch (SchedulerException e) {
-            throw new InstantiationException("this.scheduler failed: " + e.getMessage());
-        }
+        this.cronJobRealm = cronJobRealm;
     }
 
     /**
@@ -143,10 +106,9 @@ public class PinsetterKernel implements ModeChangeListener {
      */
     public void startup() throws PinsetterException {
         try {
-            scheduler.start();
-            jobCurator.cancelOrphanedJobs(Collections.EMPTY_LIST);
+            cronJobRealm.start();
             modeManager.registerModeChangeListener(this);
-            configure();
+            configure(cronJobRealm.getScheduler());
         }
         catch (SchedulerException e) {
             throw new PinsetterException(e.getMessage(), e);
@@ -168,7 +130,7 @@ public class PinsetterKernel implements ModeChangeListener {
      * Configures the system.
      * @param conf Configuration object containing config values.
      */
-    private void configure() {
+    private void configure(Scheduler scheduler) {
         if (log.isDebugEnabled()) {
             log.debug("Scheduling tasks");
         }
@@ -283,6 +245,7 @@ public class PinsetterKernel implements ModeChangeListener {
         String jobImpl, List<CronTrigger> existingCronTriggers, String schedule)
         throws SchedulerException {
 
+        Scheduler scheduler = cronJobRealm.getScheduler();
         // If trigger already exists with same schedule, nothing to do
         if (existingCronTriggers.size() == 1 &&
             existingCronTriggers.get(0).getCronExpression().equals(schedule)) {
@@ -318,10 +281,7 @@ public class PinsetterKernel implements ModeChangeListener {
     public void shutdown() throws PinsetterException {
         try {
             log.info("shutting down pinsetter kernel");
-            scheduler.standby(); // do not allow any new jobs to be scheduled
-            deleteAllJobs(); // delete all jobs if we are not clustered
-            log.info("allowing running jobs to finish..");
-            scheduler.shutdown(true);
+            cronJobRealm.shutdown();
             log.info("pinsetter kernel is shut down");
         }
         catch (SchedulerException e) {
@@ -393,6 +353,7 @@ public class PinsetterKernel implements ModeChangeListener {
 
         JobDetailImpl detailImpl = (JobDetailImpl) detail;
         detailImpl.setGroup(grpName);
+        Scheduler scheduler = cronJobRealm.getScheduler();
 
         try {
             JobStatus status = (JobStatus) (detail.getJobClass()
@@ -411,52 +372,6 @@ public class PinsetterKernel implements ModeChangeListener {
             throw new PinsetterException("There was a problem scheduling " +
                 detail.getKey().getName(), e);
         }
-    }
-
-    /**
-     * Cancels the specified job by deleting the job and all triggers from the scheduler.
-     * Assumes that the job is already marked as CANCELED in the JobStatus table.
-     *
-     * @param id the ID of the job to cancel
-     * @param group the job group that the job belongs to
-     * @throws PinsetterException if there is an error deleting the job from the schedule.
-     */
-    public void cancelJob(Serializable id, String group) throws PinsetterException {
-        try {
-            if (scheduler.deleteJob(jobKey((String) id, group))) {
-                log.info("Canceled job in scheduler: {}:{} ", group, id);
-            }
-        }
-        catch (SchedulerException e) {
-            throw new PinsetterException("problem canceling " + group + ":" + id, e);
-        }
-    }
-
-    /**
-     * Cancels the specified jobs by deleting the jobs and all triggers from the scheduler.
-     * Assumes that the jobs are already marked as CANCELED in the JobStatus table.
-     *
-     * @param toCancel the JobStatus records of the jobs to cancel.
-     * @throws PinsetterException if there is an error deleting the jobs from the schedule.
-     */
-    public void cancelJobs(Collection<JobStatus> toCancel) throws PinsetterException {
-        List<JobKey> jobsToDelete = new LinkedList<JobKey>();
-
-        for (JobStatus status : toCancel) {
-            JobKey key = jobKey(status.getId(), status.getGroup());
-            log.debug("Job {} from group {} will be deleted from the scheduler.",
-                key.getName(), key.getGroup());
-            jobsToDelete.add(key);
-        }
-
-        log.info("Deleting {} cancelled jobs from scheduler.", toCancel.size());
-        try {
-            scheduler.deleteJobs(jobsToDelete);
-        }
-        catch (SchedulerException se) {
-            throw new PinsetterException("Problem canceling jobs.", se);
-        }
-        log.info("Finished deleting jobs from scheduler");
     }
 
     /**
@@ -492,6 +407,7 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     public void addTrigger(JobStatus status) throws SchedulerException {
+        Scheduler scheduler = cronJobRealm.getScheduler();
         Trigger trigger = newTrigger()
             .withIdentity(status.getId() + " trigger", SINGLE_JOB_GROUP)
             .forJob(status.getJobKey())
@@ -500,6 +416,7 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     public boolean getSchedulerStatus() throws PinsetterException {
+        Scheduler scheduler = cronJobRealm.getScheduler();
         try {
             // return true when scheduler is running (double negative)
             return !scheduler.isInStandbyMode();
@@ -511,9 +428,8 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     public void pauseScheduler() throws PinsetterException {
-        // go into standby mode
         try {
-            scheduler.standby();
+            cronJobRealm.pause();
         }
         catch (SchedulerException e) {
             throw new PinsetterException("There was a problem pausing the scheduler", e);
@@ -521,52 +437,23 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     public void unpauseScheduler() throws PinsetterException {
-        log.debug("looking for canceled jobs since scheduler was paused");
-        CancelJobJob cjj = new CancelJobJob(jobCurator, this);
         try {
-            //Not sure why we don't want to use a UnitOfWork here
-            cjj.toExecute(null);
-        }
-        catch (JobExecutionException e1) {
-            throw new PinsetterException("Could not clear canceled jobs before starting");
-        }
-        log.debug("restarting scheduler");
-        try {
-            scheduler.start();
+            cronJobRealm.unpause();
         }
         catch (SchedulerException e) {
             throw new PinsetterException("There was a problem unpausing the scheduler", e);
         }
     }
 
-    private void deleteJobs(String groupName) {
-        try {
-            Set<JobKey> jobs = this.scheduler.getJobKeys(jobGroupEquals(groupName));
-
-            for (JobKey jobKey : jobs) {
-                this.jobCurator.cancel(jobKey.getName());
-                this.scheduler.deleteJob(jobKey);
-            }
-        }
-        catch (SchedulerException e) {
-            // TODO:  Something better than nothing
-        }
-    }
-
-    private void deleteAllJobs() {
-        if (!isClustered()) {
-            deleteJobs(CRON_GROUP);
-            deleteJobs(SINGLE_JOB_GROUP);
-        }
-    }
-
     public Set<JobKey> getSingleJobKeys() throws SchedulerException {
+        Scheduler scheduler = cronJobRealm.getScheduler();
         return scheduler.getJobKeys(GroupMatcher.jobGroupEquals(SINGLE_JOB_GROUP));
     }
 
     public void retriggerCronJob(String taskName, Class<? extends KingpinJob> jobClass)  throws
         PinsetterException {
         Set<TriggerKey> cronTriggerKeys = null;
+        Scheduler scheduler = cronJobRealm.getScheduler();
         try {
             cronTriggerKeys = scheduler.getTriggerKeys(
                 GroupMatcher.triggerGroupEquals(PinsetterKernel.CRON_GROUP));

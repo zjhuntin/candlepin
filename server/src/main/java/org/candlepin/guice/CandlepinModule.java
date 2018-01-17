@@ -63,7 +63,9 @@ import org.candlepin.controller.ScheduledExecutorServiceProvider;
 import org.candlepin.controller.SuspendModeTransitioner;
 import org.candlepin.model.CPRestrictions;
 import org.candlepin.model.UeberCertificateGenerator;
+import org.candlepin.pinsetter.core.CronJobRealm;
 import org.candlepin.pinsetter.core.GuiceJobFactory;
+import org.candlepin.pinsetter.core.JobRealm;
 import org.candlepin.pinsetter.core.PinsetterJobListener;
 import org.candlepin.pinsetter.core.PinsetterKernel;
 import org.candlepin.pinsetter.core.PinsetterTriggerListener;
@@ -367,6 +369,7 @@ public class CandlepinModule extends AbstractModule {
         bind(JobListener.class).to(PinsetterJobListener.class);
         bind(TriggerListener.class).to(PinsetterTriggerListener.class);
         bind(PinsetterKernel.class);
+        bind(JobRealm.class).annotatedWith(Names.named("cronJobRealm")).to(CronJobRealm.class);
         bind(CertificateRevocationListTask.class);
         bind(JobCleaner.class);
         bind(UnpauseJob.class);

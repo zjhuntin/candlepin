@@ -14,18 +14,15 @@
  */
 package org.candlepin.pinsetter.tasks;
 
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.quartz.JobBuilder.newJob;
 
 import org.candlepin.model.JobCurator;
-import org.candlepin.pinsetter.core.PinsetterException;
-import org.candlepin.pinsetter.core.PinsetterKernel;
+import org.candlepin.pinsetter.core.JobRealm;
 import org.candlepin.pinsetter.core.model.JobStatus;
 
 import org.junit.Before;
@@ -35,14 +32,10 @@ import org.mockito.MockitoAnnotations;
 import org.quartz.Job;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
-import org.quartz.SchedulerException;
 
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,7 +46,7 @@ import java.util.Set;
 public class CancelJobJobTest extends BaseJobTest{
     private CancelJobJob cancelJobJob;
     @Mock private JobCurator j;
-    @Mock private PinsetterKernel pk;
+    @Mock private JobRealm jobRealm;
     @Mock private JobExecutionContext ctx;
 
 
@@ -61,25 +54,12 @@ public class CancelJobJobTest extends BaseJobTest{
     public void init() {
         super.init();
         MockitoAnnotations.initMocks(this);
-        cancelJobJob = new CancelJobJob(j, pk);
+        cancelJobJob = new CancelJobJob(j, jobRealm);
         injector.injectMembers(cancelJobJob);
     }
 
     @Test
-    public void noCancellationsTest() throws JobExecutionException {
-        when(j.findCanceledJobs(any(Collection.class))).thenReturn(Collections.<JobStatus>emptySet());
-        cancelJobJob.execute(ctx);
-
-        try {
-            verify(pk, never()).cancelJob(any(Serializable.class), any(String.class));
-        }
-        catch (PinsetterException e) {
-            fail("Should not be executed, much less fail");
-        }
-    }
-
-    @Test
-    public void cancelTest() throws JobExecutionException, PinsetterException, SchedulerException {
+    public void cancelTest() throws Exception {
         JobDetail jd1 = newJob(Job.class)
             .withIdentity("Job1", "G1")
             .build();
@@ -102,11 +82,11 @@ public class CancelJobJobTest extends BaseJobTest{
         jobKeys.add(new JobKey("G1"));
         jobKeys.add(new JobKey("G2"));
 
-        when(pk.getSingleJobKeys()).thenReturn(jobKeys);
+        when(jobRealm.getJobKeys(JobRealm.SINGLE_JOB_GROUP)).thenReturn(jobKeys);
         when(j.findCanceledJobs(any(Collection.class))).thenReturn(jl);
 
         cancelJobJob.execute(ctx);
-        verify(pk, atMost(1)).cancelJobs(eq(jl));
+        verify(jobRealm, atMost(1)).cancelJobs(eq(jl));
     }
 
 }

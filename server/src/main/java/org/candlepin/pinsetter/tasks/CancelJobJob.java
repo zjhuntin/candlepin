@@ -15,8 +15,7 @@
 package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.model.JobCurator;
-import org.candlepin.pinsetter.core.PinsetterException;
-import org.candlepin.pinsetter.core.PinsetterKernel;
+import org.candlepin.pinsetter.core.JobRealm;
 
 import com.google.inject.Inject;
 
@@ -32,7 +31,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 
-
 /**
  * CancelJobJob attempts to cancel the jobs in Quartz for the jobs whose
  * status is JobStatus.CANCEL.
@@ -43,30 +41,25 @@ public class CancelJobJob extends KingpinJob {
     private static Logger log = LoggerFactory.getLogger(CancelJobJob.class);
     public static final String DEFAULT_SCHEDULE = "0/5 * * * * ?"; //every five seconds
     private JobCurator jobCurator;
-    private PinsetterKernel pinsetterKernel;
+    private JobRealm jobRealm;
 
     @Inject
-    public CancelJobJob(JobCurator jobCurator, PinsetterKernel pinsetterKernel) {
+    public CancelJobJob(JobCurator jobCurator, JobRealm jobRealm) {
         this.jobCurator = jobCurator;
-        this.pinsetterKernel = pinsetterKernel;
+        this.jobRealm = jobRealm;
     }
 
     @Override
     public void toExecute(JobExecutionContext ctx) throws JobExecutionException {
         try {
-            Set<JobKey> keys = pinsetterKernel.getSingleJobKeys();
+            Set<JobKey> keys = jobRealm.getJobKeys(JobRealm.SINGLE_JOB_GROUP);
             Set<String> statusIds = new HashSet<String>();
 
             for (JobKey key : keys) {
                 statusIds.add(key.getName());
             }
 
-            try {
-                pinsetterKernel.cancelJobs(this.jobCurator.findCanceledJobs(statusIds));
-            }
-            catch (PinsetterException e) {
-                log.error("Exception canceling jobs.", e);
-            }
+            jobRealm.cancelJobs(this.jobCurator.findCanceledJobs(statusIds));
         }
         catch (SchedulerException e) {
             log.error("Unable to cancel jobs", e);
