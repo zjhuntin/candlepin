@@ -14,25 +14,27 @@
  */
 package org.candlepin.pinsetter.core;
 
-import static org.quartz.JobKey.*;
 import static org.quartz.impl.matchers.GroupMatcher.*;
 
 import org.candlepin.common.config.Configuration;
 import org.candlepin.model.JobCurator;
 import org.candlepin.pinsetter.core.model.JobStatus;
 
+import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.JobListener;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerKey;
 import org.quartz.TriggerListener;
+import org.quartz.impl.JobDetailImpl;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.quartz.spi.JobFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -128,44 +130,38 @@ public abstract class AbstractJobRealm implements JobRealm {
         }
     }
 
-    /**
-     * Cancels the specified job by deleting the job and all triggers from the scheduler.
-     * Assumes that the job is already marked as CANCELED in the JobStatus table.
-     *
-     * @param id the ID of the job to cancel
-     * @param group the job group that the job belongs to
-     * @throws SchedulerException if there is an error deleting the job from the schedule.
-     */
-    public void cancelJob(Serializable id, String group) throws SchedulerException {
+    public boolean deleteJob(JobKey jobKey) throws SchedulerException {
         try {
-            if (scheduler.deleteJob(jobKey((String) id, group))) {
-                log.info("Canceled job in scheduler: {}:{} ", group, id);
+            boolean result = scheduler.deleteJob(jobKey);
+            if (result) {
+                log.info("Canceled job in scheduler: {}:{} ", jobKey.getGroup(), jobKey.getName());
             }
+            return result;
         }
         catch (SchedulerException e) {
-            log.error("problem canceling {}:{}", group, id, e);
+            log.error("problem canceling {}:{}", jobKey.getGroup(), jobKey.getName(), e);
             throw e;
         }
     }
 
     /**
-     * Cancels the specified jobs by deleting the jobs and all triggers from the scheduler.
+     * Deletes the specified jobs by deleting the jobs and all triggers from the scheduler.
      * Assumes that the jobs are already marked as CANCELED in the JobStatus table.
      *
-     * @param toCancel the JobStatus records of the jobs to cancel.
+     * @param toDelete the JobStatus records of the jobs to cancel.
      * @throws SchedulerException if there is an error deleting the jobs from the schedule.
      */
-    public void cancelJobs(Collection<JobStatus> toCancel) throws SchedulerException {
+    public void deleteJobs(Collection<JobStatus> toDelete) throws SchedulerException {
         List<JobKey> jobsToDelete = new LinkedList<JobKey>();
 
-        for (JobStatus status : toCancel) {
-            JobKey key = jobKey(status.getId(), status.getGroup());
+        for (JobStatus status : toDelete) {
+            JobKey key = new JobKey(status.getId(), status.getGroup());
             log.debug("Job {} from group {} will be deleted from the scheduler.",
                 key.getName(), key.getGroup());
             jobsToDelete.add(key);
         }
 
-        log.info("Deleting {} cancelled jobs from scheduler.", toCancel.size());
+        log.info("Deleting {} cancelled jobs from scheduler.", toDelete.size());
         try {
             scheduler.deleteJobs(jobsToDelete);
         }
@@ -188,12 +184,46 @@ public abstract class AbstractJobRealm implements JobRealm {
         }
     }
 
+    public JobStatus scheduleJob(JobDetail detail, String grpName, Trigger trigger)
+        throws SchedulerException {
+
+        JobDetailImpl detailImpl = (JobDetailImpl) detail;
+        detailImpl.setGroup(grpName);
+
+        try {
+            JobStatus status = (JobStatus) (detail.getJobClass()
+                .getMethod("scheduleJob", JobCurator.class, Scheduler.class, JobDetail.class, Trigger.class)
+                .invoke(null, jobCurator, scheduler, detail, trigger));
+
+            if (log.isDebugEnabled()) {
+                log.debug("Scheduled {}", detailImpl.getFullName());
+            }
+
+            return status;
+        }
+        catch (Exception e) {
+            log.error("There was a problem scheduling {}", detail.getKey().getName(), e);
+            throw new SchedulerException("There was a problem scheduling " +
+                detail.getKey().getName(), e);
+        }
+    }
+
     public Set<JobKey> getJobKeys(String group) throws SchedulerException {
         return scheduler.getJobKeys(GroupMatcher.jobGroupEquals(group));
     }
 
     @Override
-    public void initialize() {
+    public Trigger getTrigger(TriggerKey triggerKey) throws SchedulerException {
+        return scheduler.getTrigger(triggerKey);
+    }
 
+    @Override
+    public JobDetail getJobDetail(JobKey jobKey) throws SchedulerException {
+        return scheduler.getJobDetail(jobKey);
+    }
+
+    @Override
+    public boolean isInStandbyMode() throws SchedulerException {
+        return scheduler.isInStandbyMode();
     }
 }

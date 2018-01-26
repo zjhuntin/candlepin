@@ -15,11 +15,12 @@
 package org.candlepin.pinsetter.core;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
+import static org.mockito.Matchers.startsWith;
 import static org.mockito.Mockito.*;
-import static org.quartz.CronScheduleBuilder.*;
 import static org.quartz.JobKey.*;
-import static org.quartz.TriggerBuilder.*;
 import static org.quartz.impl.matchers.GroupMatcher.*;
 import static org.quartz.impl.matchers.NameMatcher.*;
 
@@ -27,8 +28,8 @@ import org.candlepin.auth.Principal;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.common.config.MapConfiguration;
 import org.candlepin.config.ConfigProperties;
-import org.candlepin.model.CandlepinModeChange;
 import org.candlepin.controller.ModeManager;
+import org.candlepin.model.CandlepinModeChange;
 import org.candlepin.model.JobCurator;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
@@ -245,16 +246,6 @@ public class PinsetterKernelTest {
     }
 
     @Test
-    public void scheduleByString() throws Exception {
-        pk.scheduleJob(TestJob.class, "testjob", "*/1 * * * * ?");
-        ArgumentCaptor<Trigger> arg = ArgumentCaptor.forClass(Trigger.class);
-        verify(jcurator, atMost(1)).create(any(JobStatus.class));
-        verify(sched).scheduleJob(any(JobDetail.class), arg.capture());
-        CronTrigger trigger = (CronTrigger) arg.getValue();
-        assertEquals("*/1 * * * * ?", trigger.getCronExpression());
-    }
-
-    @Test
     public void updateSchedule() throws Exception {
         Map<String, String> props = new HashMap<String, String>();
         props.put(ConfigProperties.DEFAULT_TASKS, JobCleaner.class.getName());
@@ -268,7 +259,7 @@ public class PinsetterKernelTest {
 
         String crongrp = "cron group";
         Set<JobKey> jobs = new HashSet<JobKey>();
-        JobKey key = jobKey("org.candlepin.pinsetter.tasks.JobCleaner");
+        JobKey key = new JobKey("org.candlepin.pinsetter.tasks.JobCleaner");
         jobs.add(key);
 
         CronTrigger cronTrigger = mock(CronTrigger.class);
@@ -284,40 +275,6 @@ public class PinsetterKernelTest {
         pk.startup();
         verify(sched).deleteJob(key);
         verify(jcurator).create(any(JobStatus.class));
-    }
-
-    @Test
-    public void deletedCronTask() throws Exception {
-        Map<String, String> props = new HashMap<String, String>();
-        props.put(ConfigProperties.DEFAULT_TASKS, JobCleaner.class.getName());
-        props.put("org.quartz.jobStore.isClustered", "true");
-        props.put("pinsetter.org.candlepin.pinsetter.tasks.JobCleaner.schedule", "*/1 * * * * ?");
-        Configuration config = new MapConfiguration(props);
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
-
-        JobDetail jobDetail = mock(JobDetail.class);
-
-        String crongrp = "cron group";
-        Set<JobKey> jobs = new HashSet<JobKey>();
-
-        String deletedJobId = "StatisticHistoryTask-taylor-swift";
-        JobKey deletedKey = jobKey(deletedJobId);
-        jobs.add(deletedKey);
-        JobKey key = jobKey("org.candlepin.pinsetter.tasks.JobCleaner");
-        jobs.add(key);
-
-        CronTrigger cronTrigger = mock(CronTrigger.class);
-        when(cronTrigger.getJobKey()).thenReturn(deletedKey);
-
-        when(sched.getJobKeys(eq(jobGroupEquals(crongrp)))).thenReturn(jobs);
-        when(sched.getTrigger(any(TriggerKey.class))).thenReturn(cronTrigger);
-        when(sched.getJobDetail(any(JobKey.class))).thenReturn(jobDetail);
-
-        doReturn(JobCleaner.class).when(jobDetail).getJobClass();
-
-        pk.startup();
-        verify(jcurator).deleteJobNoStatusReturn(eq(deletedJobId));
-        verify(sched, atLeastOnce()).deleteJob(deletedKey);
     }
 
     @Test
@@ -355,47 +312,15 @@ public class PinsetterKernelTest {
         verify(jcurator).create(any(JobStatus.class));
     }
 
-    @Test(expected = PinsetterException.class)
-    public void handleParseException() throws Exception {
-        pk.scheduleJob(TestJob.class, "testjob", "how bout them apples");
-    }
-
-    @Test
-    public void scheduleByTrigger() throws Exception {
-        Trigger trigger = newTrigger()
-            .withIdentity("job", "grp")
-            .withSchedule(cronSchedule("*/1 * * * * ?"))
-            .build();
-
-        pk.scheduleJob(TestJob.class, "testjob", trigger);
-        ArgumentCaptor<Trigger> arg = ArgumentCaptor.forClass(Trigger.class);
-        verify(jcurator, atMost(1)).create(any(JobStatus.class));
-        verify(sched).scheduleJob(any(JobDetail.class), arg.capture());
-        assertEquals(trigger, arg.getValue());
-    }
-
-    @Test(expected = PinsetterException.class)
-    public void scheduleException() throws Exception {
-        Trigger trigger = newTrigger()
-            .withIdentity("job", "grp")
-            .withSchedule(cronSchedule("*/1 * * * * ?"))
-            .build();
-
-        doThrow(new SchedulerException()).when(sched).scheduleJob(
-            any(JobDetail.class), eq(trigger));
-        pk.scheduleJob(TestJob.class, "testjob", trigger);
-        verify(jcurator, atMost(1)).create(any(JobStatus.class));
-    }
-
     @Test
     public void cancelJob() throws Exception {
         String singlegrp = "async group";
         Set<JobKey> jobs = new HashSet<JobKey>();
-        jobs.add(jobKey("fakejob1"));
-        jobs.add(jobKey("fakejob2"));
+        jobs.add(new JobKey("fakejob1"));
+        jobs.add(new JobKey("fakejob2"));
 
         when(sched.getJobKeys(eq(jobGroupEquals(singlegrp)))).thenReturn(jobs);
-        jobRealm.cancelJob("fakejob1", singlegrp);
+        jobRealm.deleteJob(new JobKey("fakejob1", singlegrp));
         verify(sched, atMost(1)).deleteJob(eq(jobKey("fakejob1", singlegrp)));
     }
 

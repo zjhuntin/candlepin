@@ -86,7 +86,7 @@ public class CancelJobJobTest extends BaseJobTest{
         when(j.findCanceledJobs(any(Collection.class))).thenReturn(jl);
 
         cancelJobJob.execute(ctx);
-        verify(jobRealm, atMost(1)).cancelJobs(eq(jl));
+        verify(jobRealm, atMost(1)).deleteJobs(eq(jl));
     }
 
 }

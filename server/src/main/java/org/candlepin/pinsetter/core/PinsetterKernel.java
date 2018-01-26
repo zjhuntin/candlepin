@@ -14,13 +14,10 @@
  */
 package org.candlepin.pinsetter.core;
 
-
-import static org.quartz.CronScheduleBuilder.cronSchedule;
-import static org.quartz.JobBuilder.newJob;
-import static org.quartz.JobKey.jobKey;
-import static org.quartz.TriggerBuilder.newTrigger;
-import static org.quartz.TriggerKey.triggerKey;
-import static org.quartz.impl.matchers.GroupMatcher.jobGroupEquals;
+import static org.quartz.CronScheduleBuilder.*;
+import static org.quartz.JobBuilder.*;
+import static org.quartz.TriggerBuilder.*;
+import static org.quartz.TriggerKey.*;
 
 import org.candlepin.auth.SystemPrincipal;
 import org.candlepin.common.config.Configuration;
@@ -29,6 +26,7 @@ import org.candlepin.controller.ModeChangeListener;
 import org.candlepin.controller.ModeManager;
 import org.candlepin.model.CandlepinModeChange.Mode;
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 import org.candlepin.pinsetter.tasks.KingpinJob;
@@ -47,7 +45,6 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
-import org.quartz.impl.JobDetailImpl;
 import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,10 +67,6 @@ public class PinsetterKernel implements ModeChangeListener {
 
     public static final String CRON_GROUP = "cron group";
     public static final String SINGLE_JOB_GROUP = "async group";
-    public static final String[] DELETED_JOBS = new String[] {
-        "StatisticHistoryTask",
-        "ExportCleaner"
-    };
 
     private static Logger log = LoggerFactory.getLogger(PinsetterKernel.class);
     private Configuration config;
@@ -108,7 +101,7 @@ public class PinsetterKernel implements ModeChangeListener {
         try {
             cronJobRealm.start();
             modeManager.registerModeChangeListener(this);
-            configure(cronJobRealm.getScheduler());
+            configure(cronJobRealm);
         }
         catch (SchedulerException e) {
             throw new PinsetterException(e.getMessage(), e);
@@ -130,7 +123,7 @@ public class PinsetterKernel implements ModeChangeListener {
      * Configures the system.
      * @param conf Configuration object containing config values.
      */
-    private void configure(Scheduler scheduler) {
+    private void configure(JobRealm cronRealm) {
         if (log.isDebugEnabled()) {
             log.debug("Scheduling tasks");
         }
@@ -159,63 +152,58 @@ public class PinsetterKernel implements ModeChangeListener {
                 return;
             }
             log.debug("Jobs implemented:" + jobFQNames);
-            Set<JobKey> jobKeys = scheduler.getJobKeys(jobGroupEquals(CRON_GROUP));
 
-            /*
-             * purge jobs that have been deleted from this version of Candlepin.
-             * This is necessary as we might not even have the Class definition
-             * at classpath, Hence any attempt at fetching the JobDetail by the
-             * Scheduler or JobStatus by the JobCurator will fail.
-             */
-            for (JobKey jobKey : jobKeys) {
-                for (String deletedJob : DELETED_JOBS) {
-                    if (jobKey.getName().contains(deletedJob)) {
-                        scheduler.deleteJob(jobKey);
-                        jobCurator.deleteJobNoStatusReturn(jobKey.getName());
-                        break;
-                    }
-                }
+            List<JobEntry> entries = new ArrayList<JobEntry>();
+            for (String fqName : jobFQNames) {
+                entries.add(new JobEntry(fqName, getSchedule(fqName)));
             }
 
-            for (String jobFQName : jobFQNames) {
-                if (log.isDebugEnabled()) {
-                    log.debug("Scheduling " + jobFQName);
-                }
-
-                // Find all existing cron triggers matching this job impl
-                List<CronTrigger> existingCronTriggers = new LinkedList<CronTrigger>();
-                if (jobKeys != null) {
-                    for (JobKey key : jobKeys) {
-                        JobDetail jd = scheduler.getJobDetail(key);
-                        if (jd != null &&
-                            jd.getJobClass().getName().equals(jobFQName)) {
-                            CronTrigger trigger = (CronTrigger) scheduler.getTrigger(
-                                triggerKey(key.getName(), CRON_GROUP));
-                            if (trigger != null) {
-                                existingCronTriggers.add(trigger);
-                            }
-                            else {
-                                log.warn("JobKey " + key + " returned null cron trigger.");
-                            }
-                        }
-                    }
-                }
-                String schedule = getSchedule(jobFQName);
-                if (schedule != null) {
-                    addUniqueJob(pendingJobs, jobFQName, existingCronTriggers, schedule);
-                }
-            }
+            pendingJobs = populate(entries, cronRealm);
+            cronRealm.scheduleJobs(pendingJobs);
         }
         catch (SchedulerException e) {
             throw new RuntimeException(e.getLocalizedMessage(), e);
         }
-        scheduleJobs(pendingJobs);
+    }
+
+    private List<JobEntry> populate(List<JobEntry> entries, JobRealm cronRealm) throws SchedulerException {
+        Set<JobKey> jobKeys = cronRealm.getJobKeys(CRON_GROUP);
+        List<JobEntry> pendingJobs = new ArrayList<JobEntry>();
+        for (JobEntry entry : entries) {
+            String jobClassName = entry.getClassName();
+            log.debug("Scheduling {}", jobClassName);
+
+            // Find all existing cron triggers matching this job impl
+            List<CronTrigger> existingCronTriggers = new LinkedList<CronTrigger>();
+            if (jobKeys != null) {
+                for (JobKey key : jobKeys) {
+                    JobDetail jd = cronRealm.getJobDetail(key);
+                    if (jd != null &&
+                        jd.getJobClass().getName().equals(jobClassName)) {
+                        CronTrigger trigger = (CronTrigger) cronRealm.getTrigger(
+                            triggerKey(key.getName(), CRON_GROUP));
+                        if (trigger != null) {
+                            existingCronTriggers.add(trigger);
+                        }
+                        else {
+                            log.warn("JobKey {} returned null cron trigger.", key);
+                        }
+                    }
+                }
+            }
+            String schedule = entry.getSchedule();
+            if (schedule != null) {
+                addUniqueJob(pendingJobs, entry, existingCronTriggers, cronRealm);
+            }
+        }
+        return pendingJobs;
     }
 
     /** get the default schedule from the job class in case one is not found in the configuration.
      */
     private String getSchedule(String jobFQName) {
-        String defvalue = null;
+        String defvalue;
+
         try {
             defvalue = PropertyUtil.getStaticPropertyAsString(jobFQName, "DEFAULT_SCHEDULE");
         }
@@ -234,21 +222,19 @@ public class PinsetterKernel implements ModeChangeListener {
         }
         else {
             log.warn("No schedule found for {}. Skipping...", jobFQName);
+            return null;
         }
-        return null;
     }
 
     /**
      * Adds a unique job, replacing any old ones with different schedules.
      */
-    private void addUniqueJob(List<JobEntry> pendingJobs,
-        String jobImpl, List<CronTrigger> existingCronTriggers, String schedule)
-        throws SchedulerException {
+    private void addUniqueJob(List<JobEntry> pendingJobs, JobEntry entry,
+        List<CronTrigger> existingCronTriggers, JobRealm cronRealm) throws SchedulerException {
 
-        Scheduler scheduler = cronJobRealm.getScheduler();
         // If trigger already exists with same schedule, nothing to do
         if (existingCronTriggers.size() == 1 &&
-            existingCronTriggers.get(0).getCronExpression().equals(schedule)) {
+            existingCronTriggers.get(0).getCronExpression().equals(entry.getSchedule())) {
             return;
         }
 
@@ -262,15 +248,15 @@ public class PinsetterKernel implements ModeChangeListener {
          * there's only one.
          */
         if (existingCronTriggers.size() > 0) {
-            log.warn("Cleaning up " + existingCronTriggers.size() + " obsolete triggers.");
+            log.warn("Cleaning up {} obsolete triggers.", existingCronTriggers.size());
         }
         for (CronTrigger t : existingCronTriggers) {
-            boolean result = scheduler.deleteJob(t.getJobKey());
-            log.warn(t.getJobKey() + " deletion success?: " + result);
+            boolean result = cronRealm.deleteJob(t.getJobKey());
+            log.warn("{} deletion success?: {}", t.getJobKey(), result);
         }
 
         // Create our new job:
-        pendingJobs.add(new JobEntry(jobImpl, schedule));
+        pendingJobs.add(entry);
     }
 
     /**
@@ -289,91 +275,6 @@ public class PinsetterKernel implements ModeChangeListener {
         }
     }
 
-    @SuppressWarnings("checkstyle:indentation")
-    private void scheduleJobs(List<JobEntry> pendingJobs) {
-        if (pendingJobs.size() == 0) {
-            return;
-        }
-        try {
-            for (JobEntry jobentry : pendingJobs) {
-                //Trigger cron jobs with higher priority than async ( default 5 )
-                Trigger trigger = newTrigger()
-                    .withIdentity(jobentry.getJobName(), CRON_GROUP)
-                    .withSchedule(cronSchedule(jobentry.getSchedule())
-                    .withMisfireHandlingInstructionDoNothing())
-                    .withPriority(7)
-                    .build();
-
-                scheduleJob(
-                    this.getClass().getClassLoader().loadClass(
-                        jobentry.getClassName()), jobentry.getJobName(), trigger);
-            }
-        }
-        catch (Throwable t) {
-            log.error(t.getMessage(), t);
-            throw new RuntimeException(t.getMessage(), t);
-        }
-    }
-
-    @SuppressWarnings("checkstyle:indentation")
-    public void scheduleJob(Class job, String jobName, String crontab)
-        throws PinsetterException {
-
-        try {
-            //Trigger cron jobs with higher priority than async ( default 5 )
-            Trigger trigger = newTrigger()
-                .withIdentity(job.getName(), CRON_GROUP)
-                .withSchedule(cronSchedule(crontab)
-                .withMisfireHandlingInstructionDoNothing())
-                .withPriority(7)
-                .build();
-
-            scheduleJob(job, jobName, trigger);
-        }
-        catch (Exception pe) {
-            throw new PinsetterException("problem parsing schedule", pe);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public void scheduleJob(Class job, String jobName, Trigger trigger)
-        throws PinsetterException {
-        JobDataMap map = new JobDataMap();
-        map.put(PinsetterJobListener.PRINCIPAL_KEY, new SystemPrincipal());
-
-        JobDetail detail = newJob(job)
-            .withIdentity(jobName, CRON_GROUP)
-            .usingJobData(map)
-            .build();
-        scheduleJob(detail, CRON_GROUP, trigger);
-    }
-
-    private JobStatus scheduleJob(JobDetail detail, String grpName, Trigger trigger)
-        throws PinsetterException {
-
-        JobDetailImpl detailImpl = (JobDetailImpl) detail;
-        detailImpl.setGroup(grpName);
-        Scheduler scheduler = cronJobRealm.getScheduler();
-
-        try {
-            JobStatus status = (JobStatus) (detail.getJobClass()
-                .getMethod("scheduleJob", JobCurator.class, Scheduler.class, JobDetail.class, Trigger.class)
-                .invoke(null, jobCurator, scheduler, detail, trigger));
-
-            if (log.isDebugEnabled()) {
-                log.debug("Scheduled " + detailImpl.getFullName());
-            }
-
-            return status;
-        }
-        catch (Exception e) {
-            log.error("There was a problem scheduling " +
-                detail.getKey().getName(), e);
-            throw new PinsetterException("There was a problem scheduling " +
-                detail.getKey().getName(), e);
-        }
-    }
-
     /**
      * Schedule a long-running job for a single execution.
      *
@@ -387,7 +288,12 @@ public class PinsetterKernel implements ModeChangeListener {
             .withIdentity(jobDetail.getKey().getName() + " trigger", SINGLE_JOB_GROUP)
             .build();
 
-        return scheduleJob(jobDetail, SINGLE_JOB_GROUP, trigger);
+        try {
+            return cronJobRealm.scheduleJob(jobDetail, SINGLE_JOB_GROUP, trigger);
+        }
+        catch (SchedulerException e) {
+            throw new PinsetterException("Error scheduling job", e);
+        }
     }
 
     public JobStatus scheduleSingleJob(Class<? extends KingpinJob> job, String jobName) throws
@@ -399,11 +305,8 @@ public class PinsetterKernel implements ModeChangeListener {
             .withIdentity(jobName, CRON_GROUP)
             .usingJobData(map)
             .build();
-        Trigger trigger = newTrigger()
-            .withIdentity(detail.getKey().getName() + " trigger", SINGLE_JOB_GROUP)
-            .build();
 
-        return scheduleJob(detail, SINGLE_JOB_GROUP, trigger);
+        return scheduleSingleJob(detail);
     }
 
     public void addTrigger(JobStatus status) throws SchedulerException {
@@ -416,14 +319,12 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     public boolean getSchedulerStatus() throws PinsetterException {
-        Scheduler scheduler = cronJobRealm.getScheduler();
         try {
             // return true when scheduler is running (double negative)
-            return !scheduler.isInStandbyMode();
+            return !cronJobRealm.isInStandbyMode();
         }
         catch (SchedulerException e) {
-            throw new PinsetterException("There was a problem gathering" +
-                        "scheduler status ", e);
+            throw new PinsetterException("There was a problem gathering scheduler status ", e);
         }
     }
 
@@ -446,11 +347,10 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     public Set<JobKey> getSingleJobKeys() throws SchedulerException {
-        Scheduler scheduler = cronJobRealm.getScheduler();
-        return scheduler.getJobKeys(GroupMatcher.jobGroupEquals(SINGLE_JOB_GROUP));
+        return cronJobRealm.getJobKeys(SINGLE_JOB_GROUP);
     }
 
-    public void retriggerCronJob(String taskName, Class<? extends KingpinJob> jobClass)  throws
+    public void retriggerCronJob(String taskName, Class<? extends KingpinJob> jobClass) throws
         PinsetterException {
         Set<TriggerKey> cronTriggerKeys = null;
         Scheduler scheduler = cronJobRealm.getScheduler();
@@ -484,44 +384,12 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     private boolean isClustered() {
-        boolean clustered = false;
-        if (config.containsKey("org.quartz.jobStore.isClustered")) {
-            clustered = config.getBoolean("org.quartz.jobStore.isClustered");
-        }
-        return clustered;
+        return config.getBoolean("org.quartz.jobStore.isClustered", false);
     }
 
-    private static class JobEntry {
-        private String classname;
-        private String schedule;
-        private String jobname;
-
-        public JobEntry(String cname, String sched) {
-            classname = cname;
-            schedule = sched;
-            jobname = genName(classname);
-        }
-
-        private String genName(String cname) {
-            return Util.getClassName(cname) + "-" + Util.generateUUID();
-        }
-
-        public String getClassName() {
-            return classname;
-        }
-
-        public String getSchedule() {
-            return schedule;
-        }
-
-        public String getJobName() {
-            return jobname;
-        }
-    }
 
     @Override
     public void modeChanged(Mode newMode) {
-
         /* 1510082: Pause and un pause scheduler, never pause all jobs.
            cause when we do, quartz pauses the thread group itself.
            Later it does not resume the async thread group correctly, and as a result
@@ -540,5 +408,4 @@ public class PinsetterKernel implements ModeChangeListener {
         }
 
     }
-
 }

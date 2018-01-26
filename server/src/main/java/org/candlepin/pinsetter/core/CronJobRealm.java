@@ -14,13 +14,22 @@
  */
 package org.candlepin.pinsetter.core;
 
+import org.candlepin.auth.SystemPrincipal;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 
+import org.quartz.CronScheduleBuilder;
+import org.quartz.JobBuilder;
+import org.quartz.JobDataMap;
+import org.quartz.JobDetail;
 import org.quartz.JobExecutionException;
+import org.quartz.JobKey;
 import org.quartz.JobListener;
 import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
 import org.quartz.TriggerListener;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
@@ -30,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -38,6 +48,11 @@ import javax.inject.Inject;
  */
 public class CronJobRealm extends AbstractJobRealm {
     private static final Logger log = LoggerFactory.getLogger(CronJobRealm.class);
+
+    public static final String[] DELETED_JOBS = new String[] {
+        "StatisticHistoryTask",
+        "ExportCleaner"
+    };
 
     private JobListener jobListener;
     private JobFactory jobFactory;
@@ -57,6 +72,13 @@ public class CronJobRealm extends AbstractJobRealm {
 
         Properties props = config.subset("org.quartz").toProperties();
         configure(props, stdSchedulerFactory, jobFactory, jobListener, triggerListener);
+        try {
+            purgeDeprecatedJobs();
+        }
+        catch (SchedulerException e) {
+            log.error("Could not create CronJobRealm", e);
+            throw new InstantiationException("Could not create CronJobRealm");
+        }
     }
 
     @Override
@@ -95,8 +117,53 @@ public class CronJobRealm extends AbstractJobRealm {
         }
     }
 
-    @Override
-    public void initialize() {
+    private void purgeDeprecatedJobs() throws SchedulerException {
+        Set<JobKey> jobKeys = getJobKeys(CRON_GROUP);
+        /*
+        * purge jobs that have been deleted from this version of Candlepin.
+        * This is necessary as we might not even have the Class definition
+        * at classpath, Hence any attempt at fetching the JobDetail by the
+        * Scheduler or JobStatus by the JobCurator will fail.
+        */
+        for (JobKey jobKey : jobKeys) {
+            for (String deletedJob : DELETED_JOBS) {
+                if (jobKey.getName().contains(deletedJob)) {
+                    scheduler.deleteJob(jobKey);
+                    jobCurator.deleteJobNoStatusReturn(jobKey.getName());
+                    break;
+                }
+            }
+        }
+    }
 
+    @Override
+    @SuppressWarnings("checkstyle:indentation")
+    public void scheduleJobs(List<JobEntry> pendingJobs) throws SchedulerException {
+        try {
+            for (JobEntry jobentry : pendingJobs) {
+                //Trigger cron jobs with higher priority than async ( default 5 )
+                Trigger trigger = TriggerBuilder.newTrigger()
+                    .withIdentity(jobentry.getJobName(), CRON_GROUP)
+                    .withSchedule(CronScheduleBuilder.cronSchedule(jobentry.getSchedule())
+                    .withMisfireHandlingInstructionDoNothing())
+                    .withPriority(7)
+                    .build();
+
+                Class jobClass = this.getClass().getClassLoader().loadClass(jobentry.getClassName());
+                        JobDataMap map = new JobDataMap();
+                map.put(PinsetterJobListener.PRINCIPAL_KEY, new SystemPrincipal());
+
+                JobDetail detail = JobBuilder.newJob(jobClass)
+                    .withIdentity(jobentry.getJobName(), CRON_GROUP)
+                    .usingJobData(map)
+                    .build();
+
+                scheduleJob(detail, CRON_GROUP, trigger);
+            }
+        }
+        catch (Throwable t) {
+            log.error(t.getMessage(), t);
+            throw new SchedulerException(t.getMessage(), t);
+        }
     }
 }

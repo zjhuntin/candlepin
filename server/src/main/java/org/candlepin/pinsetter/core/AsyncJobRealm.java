@@ -16,8 +16,10 @@ package org.candlepin.pinsetter.core;
 
 import org.candlepin.common.config.Configuration;
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.quartz.JobExecutionException;
 import org.quartz.JobListener;
 import org.quartz.SchedulerException;
@@ -65,15 +67,22 @@ public class AsyncJobRealm extends AbstractJobRealm {
         return Arrays.asList(groups);
     }
 
-    public void unpause() throws PinsetterException, SchedulerException {
+    @Override
+    public void scheduleJobs(List<JobEntry> entries) throws SchedulerException {
+        // TODO Implement this
+        throw new NotImplementedException("TODO");
+    }
+
+    public void unpause() throws SchedulerException {
         log.debug("looking for canceled jobs since async scheduler was paused");
         CancelJobJob cjj = new CancelJobJob(jobCurator, this);
         try {
             //Not sure why we don't want to use a UnitOfWork here
             cjj.toExecute(null);
         }
-        catch (JobExecutionException e1) {
-            throw new PinsetterException("Could not clear canceled jobs before starting async scheduler");
+        catch (JobExecutionException e) {
+            log.error("Could not clear canceled jobs before starting async scheduler", e);
+            throw e;
         }
         log.debug("restarting async scheduler");
         try {
@@ -91,10 +100,5 @@ public class AsyncJobRealm extends AbstractJobRealm {
             clustered = config.getBoolean("async.org.quartz.jobStore.isClustered");
         }
         return clustered;
-    }
-
-    @Override
-    public void initialize() {
-
     }
 }

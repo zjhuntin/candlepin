@@ -59,7 +59,7 @@ public class CancelJobJob extends KingpinJob {
                 statusIds.add(key.getName());
             }
 
-            jobRealm.cancelJobs(this.jobCurator.findCanceledJobs(statusIds));
+            jobRealm.deleteJobs(this.jobCurator.findCanceledJobs(statusIds));
         }
         catch (SchedulerException e) {
             log.error("Unable to cancel jobs", e);

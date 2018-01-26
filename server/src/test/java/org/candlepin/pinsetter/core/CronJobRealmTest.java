@@ -14,25 +14,33 @@
  */
 package org.candlepin.pinsetter.core;
 
-import static org.mockito.Matchers.*;
+import static org.junit.Assert.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 import org.candlepin.common.config.Configuration;
 import org.candlepin.common.config.MapConfiguration;
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.core.model.JobStatus;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.quartz.CronTrigger;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.JobListener;
 import org.quartz.ListenerManager;
 import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerKey;
 import org.quartz.TriggerListener;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.impl.matchers.GroupMatcher;
@@ -128,7 +136,7 @@ public class CronJobRealmTest {
         Set<JobStatus> dummyCollection = new HashSet<JobStatus>();
         dummyCollection.add(dummyStatus);
 
-        cronJobRealm.cancelJobs(dummyCollection);
+        cronJobRealm.deleteJobs(dummyCollection);
 
         List<JobKey> expectedKeys = new ArrayList<JobKey>();
         expectedKeys.add(dummyKey);
@@ -140,8 +148,55 @@ public class CronJobRealmTest {
         String expectedId = "dummy";
         String expectedGroup = "dummyGroup";
         JobKey dummyKey = new JobKey(expectedId, expectedGroup);
-        cronJobRealm.cancelJob(expectedId, expectedGroup);
+        cronJobRealm.deleteJob(dummyKey);
 
         verify(scheduler).deleteJob(eq(dummyKey));
+    }
+
+    @Test
+    public void testScheduleJobs() throws Exception {
+        JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "*/1 * * * * ?");
+        List<JobEntry> entries = new ArrayList<JobEntry>();
+        entries.add(jobEntry);
+        cronJobRealm.scheduleJobs(entries);
+        ArgumentCaptor<Trigger> arg = ArgumentCaptor.forClass(Trigger.class);
+        verify(jobCurator, atMost(1)).create(any(JobStatus.class));
+        verify(scheduler).scheduleJob(any(JobDetail.class), arg.capture());
+        CronTrigger trigger = (CronTrigger) arg.getValue();
+        assertEquals("*/1 * * * * ?", trigger.getCronExpression());
+    }
+
+    @Test(expected = SchedulerException.class)
+    public void handleParseException() throws Exception {
+        JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "BARF");
+        List<JobEntry> entries = new ArrayList<JobEntry>();
+        entries.add(jobEntry);
+        cronJobRealm.scheduleJobs(entries);
+    }
+
+    @Test
+    public void purgeDeprecatedTask() throws Exception {
+        JobDetail jobDetail = mock(JobDetail.class);
+        String crongrp = "cron group";
+        Set<JobKey> jobs = new HashSet<JobKey>();
+
+        String deletedJobId = CronJobRealm.DELETED_JOBS[0] + "-blah";
+        JobKey deletedKey = new JobKey(deletedJobId);
+        jobs.add(deletedKey);
+
+        CronTrigger cronTrigger = mock(CronTrigger.class);
+        when(cronTrigger.getJobKey()).thenReturn(deletedKey);
+
+        when(scheduler.getJobKeys(eq(GroupMatcher.jobGroupEquals(crongrp)))).thenReturn(jobs);
+        when(scheduler.getTrigger(any(TriggerKey.class))).thenReturn(cronTrigger);
+        when(scheduler.getJobDetail(any(JobKey.class))).thenReturn(jobDetail);
+
+        // Reset the mock
+        jobCurator = mock(JobCurator.class);
+        cronJobRealm = new CronJobRealm(config, jobCurator, jobFactory, jobListener, triggerListener,
+            stdSchedulerFactory);
+
+        verify(jobCurator).deleteJobNoStatusReturn(eq(deletedJobId));
+        verify(scheduler).deleteJob(deletedKey);
     }
 }
