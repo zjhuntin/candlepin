@@ -21,6 +21,7 @@ import java.util.Map;
 import org.candlepin.common.filter.LoggingFilter;
 import org.candlepin.controller.ManifestManager;
 import org.candlepin.model.Consumer;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.sync.ExportResult;
 import org.candlepin.util.Util;
@@ -51,6 +52,7 @@ public class ExportJob extends UniqueByEntityJob {
     protected static final String EXTENSION_DATA = "extension_data";
 
     private static Logger log = LoggerFactory.getLogger(ExportJob.class);
+    public static final JobType TYPE = JobType.ASYNC;
 
     private ManifestManager manifestManager;
 
@@ -107,4 +109,8 @@ public class ExportJob extends UniqueByEntityJob {
             .build();
     }
 
+    @Override
+    public JobType getJobType() {
+        return TYPE;
+    }
 }

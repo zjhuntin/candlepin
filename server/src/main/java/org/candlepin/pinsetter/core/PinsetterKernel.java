@@ -25,16 +25,12 @@ import org.candlepin.config.ConfigProperties;
 import org.candlepin.controller.ModeChangeListener;
 import org.candlepin.controller.ModeManager;
 import org.candlepin.model.CandlepinModeChange.Mode;
-import org.candlepin.model.JobCurator;
 import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 import org.candlepin.pinsetter.tasks.KingpinJob;
 import org.candlepin.util.PropertyUtil;
 import org.candlepin.util.Util;
-
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
 
 import org.apache.commons.lang.StringUtils;
 import org.quartz.CronTrigger;
@@ -56,7 +52,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Named;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
 /**
  * Pinsetter Kernel.
@@ -70,9 +67,9 @@ public class PinsetterKernel implements ModeChangeListener {
 
     private static Logger log = LoggerFactory.getLogger(PinsetterKernel.class);
     private Configuration config;
-    private JobCurator jobCurator;
     private ModeManager modeManager;
-    private JobRealm cronJobRealm;
+    private CronJobRealm cronJobRealm;
+    private AsyncJobRealm asyncJobRealm;
 
     /**
      * Kernel main driver behind Pinsetter
@@ -81,12 +78,11 @@ public class PinsetterKernel implements ModeChangeListener {
      * initialized.
      */
     @Inject
-    public PinsetterKernel(Configuration conf, JobCurator jobCurator,
-        @Named("cronJobRealm") JobRealm cronJobRealm, ModeManager modeManager) {
-
+    public PinsetterKernel(Configuration conf, CronJobRealm cronJobRealm,
+        AsyncJobRealm asyncJobRealm, ModeManager modeManager) {
         this.config = conf;
-        this.jobCurator = jobCurator;
         this.modeManager = modeManager;
+        this.asyncJobRealm = asyncJobRealm;
         this.cronJobRealm = cronJobRealm;
     }
 
@@ -123,7 +119,7 @@ public class PinsetterKernel implements ModeChangeListener {
      * Configures the system.
      * @param conf Configuration object containing config values.
      */
-    private void configure(JobRealm cronRealm) {
+    private void configure(CronJobRealm cronRealm) {
         if (log.isDebugEnabled()) {
             log.debug("Scheduling tasks");
         }
@@ -155,7 +151,7 @@ public class PinsetterKernel implements ModeChangeListener {
 
             List<JobEntry> entries = new ArrayList<JobEntry>();
             for (String fqName : jobFQNames) {
-                entries.add(new JobEntry(fqName, getSchedule(fqName)));
+                entries.add(new JobEntry(fqName, getSchedule(fqName), getJobType(fqName)));
             }
 
             pendingJobs = populate(entries, cronRealm);
@@ -166,7 +162,8 @@ public class PinsetterKernel implements ModeChangeListener {
         }
     }
 
-    private List<JobEntry> populate(List<JobEntry> entries, JobRealm cronRealm) throws SchedulerException {
+    private List<JobEntry> populate(List<JobEntry> entries, CronJobRealm cronRealm) throws
+        SchedulerException {
         Set<JobKey> jobKeys = cronRealm.getJobKeys(CRON_GROUP);
         List<JobEntry> pendingJobs = new ArrayList<JobEntry>();
         for (JobEntry entry : entries) {
@@ -205,7 +202,7 @@ public class PinsetterKernel implements ModeChangeListener {
         String defvalue;
 
         try {
-            defvalue = PropertyUtil.getStaticPropertyAsString(jobFQName, "DEFAULT_SCHEDULE");
+            defvalue = PropertyUtil.<String>getStaticProperty(jobFQName, "DEFAULT_SCHEDULE");
         }
         catch (NoSuchFieldException e) {
             throw new RuntimeException(e.getLocalizedMessage(), e);
@@ -223,6 +220,18 @@ public class PinsetterKernel implements ModeChangeListener {
         else {
             log.warn("No schedule found for {}. Skipping...", jobFQName);
             return null;
+        }
+    }
+
+    private JobType getJobType(String jobFQName) {
+        try {
+            return PropertyUtil.<JobType>getStaticProperty(jobFQName, "TYPE");
+        }
+        catch (NoSuchFieldException e) {
+            throw new RuntimeException(e.getLocalizedMessage(), e);
+        }
+        catch (ClassNotFoundException e) {
+            throw new RuntimeException(e.getLocalizedMessage(), e);
         }
     }
 
@@ -387,7 +396,6 @@ public class PinsetterKernel implements ModeChangeListener {
         return config.getBoolean("org.quartz.jobStore.isClustered", false);
     }
 
-
     @Override
     public void modeChanged(Mode newMode) {
         /* 1510082: Pause and un pause scheduler, never pause all jobs.
@@ -406,6 +414,5 @@ public class PinsetterKernel implements ModeChangeListener {
         catch (PinsetterException e) {
             throw new RuntimeException(e);
         }
-
     }
 }

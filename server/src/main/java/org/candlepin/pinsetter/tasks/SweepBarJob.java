@@ -15,6 +15,7 @@
 package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.PinsetterKernel;
 
 import com.google.inject.Inject;
@@ -51,6 +52,7 @@ import java.util.Set;
 public class SweepBarJob extends KingpinJob {
 
     private static Logger log = LoggerFactory.getLogger(SweepBarJob.class);
+    public static final JobType TYPE = JobType.UTIL;
     public static final String DEFAULT_SCHEDULE = "0 0/5 * * * ?"; //every five minutes
 
     private JobCurator jobCurator;
@@ -81,5 +83,10 @@ public class SweepBarJob extends KingpinJob {
         catch (Exception e) {
             log.error("Failed to cancel orphaned jobs", e);
         }
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

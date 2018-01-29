@@ -16,6 +16,7 @@ package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.policy.js.compliance.ComplianceRules;
 
 import com.google.inject.Inject;
@@ -29,9 +30,9 @@ import java.util.List;
  * Job to recalculate compliance for consumers when entitlements become active
  */
 public class ActiveEntitlementJob extends KingpinJob {
-
     // Every hour:
     public static final String DEFAULT_SCHEDULE = "0 0 0/1 * * ?";
+    public static final JobType TYPE = JobType.CRON;
 
     private ConsumerCurator consumerCurator;
     private ComplianceRules complianceRules;
@@ -50,5 +51,10 @@ public class ActiveEntitlementJob extends KingpinJob {
             Consumer c = consumerCurator.find(id);
             complianceRules.getStatus(c);
         }
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

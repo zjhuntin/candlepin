@@ -81,7 +81,8 @@ public class PinsetterKernelTest {
     private TriggerListener triggerListener;
 
     private PinsetterKernel pk;
-    private JobRealm jobRealm;
+    private CronJobRealm cronJobRealm;
+    private AsyncJobRealm asyncJobRealm;
 
     @Before
     public void init() throws Exception {
@@ -112,16 +113,17 @@ public class PinsetterKernelTest {
             CandlepinModeChange.Mode.NORMAL,
             CandlepinModeChange.Reason.STARTUP));
 
-        jobRealm = new CronJobRealm(config, jcurator, jfactory, jlistener, triggerListener, sfactory);
+        cronJobRealm = new CronJobRealm(config, jcurator, jfactory, jlistener, triggerListener, sfactory);
+        asyncJobRealm = new AsyncJobRealm(config, jcurator, jfactory, jlistener, triggerListener, sfactory);
 
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
     }
 
     @Test(expected = InstantiationException.class)
     public void blowup() throws Exception {
         when(sfactory.getScheduler()).thenThrow(new SchedulerException());
-        jobRealm = new CronJobRealm(config, jcurator, jfactory, jlistener, triggerListener, sfactory);
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        cronJobRealm = new CronJobRealm(config, jcurator, jfactory, jlistener, triggerListener, sfactory);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
     }
 
     @Test
@@ -131,16 +133,10 @@ public class PinsetterKernelTest {
         lm = mock(ListenerManager.class);
 
         when(sched.getListenerManager()).thenReturn(lm);
-        jobRealm = new CronJobRealm(config, jcurator, jfactory, null, triggerListener, sfactory);
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        cronJobRealm = new CronJobRealm(config, jcurator, jfactory, null, triggerListener, sfactory);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
         verify(sched).setJobFactory(eq(jfactory));
         verify(lm, never()).addJobListener(eq(jlistener));
-    }
-
-    @Test
-    public void ctor() throws Exception {
-        verify(sched).setJobFactory(eq(jfactory));
-        verify(lm).addJobListener(eq(jlistener));
     }
 
     @SuppressWarnings("serial")
@@ -162,7 +158,7 @@ public class PinsetterKernelTest {
                     put(ConfigProperties.ENABLE_PINSETTER, "false");
                 }
             });
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
         pk.startup();
         verify(sched).start();
         ArgumentCaptor<JobStatus> arg = ArgumentCaptor.forClass(JobStatus.class);
@@ -253,7 +249,7 @@ public class PinsetterKernelTest {
         props.put("pinsetter.org.candlepin.pinsetter.tasks." +
             "JobCleaner.schedule", "*/1 * * * * ?");
         Configuration config = new MapConfiguration(props);
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
 
         JobDetail jobDetail = mock(JobDetail.class);
 
@@ -285,7 +281,7 @@ public class PinsetterKernelTest {
         props.put("pinsetter.org.candlepin.pinsetter.tasks." +
             "JobCleaner.schedule", "*/1 * * * * ?");
         Configuration config = new MapConfiguration(props);
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
 
         JobDetail jobDetail = mock(JobDetail.class);
 
@@ -320,7 +316,7 @@ public class PinsetterKernelTest {
         jobs.add(new JobKey("fakejob2"));
 
         when(sched.getJobKeys(eq(jobGroupEquals(singlegrp)))).thenReturn(jobs);
-        jobRealm.deleteJob(new JobKey("fakejob1", singlegrp));
+        cronJobRealm.deleteJob(new JobKey("fakejob1", singlegrp));
         verify(sched, atMost(1)).deleteJob(eq(jobKey("fakejob1", singlegrp)));
     }
 
@@ -419,7 +415,7 @@ public class PinsetterKernelTest {
                 }
             });
 
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
 
         Set<JobKey> jobs = new HashSet<JobKey>();
         jobs.add(jobKey(JobCleaner.class.getName()));
@@ -441,7 +437,7 @@ public class PinsetterKernelTest {
                     put("org.quartz.jobStore.isClustered", "true");
                 }
             });
-        pk = new PinsetterKernel(config, jcurator, jobRealm, modeManager);
+        pk = new PinsetterKernel(config, cronJobRealm, asyncJobRealm, modeManager);
 
         Set<JobKey> jobs = new HashSet<JobKey>();
         when(sched.getJobKeys(eq(jobGroupEquals("cron group")))).thenReturn(jobs);

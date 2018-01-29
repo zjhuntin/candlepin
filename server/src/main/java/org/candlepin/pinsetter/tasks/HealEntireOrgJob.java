@@ -24,6 +24,7 @@ import org.candlepin.model.ConsumerCurator;
 import org.candlepin.model.Entitlement;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.resource.dto.AutobindData;
 import org.candlepin.util.Util;
@@ -50,6 +51,7 @@ import java.util.List;
  */
 public class HealEntireOrgJob extends UniqueByEntityJob {
     private static Logger log = LoggerFactory.getLogger(HealEntireOrgJob.class);
+    public static final JobType TYPE = JobType.ASYNC;
     protected static String prefix = "heal_entire_org_";
 
     protected OwnerCurator ownerCurator;
@@ -126,5 +128,10 @@ public class HealEntireOrgJob extends UniqueByEntityJob {
             .build();
 
         return detail;
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

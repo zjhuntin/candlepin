@@ -20,6 +20,7 @@ import org.candlepin.common.filter.LoggingFilter;
 import org.candlepin.controller.PoolManager;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.RetryJobException;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.service.OwnerServiceAdapter;
@@ -45,9 +46,9 @@ import javax.persistence.PersistenceException;
  * {@link Owner}.
  */
 public class RefreshPoolsJob extends UniqueByEntityJob {
-
     private static Logger log = LoggerFactory.getLogger(RefreshPoolsJob.class);
 
+    public static final JobType TYPE = JobType.ASYNC;
     public static final String LAZY_REGEN = "lazy_regen";
     public static final String JOB_NAME_PREFIX = "refresh_pools_";
 
@@ -149,4 +150,8 @@ public class RefreshPoolsJob extends UniqueByEntityJob {
         return detail;
     }
 
+    @Override
+    public JobType getJobType() {
+        return TYPE;
+    }
 }

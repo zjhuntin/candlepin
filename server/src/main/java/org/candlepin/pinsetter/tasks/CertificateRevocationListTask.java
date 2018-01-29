@@ -16,6 +16,7 @@ package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.common.config.Configuration;
 import org.candlepin.config.ConfigProperties;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.util.CrlFileUtil;
 
 import com.google.inject.Inject;
@@ -38,6 +39,7 @@ import java.io.IOException;
 public class CertificateRevocationListTask extends KingpinJob {
 
     public static final String DEFAULT_SCHEDULE = "0 0 12 * * ?";
+    public static final JobType TYPE = JobType.CRON;
 
     private Configuration config;
     private CrlFileUtil crlFileUtil;
@@ -72,5 +74,10 @@ public class CertificateRevocationListTask extends KingpinJob {
             log.error("IOException:", e);
             throw new JobExecutionException(e, false);
         }
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

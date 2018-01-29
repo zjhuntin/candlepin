@@ -21,6 +21,7 @@ import org.candlepin.model.OwnerContentCurator;
 import org.candlepin.model.Product;
 import org.candlepin.model.ProductCurator;
 import org.candlepin.model.OwnerProductCurator;
+import org.candlepin.pinsetter.core.JobType;
 
 import com.google.inject.Inject;
 import com.google.inject.persist.Transactional;
@@ -33,8 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.persistence.LockModeType;
 
-
-
 /**
  * The OrphanCleanupJob searches for orphaned entities (products and content and the time of
  * writing) and removes them.
@@ -44,6 +43,7 @@ public class OrphanCleanupJob extends KingpinJob {
 
     // Every Sunday at 3:00am
     public static final String DEFAULT_SCHEDULE = "0 0 3 ? * 1";
+    public static final JobType TYPE = JobType.CRON;
 
     private ContentCurator contentCurator;
     private OwnerContentCurator ownerContentCurator;
@@ -91,5 +91,10 @@ public class OrphanCleanupJob extends KingpinJob {
 
         this.productCurator.flush();
         log.debug("{} orphaned product entities deleted", count);
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

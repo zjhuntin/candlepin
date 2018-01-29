@@ -19,6 +19,7 @@ import org.candlepin.model.ImportRecord;
 import org.candlepin.model.ImportRecordCurator;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
+import org.candlepin.pinsetter.core.JobType;
 
 import com.google.inject.Inject;
 
@@ -34,8 +35,9 @@ import java.util.List;
  * DEFAULT_KEEP variable.
  */
 public class ImportRecordJob extends KingpinJob {
-
+    public static final JobType TYPE = JobType.CRON;
     public static final String DEFAULT_SCHEDULE = "0 0 12 * * ?";
+
     private static Logger log = LoggerFactory.getLogger(ImportRecordJob.class);
 
     // TODO:  Pull this in from the config?
@@ -67,4 +69,8 @@ public class ImportRecordJob extends KingpinJob {
         }
     }
 
+    @Override
+    public JobType getJobType() {
+        return TYPE;
+    }
 }

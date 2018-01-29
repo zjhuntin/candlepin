@@ -15,6 +15,7 @@
 package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.controller.PoolManager;
+import org.candlepin.pinsetter.core.JobType;
 
 import com.google.inject.Inject;
 
@@ -35,6 +36,7 @@ public class ExpiredPoolsJob extends KingpinJob {
 
     // Every hour:
     public static final String DEFAULT_SCHEDULE = "0 0 0/1 * * ?";
+    public static final JobType TYPE = JobType.CRON;
 
     private PoolManager poolManager;
 
@@ -47,5 +49,10 @@ public class ExpiredPoolsJob extends KingpinJob {
 
     public void toExecute(JobExecutionContext ctx) throws JobExecutionException {
         poolManager.cleanupExpiredPools();
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

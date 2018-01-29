@@ -17,6 +17,7 @@ package org.candlepin.pinsetter.tasks;
 import org.candlepin.controller.PoolManager;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
+import org.candlepin.pinsetter.core.JobType;
 
 import com.google.inject.Inject;
 
@@ -27,7 +28,7 @@ import org.quartz.JobExecutionException;
  * The Class RegenEntitlementCertsJob.
  */
 public class RegenProductEntitlementCertsJob extends KingpinJob {
-
+    public static final JobType TYPE = JobType.ASYNC;
     public static final String PROD_ID = "product_id";
     public static final String LAZY_REGEN = "lazy_regen";
 
@@ -50,5 +51,10 @@ public class RegenProductEntitlementCertsJob extends KingpinJob {
         for (Owner owner : this.ownerCurator.listAll().list()) {
             this.poolManager.regenerateCertificatesOf(owner, productId, lazy);
         }
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

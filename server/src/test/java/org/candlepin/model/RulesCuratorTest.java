@@ -91,6 +91,7 @@ public class RulesCuratorTest extends DatabaseTestFixture {
     public void uploadMultipleRules() {
         Rules rules = new Rules("// Version: 5.1000\n// rules1 ");
         rulesCurator.update(rules);
+        rulesCurator.flush();
         Rules rules2 = new Rules("// Version: 5.1001\n// rules2 ");
         rulesCurator.update(rules2);
         Rules updateRules = rulesCurator.getRules();

@@ -16,6 +16,7 @@ package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.controller.PoolManager;
 import org.candlepin.model.Environment;
+import org.candlepin.pinsetter.core.JobType;
 
 import com.google.inject.Inject;
 
@@ -31,6 +32,7 @@ import java.util.Set;
  * promotion/demotion of the given content sets.
  */
 public class RegenEnvEntitlementCertsJob extends KingpinJob {
+    public static final JobType TYPE = JobType.ASYNC;
 
     public static final String ENV = "env_id";
     public static final String CONTENT = "content_ids";
@@ -52,5 +54,10 @@ public class RegenEnvEntitlementCertsJob extends KingpinJob {
         Boolean lazy = arg0.getMergedJobDataMap().getBoolean(LAZY_REGEN);
 
         this.poolManager.regenerateCertificatesOf(env, contentIds, lazy);
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

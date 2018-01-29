@@ -15,6 +15,7 @@
 package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.controller.Entitler;
+import org.candlepin.pinsetter.core.JobType;
 
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -30,6 +31,7 @@ import javax.inject.Inject;
 public class UnmappedGuestEntitlementCleanerJob extends KingpinJob {
     // Run at 3 AM and every 12 hours afterwards
     public static final String DEFAULT_SCHEDULE = "0 0 3/12 * * ?";
+    public static final JobType TYPE = JobType.CRON;
 
     private static final Logger log = LoggerFactory.getLogger(UnmappedGuestEntitlementCleanerJob.class);
 
@@ -51,5 +53,10 @@ public class UnmappedGuestEntitlementCleanerJob extends KingpinJob {
         else {
             log.debug("No unmapped guest entitlements need reaping.");
         }
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

@@ -30,7 +30,7 @@ public class PropertyUtilTest {
     @Test
     public void testStaticPropertyClassName() {
         try {
-            String v = PropertyUtil.getStaticPropertyAsString(
+            String v = PropertyUtil.<String>getStaticProperty(
                 getClass().getName(), "FOO");
             assertNotNull(v);
             assertEquals("foobar", v);
@@ -46,7 +46,7 @@ public class PropertyUtilTest {
     @Test
     public void testStaticProperty() {
         try {
-            String v = PropertyUtil.getStaticPropertyAsString(getClass(), "FOO");
+            String v = PropertyUtil.<String>getStaticProperty(getClass(), "FOO");
             assertNotNull(v);
             assertEquals("foobar", v);
         }
@@ -58,7 +58,7 @@ public class PropertyUtilTest {
     @Test
     public void testStaticPropertyNonExistent() {
         try {
-            PropertyUtil.getStaticPropertyAsString(getClass(), "BAR");
+            PropertyUtil.<String>getStaticProperty(getClass(), "BAR");
             fail("BAR should've thrown exception");
         }
         catch (NoSuchFieldException e) {
@@ -69,7 +69,7 @@ public class PropertyUtilTest {
     @Test
     public void testStaticPropertyNull() {
         try {
-            PropertyUtil.getStaticPropertyAsString((Class) null, "FOO");
+            PropertyUtil.<String>getStaticProperty((Class) null, "FOO");
             fail("Should've thrown NPE");
         }
         catch (NullPointerException npe) {
@@ -80,7 +80,7 @@ public class PropertyUtilTest {
         }
 
         try {
-            PropertyUtil.getStaticPropertyAsString(getClass(), null);
+            PropertyUtil.<String>getStaticProperty(getClass(), null);
             fail("Should've thrown NPE");
         }
         catch (NullPointerException npe) {
@@ -92,14 +92,11 @@ public class PropertyUtilTest {
     }
 
     @Test
-    public void testStaticPropertyConversion() {
+    public void testStaticPropertyInteger() {
         try {
-            String v = PropertyUtil.getStaticPropertyAsString(getClass(), "TRYME");
+            Integer v = PropertyUtil.<Integer>getStaticProperty(getClass(), "TRYME");
             assertNotNull(v);
-            assertEquals("10", v);
-
-            v = PropertyUtil.getStaticPropertyAsString(getClass(), "NULL");
-            assertNull(v);
+            assertEquals(new Integer(10), v);
         }
         catch (NoSuchFieldException e) {
             fail("TRYME should've been found");

@@ -14,6 +14,7 @@
  */
 package org.candlepin.pinsetter.core.model;
 
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.util.Util;
 
 /** POJO class to hold details of a job */
@@ -21,14 +22,16 @@ public class JobEntry {
     private String classname;
     private String schedule;
     private String jobname;
+    private JobType type;
 
-    public JobEntry(String cname, String sched) {
-        classname = cname;
-        schedule = sched;
-        jobname = genName(classname);
+    public JobEntry(String className, String schedule, JobType type) {
+        this.classname = className;
+        this.schedule = schedule;
+        this.type = type;
+        jobname = generateName(classname);
     }
 
-    private String genName(String cname) {
+    private String generateName(String cname) {
         return Util.getClassName(cname) + "-" + Util.generateUUID();
     }
 
@@ -42,5 +45,9 @@ public class JobEntry {
 
     public String getJobName() {
         return jobname;
+    }
+
+    public String getGroup() {
+        return type.getGroupName();
     }
 }

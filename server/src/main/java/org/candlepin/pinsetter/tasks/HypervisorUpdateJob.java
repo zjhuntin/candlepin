@@ -29,6 +29,7 @@ import org.candlepin.model.JobCurator;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
 import org.candlepin.model.VirtConsumerMap;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.resource.ConsumerResource;
 import org.candlepin.resource.dto.HypervisorUpdateResult;
@@ -79,6 +80,8 @@ import javax.inject.Provider;
 public class HypervisorUpdateJob extends KingpinJob {
 
     private static Logger log = LoggerFactory.getLogger(HypervisorUpdateJob.class);
+    public static final JobType TYPE = JobType.ASYNC;
+
     private OwnerCurator ownerCurator;
     private ConsumerCurator consumerCurator;
     private ConsumerResource consumerResource;
@@ -420,5 +423,10 @@ public class HypervisorUpdateJob extends KingpinJob {
         consumerCurator.updateLastCheckin(consumer, now);
         consumer.setLastCheckin(now);
         return consumer;
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

@@ -21,6 +21,7 @@ import org.candlepin.common.config.Configuration;
 import org.candlepin.config.ConfigProperties;
 import org.candlepin.guice.CandlepinRequestScope;
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.PinsetterJobListener;
 import org.candlepin.pinsetter.core.RetryJobException;
 import org.candlepin.pinsetter.core.model.JobStatus;
@@ -241,4 +242,6 @@ public abstract class KingpinJob implements Job {
     protected boolean logExecutionTime() {
         return true;
     }
+
+    public abstract JobType getJobType();
 }

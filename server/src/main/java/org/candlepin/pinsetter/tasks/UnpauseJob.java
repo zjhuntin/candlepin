@@ -15,6 +15,7 @@
 package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.PinsetterKernel;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.core.model.JobStatus.JobState;
@@ -40,6 +41,7 @@ import java.util.List;
 @DisallowConcurrentExecution
 public class UnpauseJob extends KingpinJob {
     private static Logger log = LoggerFactory.getLogger(UnpauseJob.class);
+    public static final JobType TYPE = JobType.UTIL;
     public static final String DEFAULT_SCHEDULE = "0/5 * * * * ?"; //every five seconds
     private JobCurator jobCurator;
     private PinsetterKernel pinsetterKernel;
@@ -90,5 +92,10 @@ public class UnpauseJob extends KingpinJob {
     @Override
     protected boolean logExecutionTime() {
         return false;
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

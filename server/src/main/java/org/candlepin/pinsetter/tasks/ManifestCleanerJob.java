@@ -22,6 +22,7 @@ import org.apache.commons.io.FileUtils;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.config.ConfigProperties;
 import org.candlepin.controller.ManifestManager;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.util.Util;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
@@ -46,6 +47,7 @@ import com.google.inject.Inject;
 */
 public class ManifestCleanerJob extends KingpinJob {
 
+    public static final JobType TYPE = JobType.CRON;
     public static final String DEFAULT_SCHEDULE = "0 0 12 * * ?";
     private static Logger log = LoggerFactory.getLogger(ManifestCleanerJob.class);
 
@@ -103,5 +105,10 @@ public class ManifestCleanerJob extends KingpinJob {
     private void manifestServiceCleanup(int maxAgeInMinutes) {
         int deleted = manifestManager.cleanup(maxAgeInMinutes);
         log.info("Deleted from file service: {}", deleted);
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

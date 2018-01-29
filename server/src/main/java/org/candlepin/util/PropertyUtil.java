@@ -20,8 +20,10 @@ import java.lang.reflect.Modifier;
 
 /**
  * PropertyUtil
+ *
+ * @param <T> type of property to get
  */
-public class PropertyUtil {
+public class PropertyUtil<T> {
 
     private PropertyUtil() {
     }
@@ -35,14 +37,14 @@ public class PropertyUtil {
      * as a String. Returns null if the field is not static.
      * @throws NoSuchFieldException thrown if field is not found.
      */
-    public static String getStaticPropertyAsString(Class clazz, String field)
+    public static <T> T getStaticProperty(Class clazz, String field)
         throws NoSuchFieldException {
 
-        String value = null;
+        T value = null;
         try {
             Field f = clazz.getDeclaredField(field);
             if (Modifier.isStatic(f.getModifiers()) && f.get(clazz) != null) {
-                value = f.get(clazz).toString();
+                value = (T) f.get(clazz);
             }
         }
         catch (SecurityException se) {
@@ -64,14 +66,14 @@ public class PropertyUtil {
      * @param cname class name to interrogate.
      * @param field name of field.
      * @return the value of the static property named field of the given Class
-     * as a String. Returns null if the field is not static.
+     * Returns null if the field is not static.
      * @throws NoSuchFieldException thrown if field is not found.
      * @throws ClassNotFoundException thrown if the class cname is not found.
      */
-    public static String getStaticPropertyAsString(String cname, String field)
+    public static <T> T getStaticProperty(String cname, String field)
         throws NoSuchFieldException, ClassNotFoundException {
 
         Class clazz = Class.forName(cname);
-        return PropertyUtil.getStaticPropertyAsString(clazz, field);
+        return PropertyUtil.getStaticProperty(clazz, field);
     }
 }

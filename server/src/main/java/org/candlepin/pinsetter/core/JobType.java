@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2009 - 2012 Red Hat, Inc.
+ * Copyright (c) 2009 - 2018 Red Hat, Inc.
  *
  * This software is licensed to you under the GNU General Public License,
  * version 2 (GPLv2). There is NO WARRANTY for this software, express or
@@ -14,31 +14,19 @@
  */
 package org.candlepin.pinsetter.core;
 
-import org.candlepin.pinsetter.tasks.KingpinJob;
+/** Enum describing the category of a job */
+public enum JobType {
+    CRON("cron group"),
+    ASYNC("async group"),
+    UTIL("util group");
 
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
+    private final String groupName;
 
-/**
- * TestJob
- * @version $Rev$
- */
-public class TestJob extends KingpinJob {
-
-    private boolean ran = false;
-
-    @Override
-    public void toExecute(JobExecutionContext context)
-        throws JobExecutionException {
-        ran = true;
+    JobType(String groupName) {
+        this.groupName = groupName;
     }
 
-    @Override
-    public JobType getJobType() {
-        return JobType.UTIL;
-    }
-
-    public boolean verify() {
-        return ran;
+    public String getGroupName() {
+        return groupName;
     }
 }

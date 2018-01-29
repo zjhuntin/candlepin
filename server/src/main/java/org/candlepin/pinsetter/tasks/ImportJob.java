@@ -24,6 +24,7 @@ import org.candlepin.controller.ManifestManager;
 import org.candlepin.model.ImportRecord;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.sync.ConflictOverrides;
 import org.candlepin.sync.ImporterException;
@@ -46,6 +47,7 @@ import com.google.inject.Inject;
  */
 public class ImportJob extends UniqueByEntityJob {
 
+    public static final JobType TYPE = JobType.ASYNC;
     protected static final String STORED_FILE_ID = "stored_manifest_file_id";
     protected static final String CONFLICT_OVERRIDES = "conflict_overrides";
     protected static final String UPLOADED_FILE_NAME = "uploaded_file_name";
@@ -134,5 +136,10 @@ public class ImportJob extends UniqueByEntityJob {
             .usingJobData(map)
             .build();
         return detail;
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

@@ -23,6 +23,7 @@ import static org.quartz.JobBuilder.newJob;
 
 import org.candlepin.model.JobCurator;
 import org.candlepin.pinsetter.core.JobRealm;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 
 import org.junit.Before;
@@ -82,7 +83,7 @@ public class CancelJobJobTest extends BaseJobTest{
         jobKeys.add(new JobKey("G1"));
         jobKeys.add(new JobKey("G2"));
 
-        when(jobRealm.getJobKeys(JobRealm.SINGLE_JOB_GROUP)).thenReturn(jobKeys);
+        when(jobRealm.getJobKeys(JobType.ASYNC.getGroupName())).thenReturn(jobKeys);
         when(j.findCanceledJobs(any(Collection.class))).thenReturn(jl);
 
         cancelJobJob.execute(ctx);

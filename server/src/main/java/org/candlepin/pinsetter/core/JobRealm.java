@@ -34,9 +34,6 @@ import java.util.Set;
  * curator
  */
 public interface JobRealm {
-    String CRON_GROUP = "cron group";
-    String SINGLE_JOB_GROUP = "async group";
-
     void start() throws SchedulerException;
     void shutdown() throws SchedulerException;
     void pause() throws SchedulerException;

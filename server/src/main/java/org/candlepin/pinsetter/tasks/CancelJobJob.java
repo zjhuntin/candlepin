@@ -16,6 +16,7 @@ package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.model.JobCurator;
 import org.candlepin.pinsetter.core.JobRealm;
+import org.candlepin.pinsetter.core.JobType;
 
 import com.google.inject.Inject;
 
@@ -40,6 +41,7 @@ public class CancelJobJob extends KingpinJob {
 
     private static Logger log = LoggerFactory.getLogger(CancelJobJob.class);
     public static final String DEFAULT_SCHEDULE = "0/5 * * * * ?"; //every five seconds
+    public static final JobType TYPE = JobType.UTIL;
     private JobCurator jobCurator;
     private JobRealm jobRealm;
 
@@ -52,7 +54,7 @@ public class CancelJobJob extends KingpinJob {
     @Override
     public void toExecute(JobExecutionContext ctx) throws JobExecutionException {
         try {
-            Set<JobKey> keys = jobRealm.getJobKeys(JobRealm.SINGLE_JOB_GROUP);
+            Set<JobKey> keys = jobRealm.getJobKeys(JobType.ASYNC.getGroupName());
             Set<String> statusIds = new HashSet<String>();
 
             for (JobKey key : keys) {
@@ -69,5 +71,10 @@ public class CancelJobJob extends KingpinJob {
     @Override
     protected boolean logExecutionTime() {
         return false;
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

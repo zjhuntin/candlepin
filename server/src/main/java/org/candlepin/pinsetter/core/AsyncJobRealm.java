@@ -63,7 +63,7 @@ public class AsyncJobRealm extends AbstractJobRealm {
 
     @Override
     public List<String> getRealmGroups() {
-        String[] groups = new String[] {SINGLE_JOB_GROUP};
+        String[] groups = new String[] {JobType.ASYNC.getGroupName()};
         return Arrays.asList(groups);
     }
 

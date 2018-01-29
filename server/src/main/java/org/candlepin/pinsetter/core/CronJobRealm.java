@@ -83,7 +83,8 @@ public class CronJobRealm extends AbstractJobRealm {
 
     @Override
     public List<String> getRealmGroups() {
-        String[] groups = new String[] {CRON_GROUP, SINGLE_JOB_GROUP};
+        String[] groups = new String[] {JobType.CRON.getGroupName(), JobType.ASYNC.getGroupName(),
+            JobType.UTIL.getGroupName()};
         return Arrays.asList(groups);
     }
 
@@ -118,7 +119,7 @@ public class CronJobRealm extends AbstractJobRealm {
     }
 
     private void purgeDeprecatedJobs() throws SchedulerException {
-        Set<JobKey> jobKeys = getJobKeys(CRON_GROUP);
+        Set<JobKey> jobKeys = getJobKeys(JobType.CRON.getGroupName());
         /*
         * purge jobs that have been deleted from this version of Candlepin.
         * This is necessary as we might not even have the Class definition
@@ -143,7 +144,7 @@ public class CronJobRealm extends AbstractJobRealm {
             for (JobEntry jobentry : pendingJobs) {
                 //Trigger cron jobs with higher priority than async ( default 5 )
                 Trigger trigger = TriggerBuilder.newTrigger()
-                    .withIdentity(jobentry.getJobName(), CRON_GROUP)
+                    .withIdentity(jobentry.getJobName(), jobentry.getGroup())
                     .withSchedule(CronScheduleBuilder.cronSchedule(jobentry.getSchedule())
                     .withMisfireHandlingInstructionDoNothing())
                     .withPriority(7)
@@ -154,11 +155,11 @@ public class CronJobRealm extends AbstractJobRealm {
                 map.put(PinsetterJobListener.PRINCIPAL_KEY, new SystemPrincipal());
 
                 JobDetail detail = JobBuilder.newJob(jobClass)
-                    .withIdentity(jobentry.getJobName(), CRON_GROUP)
+                    .withIdentity(jobentry.getJobName(), jobentry.getGroup())
                     .usingJobData(map)
                     .build();
 
-                scheduleJob(detail, CRON_GROUP, trigger);
+                scheduleJob(detail, jobentry.getGroup(), trigger);
             }
         }
         catch (Throwable t) {

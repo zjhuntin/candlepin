@@ -22,6 +22,7 @@ import org.candlepin.controller.Refresher;
 import org.candlepin.model.OwnerProductCurator;
 import org.candlepin.model.Product;
 import org.candlepin.model.ProductCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.service.OwnerServiceAdapter;
 import org.candlepin.service.SubscriptionServiceAdapter;
@@ -41,6 +42,7 @@ import org.quartz.JobExecutionException;
  * RefreshPoolsForProductJob
  */
 public class RefreshPoolsForProductJob extends KingpinJob {
+    public static final JobType TYPE = JobType.ASYNC;
 
     private OwnerProductCurator ownerProductCurator;
     private PoolManager poolManager;
@@ -103,5 +105,10 @@ public class RefreshPoolsForProductJob extends KingpinJob {
             .build();
 
         return detail;
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

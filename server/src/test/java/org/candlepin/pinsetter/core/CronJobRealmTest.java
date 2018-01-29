@@ -99,6 +99,7 @@ public class CronJobRealmTest {
         cronJobRealm.start();
         verify(scheduler).start();
         verify(jobCurator).cancelOrphanedJobs(eq(Collections.<String>emptyList()));
+        verify(scheduler).setJobFactory(eq(jobFactory));
     }
 
     @Test
@@ -155,7 +156,7 @@ public class CronJobRealmTest {
 
     @Test
     public void testScheduleJobs() throws Exception {
-        JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "*/1 * * * * ?");
+        JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "*/1 * * * * ?", JobType.CRON);
         List<JobEntry> entries = new ArrayList<JobEntry>();
         entries.add(jobEntry);
         cronJobRealm.scheduleJobs(entries);
@@ -168,7 +169,7 @@ public class CronJobRealmTest {
 
     @Test(expected = SchedulerException.class)
     public void handleParseException() throws Exception {
-        JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "BARF");
+        JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "BARF", JobType.CRON);
         List<JobEntry> entries = new ArrayList<JobEntry>();
         entries.add(jobEntry);
         cronJobRealm.scheduleJobs(entries);

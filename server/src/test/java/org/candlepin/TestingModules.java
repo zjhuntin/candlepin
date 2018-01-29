@@ -46,6 +46,7 @@ import org.candlepin.guice.ValidationListenerProvider;
 import org.candlepin.model.CPRestrictions;
 import org.candlepin.model.Rules;
 import org.candlepin.model.RulesCurator;
+import org.candlepin.pinsetter.core.AsyncJobRealm;
 import org.candlepin.pinsetter.core.CronJobRealm;
 import org.candlepin.pinsetter.core.GuiceJobFactory;
 import org.candlepin.pinsetter.core.JobRealm;
@@ -296,7 +297,8 @@ public class TestingModules {
                 DefaultContentAccessCertServiceAdapter.class);
             bind(ScriptEngineProvider.class);
 
-            bind(JobRealm.class).annotatedWith(Names.named("cronJobRealm")).to(CronJobRealm.class);
+            bind(CronJobRealm.class);
+            bind(AsyncJobRealm.class);
             bind(JobFactory.class).to(GuiceJobFactory.class);
             bind(JobListener.class).to(PinsetterJobListener.class);
             bind(UserServiceAdapter.class).to(DefaultUserServiceAdapter.class);

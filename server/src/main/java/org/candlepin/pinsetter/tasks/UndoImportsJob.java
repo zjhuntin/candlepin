@@ -28,6 +28,7 @@ import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
 import org.candlepin.model.Pool;
 import org.candlepin.model.UpstreamConsumer;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.PinsetterJobListener;
 import org.candlepin.pinsetter.core.RetryJobException;
 import org.candlepin.pinsetter.core.model.JobStatus;
@@ -63,6 +64,7 @@ public class UndoImportsJob extends UniqueByEntityJob {
 
     private static Logger log = LoggerFactory.getLogger(UndoImportsJob.class);
 
+    public static final JobType TYPE = JobType.ASYNC;
     public static final String LAZY_REGEN = "lazy_regen";
     public static final String OWNER_KEY = "owner_key";
     public static final String JOB_NAME_PREFIX = "undo_imports_";
@@ -73,8 +75,6 @@ public class UndoImportsJob extends UniqueByEntityJob {
     protected SubscriptionServiceAdapter subAdapter;
     protected ExporterMetadataCurator exportCurator;
     protected ImportRecordCurator importRecordCurator;
-
-
 
     @Inject
     public UndoImportsJob(I18n i18n, OwnerCurator ownerCurator, PoolManager poolManager,
@@ -230,4 +230,8 @@ public class UndoImportsJob extends UniqueByEntityJob {
         return detail;
     }
 
+    @Override
+    public JobType getJobType() {
+        return TYPE;
+    }
 }

@@ -15,6 +15,7 @@
 package org.candlepin.pinsetter.tasks;
 
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.util.Util;
 
 import com.google.inject.Inject;
@@ -32,6 +33,7 @@ import java.util.Date;
  */
 public class JobCleaner extends KingpinJob {
 
+    public static final JobType TYPE = JobType.UTIL;
     private static Logger log = LoggerFactory.getLogger(JobCleaner.class);
 
     private final int MAX_JOB_AGE_IN_DAYS = 4;
@@ -59,4 +61,8 @@ public class JobCleaner extends KingpinJob {
             oldCompletedJobs, asOf4DaysAgo, MAX_JOB_AGE_IN_DAYS);
     }
 
+    @Override
+    public JobType getJobType() {
+        return TYPE;
+    }
 }

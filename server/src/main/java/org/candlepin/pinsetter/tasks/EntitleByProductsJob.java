@@ -21,6 +21,7 @@ import org.candlepin.controller.Entitler;
 import org.candlepin.model.Consumer;
 import org.candlepin.model.ConsumerCurator;
 import org.candlepin.model.Entitlement;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.util.Util;
 
@@ -44,6 +45,7 @@ import java.util.List;
 public class EntitleByProductsJob extends KingpinJob {
 
     private static Logger log = LoggerFactory.getLogger(EntitleByProductsJob.class);
+    public static final JobType TYPE = JobType.ASYNC;
     protected Entitler entitler;
     protected ConsumerCurator consumerCurator;
 
@@ -92,5 +94,10 @@ public class EntitleByProductsJob extends KingpinJob {
             .usingJobData(map)
             .build();
         return detail;
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }

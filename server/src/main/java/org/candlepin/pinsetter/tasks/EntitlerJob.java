@@ -28,6 +28,7 @@ import org.candlepin.model.PoolCurator;
 import org.candlepin.model.Pool;
 import org.candlepin.model.dto.PoolIdAndErrors;
 import org.candlepin.model.dto.PoolIdAndQuantity;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.policy.EntitlementRefusedException;
 import org.candlepin.policy.ValidationError;
@@ -59,6 +60,7 @@ import java.util.Map;
  */
 public class EntitlerJob extends KingpinJob {
     private static Logger log = LoggerFactory.getLogger(EntitlerJob.class);
+    public static final JobType TYPE = JobType.ASYNC;
 
     @Inject private static Configuration conf;
 
@@ -173,5 +175,10 @@ public class EntitlerJob extends KingpinJob {
             trigger = null;
         }
         return KingpinJob.scheduleJob(jobCurator, scheduler, detail, trigger);
+    }
+
+    @Override
+    public JobType getJobType() {
+        return TYPE;
     }
 }
