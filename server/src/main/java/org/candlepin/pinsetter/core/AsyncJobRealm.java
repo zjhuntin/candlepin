@@ -16,10 +16,8 @@ package org.candlepin.pinsetter.core;
 
 import org.candlepin.common.config.Configuration;
 import org.candlepin.model.JobCurator;
-import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.quartz.JobExecutionException;
 import org.quartz.JobListener;
 import org.quartz.SchedulerException;
@@ -41,36 +39,25 @@ import javax.inject.Inject;
 public class AsyncJobRealm extends AbstractJobRealm {
     private static final Logger log = LoggerFactory.getLogger(AsyncJobRealm.class);
 
-    private JobListener jobListener;
-    private JobFactory jobFactory;
-    private TriggerListener triggerListener;
-    private StdSchedulerFactory stdSchedulerFactory;
-
     @Inject
     public AsyncJobRealm(Configuration config, JobCurator jobCurator, JobFactory jobFactory, JobListener
         jobListener, TriggerListener triggerListener, StdSchedulerFactory stdSchedulerFactory)
         throws InstantiationException {
         this.config = config;
         this.jobCurator = jobCurator;
-        this.jobFactory = jobFactory;
-        this.jobListener = jobListener;
-        this.triggerListener = triggerListener;
-        this.stdSchedulerFactory = stdSchedulerFactory;
 
-        Properties props = config.subset("async.org.quartz").toProperties();
-        configure(props, stdSchedulerFactory, jobFactory, jobListener, triggerListener);
+        Configuration asyncConf = config.subset("async.org.quartz").strippedSubset("async.");
+        Configuration standardConf = config.subset("org.quartz");
+        Properties mergedConf = new Properties();
+        mergedConf.putAll(standardConf.toProperties());
+        mergedConf.putAll(asyncConf.toProperties());
+        configure(mergedConf, stdSchedulerFactory, jobFactory, jobListener, triggerListener);
     }
 
     @Override
     public List<String> getRealmGroups() {
         String[] groups = new String[] {JobType.ASYNC.getGroupName()};
         return Arrays.asList(groups);
-    }
-
-    @Override
-    public void scheduleJobs(List<JobEntry> entries) throws SchedulerException {
-        // TODO Implement this
-        throw new NotImplementedException("TODO");
     }
 
     public void unpause() throws SchedulerException {

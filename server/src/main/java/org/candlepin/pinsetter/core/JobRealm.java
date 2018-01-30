@@ -49,7 +49,7 @@ public interface JobRealm {
     Trigger getTrigger(TriggerKey triggerKey) throws SchedulerException;
     JobDetail getJobDetail(JobKey jobKey) throws SchedulerException;
 
-    void scheduleJobs(List<JobEntry> entries) throws SchedulerException;
+    void addScheduledJobs(List<JobEntry> entries) throws SchedulerException;
 
 
     // TODO This is just temporary for now!

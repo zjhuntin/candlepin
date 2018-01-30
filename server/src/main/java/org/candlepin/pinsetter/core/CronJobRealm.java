@@ -14,22 +14,14 @@
  */
 package org.candlepin.pinsetter.core;
 
-import org.candlepin.auth.SystemPrincipal;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.model.JobCurator;
-import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 
-import org.quartz.CronScheduleBuilder;
-import org.quartz.JobBuilder;
-import org.quartz.JobDataMap;
-import org.quartz.JobDetail;
 import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
 import org.quartz.JobListener;
 import org.quartz.SchedulerException;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
 import org.quartz.TriggerListener;
 import org.quartz.impl.StdSchedulerFactory;
 import org.quartz.spi.JobFactory;
@@ -54,21 +46,12 @@ public class CronJobRealm extends AbstractJobRealm {
         "ExportCleaner"
     };
 
-    private JobListener jobListener;
-    private JobFactory jobFactory;
-    private TriggerListener triggerListener;
-    private StdSchedulerFactory stdSchedulerFactory;
-
     @Inject
     public CronJobRealm(Configuration config, JobCurator jobCurator, JobFactory jobFactory, JobListener
         jobListener, TriggerListener triggerListener, StdSchedulerFactory stdSchedulerFactory)
         throws InstantiationException {
         this.config = config;
         this.jobCurator = jobCurator;
-        this.jobFactory = jobFactory;
-        this.jobListener = jobListener;
-        this.triggerListener = triggerListener;
-        this.stdSchedulerFactory = stdSchedulerFactory;
 
         Properties props = config.subset("org.quartz").toProperties();
         configure(props, stdSchedulerFactory, jobFactory, jobListener, triggerListener);
@@ -134,37 +117,6 @@ public class CronJobRealm extends AbstractJobRealm {
                     break;
                 }
             }
-        }
-    }
-
-    @Override
-    @SuppressWarnings("checkstyle:indentation")
-    public void scheduleJobs(List<JobEntry> pendingJobs) throws SchedulerException {
-        try {
-            for (JobEntry jobentry : pendingJobs) {
-                //Trigger cron jobs with higher priority than async ( default 5 )
-                Trigger trigger = TriggerBuilder.newTrigger()
-                    .withIdentity(jobentry.getJobName(), jobentry.getGroup())
-                    .withSchedule(CronScheduleBuilder.cronSchedule(jobentry.getSchedule())
-                    .withMisfireHandlingInstructionDoNothing())
-                    .withPriority(7)
-                    .build();
-
-                Class jobClass = this.getClass().getClassLoader().loadClass(jobentry.getClassName());
-                        JobDataMap map = new JobDataMap();
-                map.put(PinsetterJobListener.PRINCIPAL_KEY, new SystemPrincipal());
-
-                JobDetail detail = JobBuilder.newJob(jobClass)
-                    .withIdentity(jobentry.getJobName(), jobentry.getGroup())
-                    .usingJobData(map)
-                    .build();
-
-                scheduleJob(detail, jobentry.getGroup(), trigger);
-            }
-        }
-        catch (Throwable t) {
-            log.error(t.getMessage(), t);
-            throw new SchedulerException(t.getMessage(), t);
         }
     }
 }

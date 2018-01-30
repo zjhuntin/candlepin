@@ -159,7 +159,7 @@ public class CronJobRealmTest {
         JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "*/1 * * * * ?", JobType.CRON);
         List<JobEntry> entries = new ArrayList<JobEntry>();
         entries.add(jobEntry);
-        cronJobRealm.scheduleJobs(entries);
+        cronJobRealm.addScheduledJobs(entries);
         ArgumentCaptor<Trigger> arg = ArgumentCaptor.forClass(Trigger.class);
         verify(jobCurator, atMost(1)).create(any(JobStatus.class));
         verify(scheduler).scheduleJob(any(JobDetail.class), arg.capture());
@@ -172,7 +172,7 @@ public class CronJobRealmTest {
         JobEntry jobEntry = new JobEntry(TestJob.class.getName(), "BARF", JobType.CRON);
         List<JobEntry> entries = new ArrayList<JobEntry>();
         entries.add(jobEntry);
-        cronJobRealm.scheduleJobs(entries);
+        cronJobRealm.addScheduledJobs(entries);
     }
 
     @Test

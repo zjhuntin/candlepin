@@ -15,7 +15,7 @@
 
 package org.candlepin.config;
 
-import static org.candlepin.common.config.ConfigurationPrefixes.JPA_CONFIG_PREFIX;
+import static org.candlepin.common.config.ConfigurationPrefixes.*;
 
 import org.candlepin.pinsetter.tasks.ActiveEntitlementJob;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
@@ -188,24 +188,30 @@ public class ConfigProperties {
 
     // Pinsetter
     public static final String TASKS = "pinsetter.tasks";
+    // More properly this would be "default_cron_tasks but the name is already in use in release products so
+    // we can't really change it.
     public static final String DEFAULT_TASKS = "pinsetter.default_tasks";
+    public static final String DEFAULT_UTIL_TASKS = "pinsetter.default_util_tasks";
     public static final String ENABLE_PINSETTER = "candlepin.pinsetter.enable";
     public static final String PINSETTER_ASYNC_JOB_TIMEOUT = "pinsetter.waiting.timeout.seconds";
     public static final String PINSETTER_MAX_RETRIES = "pinsetter.retries.max";
     public static final int PINSETTER_MAX_RETRIES_DEFAULT = 10;
 
+    public static final String[] UTIL_TASK_LIST = new String[] {
+        CancelJobJob.class.getName(),
+        JobCleaner.class.getName(),
+        SweepBarJob.class.getName(),
+        UnpauseJob.class.getName()
+    };
+
     public static final String[] DEFAULT_TASK_LIST = new String[] {
         ActiveEntitlementJob.class.getName(),
-        CancelJobJob.class.getName(),
         CertificateRevocationListTask.class.getName(),
         ExpiredPoolsJob.class.getName(),
         ImportRecordJob.class.getName(),
-        JobCleaner.class.getName(),
         ManifestCleanerJob.class.getName(),
         OrphanCleanupJob.class.getName(),
-        SweepBarJob.class.getName(),
         UnmappedGuestEntitlementCleanerJob.class.getName(),
-        UnpauseJob.class.getName(),
     };
 
     public static final String MANIFEST_CLEANER_JOB_MAX_AGE_IN_MINUTES =
@@ -362,9 +368,12 @@ public class ConfigProperties {
             this.put("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
             this.put("org.quartz.threadPool.threadCount", "15");
             this.put("org.quartz.threadPool.threadPriority", "5");
-            this.put(DEFAULT_TASKS, StringUtils.join(DEFAULT_TASK_LIST, ","));
+            this.put("async.org.quartz.scheduler.instanceName", "AsyncScheduler");
             this.put(ENTITLER_JOB_THROTTLE, "7");
             this.put(BATCH_BIND_NUMBER_OF_POOLS_LIMIT, "100");
+
+            this.put(DEFAULT_TASKS, StringUtils.join(DEFAULT_TASK_LIST, ","));
+            this.put(DEFAULT_UTIL_TASKS, StringUtils.join(UTIL_TASK_LIST, ","));
 
             // AMQP (Qpid) configuration used by events
             this.put(AMQP_INTEGRATION_ENABLED, String.valueOf(false));

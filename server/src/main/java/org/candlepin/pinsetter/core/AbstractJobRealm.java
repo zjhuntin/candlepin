@@ -16,16 +16,22 @@ package org.candlepin.pinsetter.core;
 
 import static org.quartz.impl.matchers.GroupMatcher.*;
 
+import org.candlepin.auth.SystemPrincipal;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.model.JobCurator;
+import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.core.model.JobStatus;
 
+import org.quartz.CronScheduleBuilder;
+import org.quartz.JobBuilder;
+import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobKey;
 import org.quartz.JobListener;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
 import org.quartz.TriggerKey;
 import org.quartz.TriggerListener;
 import org.quartz.impl.JobDetailImpl;
@@ -195,9 +201,7 @@ public abstract class AbstractJobRealm implements JobRealm {
                 .getMethod("scheduleJob", JobCurator.class, Scheduler.class, JobDetail.class, Trigger.class)
                 .invoke(null, jobCurator, scheduler, detail, trigger));
 
-            if (log.isDebugEnabled()) {
-                log.debug("Scheduled {}", detailImpl.getFullName());
-            }
+            log.debug("Scheduled {}", detailImpl.getFullName());
 
             return status;
         }
@@ -205,6 +209,37 @@ public abstract class AbstractJobRealm implements JobRealm {
             log.error("There was a problem scheduling {}", detail.getKey().getName(), e);
             throw new SchedulerException("There was a problem scheduling " +
                 detail.getKey().getName(), e);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("checkstyle:indentation")
+    public void addScheduledJobs(List<JobEntry> pendingJobs) throws SchedulerException {
+        try {
+            for (JobEntry jobentry : pendingJobs) {
+                //Trigger cron jobs with higher priority than async ( default 5 )
+                Trigger trigger = TriggerBuilder.newTrigger()
+                    .withIdentity(jobentry.getJobName(), jobentry.getGroup())
+                    .withSchedule(CronScheduleBuilder.cronSchedule(jobentry.getSchedule())
+                    .withMisfireHandlingInstructionDoNothing())
+                    .withPriority(7)
+                    .build();
+
+                Class jobClass = this.getClass().getClassLoader().loadClass(jobentry.getClassName());
+                        JobDataMap map = new JobDataMap();
+                map.put(PinsetterJobListener.PRINCIPAL_KEY, new SystemPrincipal());
+
+                JobDetail detail = JobBuilder.newJob(jobClass)
+                    .withIdentity(jobentry.getJobName(), jobentry.getGroup())
+                    .usingJobData(map)
+                    .build();
+
+                scheduleJob(detail, jobentry.getGroup(), trigger);
+            }
+        }
+        catch (Throwable t) {
+            log.error(t.getMessage(), t);
+            throw new SchedulerException(t.getMessage(), t);
         }
     }
 

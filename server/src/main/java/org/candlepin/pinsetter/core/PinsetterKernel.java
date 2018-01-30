@@ -17,7 +17,6 @@ package org.candlepin.pinsetter.core;
 import static org.quartz.CronScheduleBuilder.*;
 import static org.quartz.JobBuilder.*;
 import static org.quartz.TriggerBuilder.*;
-import static org.quartz.TriggerKey.*;
 
 import org.candlepin.auth.SystemPrincipal;
 import org.candlepin.common.config.Configuration;
@@ -96,8 +95,10 @@ public class PinsetterKernel implements ModeChangeListener {
     public void startup() throws PinsetterException {
         try {
             cronJobRealm.start();
+            asyncJobRealm.start();
             modeManager.registerModeChangeListener(this);
             configure(cronJobRealm);
+            configure(asyncJobRealm);
         }
         catch (SchedulerException e) {
             throw new PinsetterException(e.getMessage(), e);
@@ -115,26 +116,16 @@ public class PinsetterKernel implements ModeChangeListener {
         }
     }
 
-    /**
-     * Configures the system.
-     * @param conf Configuration object containing config values.
-     */
-    private void configure(CronJobRealm cronRealm) {
-        if (log.isDebugEnabled()) {
-            log.debug("Scheduling tasks");
-        }
+    private void configure(AsyncJobRealm asyncRealm) {
+        log.debug("Scheduling async utility tasks");
 
-        List<JobEntry> pendingJobs = new ArrayList<JobEntry>();
+        List<JobEntry> utilJobs;
         // use a set to remove potential duplicate jobs from config
         Set<String> jobFQNames = new HashSet<String>();
 
         try {
             if (config.getBoolean(ConfigProperties.ENABLE_PINSETTER, true)) {
-                // get the default tasks first
-                addToList(jobFQNames, ConfigProperties.DEFAULT_TASKS);
-
-                // get other tasks
-                addToList(jobFQNames, ConfigProperties.TASKS);
+                addToList(jobFQNames, ConfigProperties.DEFAULT_UTIL_TASKS);
             }
             else if (!isClustered()) {
                 // Since pinsetter is disabled, we only want to allow
@@ -147,24 +138,67 @@ public class PinsetterKernel implements ModeChangeListener {
                 log.warn("No tasks to schedule");
                 return;
             }
-            log.debug("Jobs implemented:" + jobFQNames);
-
-            List<JobEntry> entries = new ArrayList<JobEntry>();
-            for (String fqName : jobFQNames) {
-                entries.add(new JobEntry(fqName, getSchedule(fqName), getJobType(fqName)));
-            }
-
-            pendingJobs = populate(entries, cronRealm);
-            cronRealm.scheduleJobs(pendingJobs);
+            log.debug("Async util jobs implemented: {}", jobFQNames);
+            utilJobs = populate(jobFQNames, asyncRealm, JobType.UTIL);
+            asyncRealm.addScheduledJobs(utilJobs);
         }
         catch (SchedulerException e) {
             throw new RuntimeException(e.getLocalizedMessage(), e);
         }
     }
 
-    private List<JobEntry> populate(List<JobEntry> entries, CronJobRealm cronRealm) throws
+    /**
+     * Configures the system.
+     * @param conf Configuration object containing config values.
+     */
+    private void configure(CronJobRealm cronRealm) {
+        log.debug("Scheduling cron tasks");
+
+        List<JobEntry> pendingJobs;
+        // use a set to remove potential duplicate jobs from config
+        Set<String> jobFQNames = new HashSet<String>();
+
+        try {
+            if (config.getBoolean(ConfigProperties.ENABLE_PINSETTER, true)) {
+                // get the default tasks first
+                addToList(jobFQNames, ConfigProperties.DEFAULT_TASKS);
+                addToList(jobFQNames, ConfigProperties.DEFAULT_UTIL_TASKS);
+
+                // get other tasks
+                addToList(jobFQNames, ConfigProperties.TASKS);
+            }
+            else if (!isClustered()) {
+                // Since pinsetter is disabled, we only want to allow CancelJob for this scheduler
+                jobFQNames.add(CancelJobJob.class.getName());
+            }
+
+            // Bail if there is nothing to configure
+            if (jobFQNames.size() == 0) {
+                log.warn("No tasks to schedule");
+                return;
+            }
+            log.debug("Jobs implemented: {}", jobFQNames);
+            pendingJobs = populate(jobFQNames, cronRealm, JobType.CRON, JobType.UTIL);
+            cronRealm.addScheduledJobs(pendingJobs);
+        }
+        catch (SchedulerException e) {
+            throw new RuntimeException(e.getLocalizedMessage(), e);
+        }
+    }
+
+    private List<JobEntry> populate(Set<String> jobFQNames, JobRealm jobRealm, JobType ... jobTypes) throws
         SchedulerException {
-        Set<JobKey> jobKeys = cronRealm.getJobKeys(CRON_GROUP);
+
+        List<JobEntry> entries = new ArrayList<JobEntry>();
+        for (String fqName : jobFQNames) {
+            entries.add(new JobEntry(fqName, getSchedule(fqName), getJobType(fqName)));
+        }
+
+        Set<JobKey> jobKeys = new HashSet<JobKey>();
+        for (JobType jt : jobTypes) {
+            jobKeys.addAll(jobRealm.getJobKeys(jt.getGroupName()));
+        }
+
         List<JobEntry> pendingJobs = new ArrayList<JobEntry>();
         for (JobEntry entry : entries) {
             String jobClassName = entry.getClassName();
@@ -172,25 +206,23 @@ public class PinsetterKernel implements ModeChangeListener {
 
             // Find all existing cron triggers matching this job impl
             List<CronTrigger> existingCronTriggers = new LinkedList<CronTrigger>();
-            if (jobKeys != null) {
-                for (JobKey key : jobKeys) {
-                    JobDetail jd = cronRealm.getJobDetail(key);
-                    if (jd != null &&
-                        jd.getJobClass().getName().equals(jobClassName)) {
-                        CronTrigger trigger = (CronTrigger) cronRealm.getTrigger(
-                            triggerKey(key.getName(), CRON_GROUP));
-                        if (trigger != null) {
-                            existingCronTriggers.add(trigger);
-                        }
-                        else {
-                            log.warn("JobKey {} returned null cron trigger.", key);
-                        }
+            for (JobKey key : jobKeys) {
+                JobDetail jd = jobRealm.getJobDetail(key);
+                if (jd != null && jd.getJobClass().getName().equals(jobClassName)) {
+                    CronTrigger trigger = (CronTrigger) jobRealm.getTrigger(
+                        new TriggerKey(key.getName(), key.getGroup()));
+                    if (trigger != null) {
+                        existingCronTriggers.add(trigger);
+                    }
+                    else {
+                        log.warn("JobKey {} returned null trigger.", key);
                     }
                 }
             }
             String schedule = entry.getSchedule();
             if (schedule != null) {
-                addUniqueJob(pendingJobs, entry, existingCronTriggers, cronRealm);
+                purgeDuplicateJob(entry, existingCronTriggers, jobRealm);
+                pendingJobs.add(entry);
             }
         }
         return pendingJobs;
@@ -236,19 +268,17 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     /**
-     * Adds a unique job, replacing any old ones with different schedules.
+     * Purges old job entries with different schedules.
      */
-    private void addUniqueJob(List<JobEntry> pendingJobs, JobEntry entry,
-        List<CronTrigger> existingCronTriggers, JobRealm cronRealm) throws SchedulerException {
-
+    private void purgeDuplicateJob(JobEntry entry, List<CronTrigger> existingCronTriggers, JobRealm jobRealm)
+        throws SchedulerException {
         // If trigger already exists with same schedule, nothing to do
         if (existingCronTriggers.size() == 1 &&
             existingCronTriggers.get(0).getCronExpression().equals(entry.getSchedule())) {
             return;
         }
 
-        /*
-         * Otherwise, we know there are existing triggers, delete them all and create
+        /* Otherwise, we know there are existing triggers, delete them all and create
          * one with our new schedule. Normally there should only ever be one, but past
          * bugs caused duplicates so we handle this situation by default now.
          *
@@ -260,12 +290,11 @@ public class PinsetterKernel implements ModeChangeListener {
             log.warn("Cleaning up {} obsolete triggers.", existingCronTriggers.size());
         }
         for (CronTrigger t : existingCronTriggers) {
-            boolean result = cronRealm.deleteJob(t.getJobKey());
-            log.warn("{} deletion success?: {}", t.getJobKey(), result);
+            boolean result = jobRealm.deleteJob(t.getJobKey());
+            if (!result) {
+                log.warn("{} deletion failed", t.getJobKey());
+            }
         }
-
-        // Create our new job:
-        pendingJobs.add(entry);
     }
 
     /**
