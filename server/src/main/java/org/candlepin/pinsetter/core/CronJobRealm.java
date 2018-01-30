@@ -41,7 +41,12 @@ import javax.inject.Inject;
 public class CronJobRealm extends AbstractJobRealm {
     private static final Logger log = LoggerFactory.getLogger(CronJobRealm.class);
 
-    public static final String[] DELETED_JOBS = new String[] {
+    protected static final String[] GROUPS = new String[] {
+        JobType.CRON.getGroupName(),
+        JobType.UTIL.getGroupName()
+    };
+
+    protected static final String[] DELETED_JOBS = new String[] {
         "StatisticHistoryTask",
         "ExportCleaner"
     };
@@ -66,9 +71,7 @@ public class CronJobRealm extends AbstractJobRealm {
 
     @Override
     public List<String> getRealmGroups() {
-        String[] groups = new String[] {JobType.CRON.getGroupName(), JobType.ASYNC.getGroupName(),
-            JobType.UTIL.getGroupName()};
-        return Arrays.asList(groups);
+        return Arrays.asList(GROUPS);
     }
 
     protected boolean isClustered() {
@@ -81,16 +84,6 @@ public class CronJobRealm extends AbstractJobRealm {
 
     @Override
     public void unpause() throws SchedulerException {
-        // TODO The CancelJobJob won't need to be run on cron jobs once the separation is complete
-        log.debug("looking for canceled jobs since cron scheduler was paused");
-        CancelJobJob cjj = new CancelJobJob(jobCurator, this);
-        try {
-            //Not sure why we don't want to use a UnitOfWork here
-            cjj.toExecute(null);
-        }
-        catch (JobExecutionException e1) {
-            throw new SchedulerException("Could not clear canceled jobs before starting async scheduler");
-        }
         log.debug("restarting cron scheduler");
         try {
             scheduler.start();

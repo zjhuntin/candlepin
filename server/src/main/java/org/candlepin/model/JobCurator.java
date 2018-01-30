@@ -17,6 +17,7 @@ package org.candlepin.model;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.common.exceptions.NotFoundException;
 import org.candlepin.config.ConfigProperties;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.PinsetterKernel;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.core.model.JobStatus.JobState;
@@ -42,10 +43,8 @@ import java.util.Set;
 
 import javax.persistence.TypedQuery;
 
-
-
 /**
- *
+ * Curator responsible for cp_job
  */
 public class JobCurator extends AbstractHibernateCurator<JobStatus> {
 
@@ -259,7 +258,7 @@ public class JobCurator extends AbstractHibernateCurator<JobStatus> {
 
         Query query = this.currentSession().createQuery(hql)
             .setTimestamp("date", before)
-            .setParameter("async", PinsetterKernel.SINGLE_JOB_GROUP)
+            .setParameter("async", JobType.ASYNC.getGroupName())
             .setInteger("finished", JobState.FINISHED.ordinal())
             .setInteger("failed", JobState.FAILED.ordinal())
             .setInteger("canceled", JobState.CANCELED.ordinal());

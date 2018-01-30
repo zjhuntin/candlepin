@@ -40,7 +40,6 @@ import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.TriggerKey;
-import org.quartz.impl.matchers.GroupMatcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,10 +59,6 @@ import javax.inject.Singleton;
  */
 @Singleton
 public class PinsetterKernel implements ModeChangeListener {
-
-    public static final String CRON_GROUP = "cron group";
-    public static final String SINGLE_JOB_GROUP = "async group";
-
     private static Logger log = LoggerFactory.getLogger(PinsetterKernel.class);
     private Configuration config;
     private ModeManager modeManager;
@@ -97,8 +92,8 @@ public class PinsetterKernel implements ModeChangeListener {
             cronJobRealm.start();
             asyncJobRealm.start();
             modeManager.registerModeChangeListener(this);
-            configure(cronJobRealm);
-            configure(asyncJobRealm);
+            configureCron(cronJobRealm);
+            configureAsync(asyncJobRealm);
         }
         catch (SchedulerException e) {
             throw new PinsetterException(e.getMessage(), e);
@@ -116,10 +111,13 @@ public class PinsetterKernel implements ModeChangeListener {
         }
     }
 
-    private void configure(AsyncJobRealm asyncRealm) {
+    /**
+     * Configures the asynRealm.  Adds utility tasks for example.
+     * @param asyncRealm realm to operate on
+     */
+    private void configureAsync(AsyncJobRealm asyncRealm) {
         log.debug("Scheduling async utility tasks");
 
-        List<JobEntry> utilJobs;
         // use a set to remove potential duplicate jobs from config
         Set<String> jobFQNames = new HashSet<String>();
 
@@ -133,13 +131,13 @@ public class PinsetterKernel implements ModeChangeListener {
                 jobFQNames.add(CancelJobJob.class.getName());
             }
 
-            // Bail if there is nothing to configure
+            // Bail if there is nothing to configureCron
             if (jobFQNames.size() == 0) {
                 log.warn("No tasks to schedule");
                 return;
             }
             log.debug("Async util jobs implemented: {}", jobFQNames);
-            utilJobs = populate(jobFQNames, asyncRealm, JobType.UTIL);
+            List<JobEntry> utilJobs = populate(jobFQNames, asyncRealm, JobType.UTIL);
             asyncRealm.addScheduledJobs(utilJobs);
         }
         catch (SchedulerException e) {
@@ -148,13 +146,12 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     /**
-     * Configures the system.
-     * @param conf Configuration object containing config values.
+     * Configures the system for the cronRealm based on the jobs the config says we should run.
+     * @param cronRealm realm to operate on
      */
-    private void configure(CronJobRealm cronRealm) {
+    private void configureCron(CronJobRealm cronRealm) {
         log.debug("Scheduling cron tasks");
 
-        List<JobEntry> pendingJobs;
         // use a set to remove potential duplicate jobs from config
         Set<String> jobFQNames = new HashSet<String>();
 
@@ -172,13 +169,13 @@ public class PinsetterKernel implements ModeChangeListener {
                 jobFQNames.add(CancelJobJob.class.getName());
             }
 
-            // Bail if there is nothing to configure
+            // Bail if there is nothing to configureCron
             if (jobFQNames.size() == 0) {
                 log.warn("No tasks to schedule");
                 return;
             }
             log.debug("Jobs implemented: {}", jobFQNames);
-            pendingJobs = populate(jobFQNames, cronRealm, JobType.CRON, JobType.UTIL);
+            List<JobEntry> pendingJobs = populate(jobFQNames, cronRealm, JobType.CRON, JobType.UTIL);
             cronRealm.addScheduledJobs(pendingJobs);
         }
         catch (SchedulerException e) {
@@ -186,6 +183,14 @@ public class PinsetterKernel implements ModeChangeListener {
         }
     }
 
+    /**
+     * Populate the job realm with starting jobs
+     * @param jobFQNames name of jobs to add
+     * @param jobRealm job realm to operate on
+     * @param jobTypes job types to consider
+     * @return a list of JobEntry objects ready for scheduling
+     * @throws SchedulerException if something goes awry
+     */
     private List<JobEntry> populate(Set<String> jobFQNames, JobRealm jobRealm, JobType ... jobTypes) throws
         SchedulerException {
 
@@ -195,6 +200,7 @@ public class PinsetterKernel implements ModeChangeListener {
         }
 
         Set<JobKey> jobKeys = new HashSet<JobKey>();
+
         for (JobType jt : jobTypes) {
             jobKeys.addAll(jobRealm.getJobKeys(jt.getGroupName()));
         }
@@ -306,6 +312,7 @@ public class PinsetterKernel implements ModeChangeListener {
         try {
             log.info("shutting down pinsetter kernel");
             cronJobRealm.shutdown();
+            asyncJobRealm.shutdown();
             log.info("pinsetter kernel is shut down");
         }
         catch (SchedulerException e) {
@@ -323,11 +330,11 @@ public class PinsetterKernel implements ModeChangeListener {
      */
     public JobStatus scheduleSingleJob(JobDetail jobDetail) throws PinsetterException {
         Trigger trigger = newTrigger()
-            .withIdentity(jobDetail.getKey().getName() + " trigger", SINGLE_JOB_GROUP)
+            .withIdentity(jobDetail.getKey().getName() + " trigger", JobType.ASYNC.getGroupName())
             .build();
 
         try {
-            return cronJobRealm.scheduleJob(jobDetail, SINGLE_JOB_GROUP, trigger);
+            return asyncJobRealm.scheduleJob(jobDetail, JobType.ASYNC.getGroupName(), trigger);
         }
         catch (SchedulerException e) {
             throw new PinsetterException("Error scheduling job", e);
@@ -340,17 +347,26 @@ public class PinsetterKernel implements ModeChangeListener {
         map.put(PinsetterJobListener.PRINCIPAL_KEY, new SystemPrincipal());
 
         JobDetail detail = newJob(job)
-            .withIdentity(jobName, CRON_GROUP)
+            .withIdentity(jobName, JobType.CRON.getGroupName())
             .usingJobData(map)
             .build();
 
-        return scheduleSingleJob(detail);
+        Trigger trigger = newTrigger()
+            .withIdentity(detail.getKey().getName() + " trigger", JobType.CRON.getGroupName())
+            .build();
+
+        try {
+            return cronJobRealm.scheduleJob(detail, JobType.CRON.getGroupName(), trigger);
+        }
+        catch (SchedulerException e) {
+            throw new PinsetterException("Error scheduling job", e);
+        }
     }
 
     public void addTrigger(JobStatus status) throws SchedulerException {
-        Scheduler scheduler = cronJobRealm.getScheduler();
+        Scheduler scheduler = asyncJobRealm.getScheduler();
         Trigger trigger = newTrigger()
-            .withIdentity(status.getId() + " trigger", SINGLE_JOB_GROUP)
+            .withIdentity(status.getId() + " trigger", JobType.ASYNC.getGroupName())
             .forJob(status.getJobKey())
             .build();
         scheduler.scheduleJob(trigger);
@@ -358,8 +374,8 @@ public class PinsetterKernel implements ModeChangeListener {
 
     public boolean getSchedulerStatus() throws PinsetterException {
         try {
-            // return true when scheduler is running (double negative)
-            return !cronJobRealm.isInStandbyMode();
+            // return true when schedulers are running
+            return !cronJobRealm.isInStandbyMode() && !asyncJobRealm.isInStandbyMode();
         }
         catch (SchedulerException e) {
             throw new PinsetterException("There was a problem gathering scheduler status ", e);
@@ -369,6 +385,7 @@ public class PinsetterKernel implements ModeChangeListener {
     public void pauseScheduler() throws PinsetterException {
         try {
             cronJobRealm.pause();
+            asyncJobRealm.pause();
         }
         catch (SchedulerException e) {
             throw new PinsetterException("There was a problem pausing the scheduler", e);
@@ -378,6 +395,7 @@ public class PinsetterKernel implements ModeChangeListener {
     public void unpauseScheduler() throws PinsetterException {
         try {
             cronJobRealm.unpause();
+            asyncJobRealm.unpause();
         }
         catch (SchedulerException e) {
             throw new PinsetterException("There was a problem unpausing the scheduler", e);
@@ -385,16 +403,14 @@ public class PinsetterKernel implements ModeChangeListener {
     }
 
     public Set<JobKey> getSingleJobKeys() throws SchedulerException {
-        return cronJobRealm.getJobKeys(SINGLE_JOB_GROUP);
+        return asyncJobRealm.getJobKeys(JobType.ASYNC.getGroupName());
     }
 
     public void retriggerCronJob(String taskName, Class<? extends KingpinJob> jobClass) throws
         PinsetterException {
-        Set<TriggerKey> cronTriggerKeys = null;
-        Scheduler scheduler = cronJobRealm.getScheduler();
+        Set<TriggerKey> cronTriggerKeys;
         try {
-            cronTriggerKeys = scheduler.getTriggerKeys(
-                GroupMatcher.triggerGroupEquals(PinsetterKernel.CRON_GROUP));
+            cronTriggerKeys = cronJobRealm.getTriggerKeys(JobType.CRON.getGroupName());
             TriggerKey key = null;
             Iterator<TriggerKey> keysTrigger = cronTriggerKeys.iterator();
             // We should get only key per job. pick the first one and quit the loop
@@ -409,10 +425,10 @@ public class PinsetterKernel implements ModeChangeListener {
                 String schedule = getSchedule(jobClass.getName());
                 if (schedule != null) {
                     Trigger newTrigger = newTrigger()
-                        .withIdentity(newJobName, CRON_GROUP)
+                        .withIdentity(newJobName, JobType.CRON.getGroupName())
                         .withSchedule(cronSchedule(schedule).withMisfireHandlingInstructionDoNothing())
                         .build();
-                    scheduler.rescheduleJob(key, newTrigger);
+                    cronJobRealm.rescheduleJob(key, newTrigger);
                 }
             }
         }

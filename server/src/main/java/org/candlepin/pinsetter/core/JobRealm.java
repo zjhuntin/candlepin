@@ -18,7 +18,6 @@ import org.candlepin.pinsetter.core.model.JobEntry;
 import org.candlepin.pinsetter.core.model.JobStatus;
 
 import org.quartz.JobDetail;
-import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -26,6 +25,7 @@ import org.quartz.Trigger;
 import org.quartz.TriggerKey;
 
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
@@ -47,12 +47,14 @@ public interface JobRealm {
     Set<JobKey> getJobKeys(String group) throws SchedulerException;
 
     Trigger getTrigger(TriggerKey triggerKey) throws SchedulerException;
+    Set<TriggerKey> getAllTriggerKeys() throws SchedulerException;
+    Set<TriggerKey> getTriggerKeys(String keys) throws SchedulerException;
     JobDetail getJobDetail(JobKey jobKey) throws SchedulerException;
 
     void addScheduledJobs(List<JobEntry> entries) throws SchedulerException;
 
-
     // TODO This is just temporary for now!
     Scheduler getScheduler();
-    JobStatus scheduleJob(JobDetail detail, String grpName, Trigger trigger) throws SchedulerException;
+    JobStatus scheduleJob(JobDetail detail, String groupName, Trigger trigger) throws SchedulerException;
+    Date rescheduleJob(TriggerKey key, Trigger newTrigger) throws SchedulerException;
 }

@@ -38,6 +38,10 @@ import javax.inject.Inject;
  */
 public class AsyncJobRealm extends AbstractJobRealm {
     private static final Logger log = LoggerFactory.getLogger(AsyncJobRealm.class);
+    protected static final String[] GROUPS = new String[] {
+        JobType.ASYNC.getGroupName(),
+        JobType.UTIL.getGroupName()
+    };
 
     @Inject
     public AsyncJobRealm(Configuration config, JobCurator jobCurator, JobFactory jobFactory, JobListener
@@ -56,8 +60,7 @@ public class AsyncJobRealm extends AbstractJobRealm {
 
     @Override
     public List<String> getRealmGroups() {
-        String[] groups = new String[] {JobType.ASYNC.getGroupName()};
-        return Arrays.asList(groups);
+        return Arrays.asList(GROUPS);
     }
 
     public void unpause() throws SchedulerException {

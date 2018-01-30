@@ -196,8 +196,8 @@ public class PinsetterKernelTest {
 
     @Test
     public void shutdown() throws Exception {
-        String crongrp = "cron group";
-        String singlegrp = "async group";
+        String crongrp = JobType.CRON.getGroupName();
+        String singlegrp = JobType.ASYNC.getGroupName();
 
         Set<JobKey> cronSet = new HashSet<JobKey>();
         cronSet.add(jobKey("fakejob1", crongrp));
@@ -208,15 +208,17 @@ public class PinsetterKernelTest {
         asyncSet.add(jobKey("fakejob2", singlegrp));
 
         when(sched.getJobKeys(eq(jobGroupEquals(crongrp)))).thenReturn(cronSet);
-        when(sched.getJobKeys(eq(jobGroupEquals(singlegrp)))).thenReturn(asyncSet);
+        when(asyncSched.getJobKeys(eq(jobGroupEquals(singlegrp)))).thenReturn(asyncSet);
         pk.shutdown();
 
-        verify(sched, atMost(1)).standby();
+        verify(sched).standby();
+        verify(asyncSched).standby();
         verify(sched).deleteJob(eq(jobKey("fakejob1", crongrp)));
         verify(sched).deleteJob(eq(jobKey("fakejob2", crongrp)));
-        verify(sched).deleteJob(eq(jobKey("fakejob1", singlegrp)));
-        verify(sched).deleteJob(eq(jobKey("fakejob2", singlegrp)));
+        verify(asyncSched).deleteJob(eq(jobKey("fakejob1", singlegrp)));
+        verify(asyncSched).deleteJob(eq(jobKey("fakejob2", singlegrp)));
         verify(sched, atMost(1)).shutdown();
+        verify(asyncSched, atMost(1)).shutdown();
     }
 
     @Test
@@ -348,7 +350,7 @@ public class PinsetterKernelTest {
         verify(detail).setGroup(eq(singlegrp));
         verify(lm).addJobListenerMatcher(PinsetterJobListener.LISTENER_NAME,
             jobNameEquals(detail.getKey().getName()));
-        verify(sched).scheduleJob(eq(detail), any(Trigger.class));
+        verify(asyncSched).scheduleJob(eq(detail), any(Trigger.class));
     }
 
     @Test
@@ -382,8 +384,9 @@ public class PinsetterKernelTest {
         when(pk.getSingleJobKeys()).thenReturn(mockJK);
 
         pk.unpauseScheduler();
-        verify(cronCurator).findCanceledJobs(any(Set.class));
+        verify(asyncCurator).findCanceledJobs(any(Set.class));
         verify(sched).start();
+        verify(asyncSched).start();
     }
 
     @Test

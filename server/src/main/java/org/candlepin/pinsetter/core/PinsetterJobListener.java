@@ -147,7 +147,7 @@ public class PinsetterJobListener implements JobListener {
 
     private void deleteDetail(JobExecutionContext cx) {
         JobKey key = cx.getJobDetail().getKey();
-        if (key.getGroup().equals(PinsetterKernel.SINGLE_JOB_GROUP)) {
+        if (key.getGroup().equals(JobType.ASYNC.getGroupName())) {
             try {
                 cx.getScheduler().deleteJob(key);
             }

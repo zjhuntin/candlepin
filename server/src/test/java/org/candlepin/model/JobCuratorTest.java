@@ -22,6 +22,7 @@ import org.candlepin.auth.Access;
 import org.candlepin.auth.ConsumerPrincipal;
 import org.candlepin.auth.Principal;
 import org.candlepin.common.exceptions.NotFoundException;
+import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.PinsetterJobListener;
 import org.candlepin.pinsetter.core.PinsetterKernel;
 import org.candlepin.pinsetter.core.model.JobStatus;
@@ -521,7 +522,7 @@ public class JobCuratorTest extends DatabaseTestFixture {
             map.put(JobStatus.OWNER_ID, contextOwner);
             map.put(JobStatus.CORRELATION_ID, "test-csid");
             JobStatus status = new JobStatus(
-                newJob(jobClass).withIdentity(id, PinsetterKernel.SINGLE_JOB_GROUP)
+                newJob(jobClass).withIdentity(id, JobType.ASYNC.getGroupName())
                 .usingJobData(map).build());
             JobExecutionContext context = mock(JobExecutionContext.class);
             when(context.getFireTime()).thenReturn(startDt);

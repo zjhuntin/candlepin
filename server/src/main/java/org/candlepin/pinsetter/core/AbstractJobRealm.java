@@ -43,6 +43,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -190,11 +192,11 @@ public abstract class AbstractJobRealm implements JobRealm {
         }
     }
 
-    public JobStatus scheduleJob(JobDetail detail, String grpName, Trigger trigger)
+    public JobStatus scheduleJob(JobDetail detail, String groupName, Trigger trigger)
         throws SchedulerException {
 
         JobDetailImpl detailImpl = (JobDetailImpl) detail;
-        detailImpl.setGroup(grpName);
+        detailImpl.setGroup(groupName);
 
         try {
             JobStatus status = (JobStatus) (detail.getJobClass()
@@ -210,6 +212,11 @@ public abstract class AbstractJobRealm implements JobRealm {
             throw new SchedulerException("There was a problem scheduling " +
                 detail.getKey().getName(), e);
         }
+    }
+
+    @Override
+    public Date rescheduleJob(TriggerKey key, Trigger newTrigger) throws SchedulerException {
+        return scheduler.rescheduleJob(key, newTrigger);
     }
 
     @Override
@@ -241,6 +248,20 @@ public abstract class AbstractJobRealm implements JobRealm {
             log.error(t.getMessage(), t);
             throw new SchedulerException(t.getMessage(), t);
         }
+    }
+
+    @Override
+    public Set<TriggerKey> getTriggerKeys(String triggerGroup) throws SchedulerException {
+        return scheduler.getTriggerKeys(GroupMatcher.triggerGroupEquals(triggerGroup));
+    }
+
+    @Override
+    public Set<TriggerKey> getAllTriggerKeys() throws SchedulerException {
+        Set<TriggerKey> triggerKeys = new HashSet<TriggerKey>();
+        for (String group : getRealmGroups()) {
+            triggerKeys.addAll(getTriggerKeys(group));
+        }
+        return triggerKeys;
     }
 
     public Set<JobKey> getJobKeys(String group) throws SchedulerException {
