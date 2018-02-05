@@ -18,7 +18,6 @@ import org.candlepin.common.config.Configuration;
 import org.candlepin.common.exceptions.NotFoundException;
 import org.candlepin.config.ConfigProperties;
 import org.candlepin.pinsetter.core.JobType;
-import org.candlepin.pinsetter.core.PinsetterKernel;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.core.model.JobStatus.JobState;
 import org.candlepin.pinsetter.core.model.JobStatus.TargetType;

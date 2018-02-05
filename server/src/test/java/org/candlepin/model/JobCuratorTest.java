@@ -16,7 +16,7 @@ package org.candlepin.model;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
-import static org.quartz.JobBuilder.newJob;
+import static org.quartz.JobBuilder.*;
 
 import org.candlepin.auth.Access;
 import org.candlepin.auth.ConsumerPrincipal;
@@ -24,7 +24,6 @@ import org.candlepin.auth.Principal;
 import org.candlepin.common.exceptions.NotFoundException;
 import org.candlepin.pinsetter.core.JobType;
 import org.candlepin.pinsetter.core.PinsetterJobListener;
-import org.candlepin.pinsetter.core.PinsetterKernel;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.core.model.JobStatus.JobState;
 import org.candlepin.pinsetter.tasks.HealEntireOrgJob;
