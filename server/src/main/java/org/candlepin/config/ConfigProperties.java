@@ -195,6 +195,7 @@ public class ConfigProperties {
     public static final String ENABLE_PINSETTER = "candlepin.pinsetter.enable";
     public static final String PINSETTER_ASYNC_JOB_TIMEOUT = "pinsetter.waiting.timeout.seconds";
     public static final String PINSETTER_MAX_RETRIES = "pinsetter.retries.max";
+    public static final String PINSETTER_ENABLE_ASYNC = "pinsetter.async_tasks.enable";
     public static final int PINSETTER_MAX_RETRIES_DEFAULT = 10;
 
     public static final String[] UTIL_TASK_LIST = new String[] {
@@ -369,6 +370,7 @@ public class ConfigProperties {
             this.put("org.quartz.threadPool.threadCount", "15");
             this.put("org.quartz.threadPool.threadPriority", "5");
             this.put("async.org.quartz.scheduler.instanceName", "AsyncScheduler");
+            this.put(PINSETTER_ENABLE_ASYNC, "true");
             this.put(ENTITLER_JOB_THROTTLE, "7");
             this.put(BATCH_BIND_NUMBER_OF_POOLS_LIMIT, "100");
 

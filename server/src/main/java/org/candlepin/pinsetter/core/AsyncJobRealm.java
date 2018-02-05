@@ -15,6 +15,7 @@
 package org.candlepin.pinsetter.core;
 
 import org.candlepin.common.config.Configuration;
+import org.candlepin.config.ConfigProperties;
 import org.candlepin.model.JobCurator;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 
@@ -59,11 +60,52 @@ public class AsyncJobRealm extends AbstractJobRealm {
     }
 
     @Override
+    public boolean isEnabled() {
+        return config.getBoolean(ConfigProperties.PINSETTER_ENABLE_ASYNC);
+    }
+
+    @Override
     public List<String> getRealmGroups() {
         return Arrays.asList(GROUPS);
     }
 
+    @Override
+    public void start() throws SchedulerException {
+        if (config.getBoolean(ConfigProperties.PINSETTER_ENABLE_ASYNC)) {
+            super.start();
+        }
+        else {
+            log.info("Scheduler start: Async scheduler disabled via configuration");
+        }
+    }
+
+    @Override
+    public void shutdown() throws SchedulerException {
+        if (config.getBoolean(ConfigProperties.PINSETTER_ENABLE_ASYNC)) {
+            super.shutdown();
+        }
+        else {
+            log.info("Scheduler stop: Async scheduler disabled via configuration");
+        }
+    }
+
+    @Override
+    public void pause() throws SchedulerException {
+        if (config.getBoolean(ConfigProperties.PINSETTER_ENABLE_ASYNC)) {
+            super.pause();
+        }
+        else {
+            log.info("Scheduler pause: Async scheduler disabled via configuration");
+        }
+    }
+
+    @Override
     public void unpause() throws SchedulerException {
+        if (!config.getBoolean(ConfigProperties.PINSETTER_ENABLE_ASYNC)) {
+            log.info("Scheduler unpause: Async scheduler disabled via configuration");
+            return;
+        }
+
         log.debug("looking for canceled jobs since async scheduler was paused");
         CancelJobJob cjj = new CancelJobJob(jobCurator, this);
         try {

@@ -110,6 +110,7 @@ public class PinsetterKernelTest {
                     put("org.quartz.threadPool.threadPriority", "5");
                     put(ConfigProperties.DEFAULT_TASKS, JobCleaner.class.getName());
                     put(ConfigProperties.TASKS, ImportRecordJob.class.getName());
+                    put(ConfigProperties.PINSETTER_ENABLE_ASYNC, "true");
                     put("async.org.quartz.scheduler.instanceName", "AsyncScheduler");
                 }
             });

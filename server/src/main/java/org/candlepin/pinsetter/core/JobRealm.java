@@ -42,6 +42,7 @@ public interface JobRealm {
 
     boolean isInStandbyMode() throws SchedulerException;
     boolean deleteJob(JobKey jobKey) throws SchedulerException;
+    boolean isEnabled();
 
     List<String> getRealmGroups();
     Set<JobKey> getJobKeys(String group) throws SchedulerException;

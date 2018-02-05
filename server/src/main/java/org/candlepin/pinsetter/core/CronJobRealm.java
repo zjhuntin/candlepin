@@ -16,9 +16,7 @@ package org.candlepin.pinsetter.core;
 
 import org.candlepin.common.config.Configuration;
 import org.candlepin.model.JobCurator;
-import org.candlepin.pinsetter.tasks.CancelJobJob;
 
-import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
 import org.quartz.JobListener;
 import org.quartz.SchedulerException;
@@ -72,6 +70,11 @@ public class CronJobRealm extends AbstractJobRealm {
     @Override
     public List<String> getRealmGroups() {
         return Arrays.asList(GROUPS);
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 
     protected boolean isClustered() {
