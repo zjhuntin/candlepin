@@ -37,6 +37,7 @@ import org.candlepin.model.Environment;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerContentCurator;
 import org.candlepin.model.OwnerCurator;
+import org.candlepin.model.OwnerProductShare;
 import org.candlepin.model.Pool;
 import org.candlepin.model.Pool.PoolType;
 import org.candlepin.model.PoolCurator;
@@ -346,6 +347,8 @@ public class CandlepinPoolManager implements PoolManager {
             this.refreshPoolsForMasterPool(pool, false, lazy, updatedProducts, false);
         }
 
+        updateShares(owner, importResult);
+
         // delete pools whose subscription disappeared:
         log.debug("Deleting pools for absent subscriptions...");
         List<Pool> poolsToDelete = new ArrayList<Pool>();
@@ -366,6 +369,8 @@ public class CandlepinPoolManager implements PoolManager {
         log.info("Refresh pools for owner: {} completed in: {}ms", owner.getKey(),
             System.currentTimeMillis() - now.getTime());
     }
+
+
 
     private Owner resolveOwner(Owner owner) {
         if (owner == null || (owner.getKey() == null && owner.getId() == null)) {

@@ -120,6 +120,20 @@ public class OwnerProductShareManager {
         return resolveProducts(recipientOwner, null, includeShares);
     }
 
+    public Map<String, List<OwnerProductShare>> findSharesRelatedToOwner(Owner owner,
+        Collection<String> productIds) {
+        List<OwnerProductShare> shares = shareCurator.findAllSharesRelatedToOwner(owner, false, productIds);
+        Map<String, List<OwnerProductShare>> result = new HashMap<String, List<OwnerProductShare>>();
+
+        for (OwnerProductShare share : shares) {
+            if (!result.containsKey(share.getProductId())) {
+                result.put(share.getProductId(), new LinkedList<OwnerProductShare>());
+            }
+            result.get(share.getProductId()).add(share);
+        }
+        return result;
+    }
+
     /**
      *
      * @param recipientOwner the owner whose resolved product is being requested
@@ -160,6 +174,65 @@ public class OwnerProductShareManager {
         }
 
         return new ArrayList<Product>(result.values());
+    }
+
+    private void markOwnerProductToBeResolved(Map<String, Set<String>> ownerProductsToResolve,
+        Owner owner, String productId) {
+        if (!ownerProductsToResolve.containsKey(owner.getKey())) {
+            ownerProductsToResolve.put(owner.getKey(), new HashSet<String>());
+        }
+        ownerProductsToResolve.get(owner.getKey()).add(productId);
+    }
+
+    public void resolveProductsAndUpdateProductShares(Owner owner, ImportResult<Product> importResult) {
+
+        Set<String> productIds = importResult.getChangedEntities().keySet();
+        Map<String, List<OwnerProductShare>> shares = findSharesRelatedToOwner(owner, productIds);
+
+        // NOTE: this is not optimized completely yet, but is intended to be readable for discussion.
+
+        List<OwnerProductShare> sharesToDelete = new LinkedList<OwnerProductShare>();
+        List<OwnerProductShare> sharesToUpdate = new LinkedList<OwnerProductShare>();
+        Map<String, Set<String>> ownerProductsToResolve = new HashMap<String, Set<String>>();
+        for (Product product : importResult.getDeletedEntities().values()) {
+            for (OwnerProductShare share : shares.get(product.getId())) {
+                // Todo: Vritant ensure inactive on ownerProduct existance
+                // For products removed from sharing orgs
+                if (share.isActive() && share.getSharingOwner().getKey().contentEquals(owner.getKey())) {
+                    sharesToDelete.add(share);
+                    markOwnerProductToBeResolved(ownerProductsToResolve, share.getRecipientOwner(), product.getId());
+                }
+                // For products removed from recipient orgs
+                if (share.getRecipientOwner().getKey().contentEquals(owner.getKey())) {
+                    sharesToDelete.add(share);
+                    markOwnerProductToBeResolved(ownerProductsToResolve, owner, product.getId());
+                }
+            }
+        }
+
+        // For products updated in sharing orgs,
+        for (Product product : importResult.getUpdatedEntities().values()) {
+            for (OwnerProductShare share : shares.get(product.getId())) {
+                if (share.getSharingOwner().getKey().contentEquals(owner.getKey())) {
+                    // Todo: update owner product reference on that share record
+                    sharesToUpdate.add(share);
+                    if (share.isActive()) {
+                        markOwnerProductToBeResolved(ownerProductsToResolve, share.getRecipientOwner(), product.getId());
+                    }
+                }
+            }
+        }
+
+        // For products that are added to a receiver, if they were shared previously,
+        // re-resolution is required.
+        for (Product product : importResult.getCreatedEntities().values()) {
+            for (OwnerProductShare share : shares.get(product.getId())) {
+                markOwnerProductToBeResolved(ownerProductsToResolve, owner, product.getId());
+            }
+        }
+
+        //Todo: do the share cruds
+        // Todo: refresh pools from ownerProductsToResolve
     }
 
     private Map<String, ResolvedProduct> resolveAndCompareProducts(Owner recipient, Set<String> productIds,

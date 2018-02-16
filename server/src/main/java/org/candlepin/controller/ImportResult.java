@@ -33,7 +33,9 @@ public class ImportResult<E extends Persisted> {
     private final Map<String, E> skippedEntities;
     private final Map<String, E> createdEntities;
     private final Map<String, E> updatedEntities;
+    private final Map<String, E> deletedEntities;
     private Map<String, E> importedEntities;
+    private Map<String, E> changedEntities;
 
     /**
      * Instantiates a new, empty ImportResult instance.
@@ -42,7 +44,9 @@ public class ImportResult<E extends Persisted> {
         this.skippedEntities = new HashMap<String, E>();
         this.createdEntities = new HashMap<String, E>();
         this.updatedEntities = new HashMap<String, E>();
+        this.deletedEntities = new HashMap<String, E>();
         this.importedEntities = null;
+        this.changedEntities = null;
     }
 
     /**
@@ -79,6 +83,17 @@ public class ImportResult<E extends Persisted> {
     }
 
     /**
+     * Retrieves a map containing the deleted entities. The entities will be mapped by their Red
+     * Hat ID.
+     *
+     * @return
+     *  A map containing all deleted entities
+     */
+    public Map<String, E> getDeletedEntities() {
+        return this.deletedEntities;
+    }
+
+    /**
      * Retrieves a map containing the imported entities. The entities will be mapped by their Red
      * Hat ID.
      *
@@ -95,5 +110,24 @@ public class ImportResult<E extends Persisted> {
         }
 
         return this.importedEntities;
+    }
+
+    /**
+     * Retrieves a map containing the entities changed ( Created, updated or deleted).
+     * The entities will be mapped by their Red Hat ID.
+     *
+     * @return
+     *  A map containing all imported entities
+     */
+    public Map<String, E> getChangedEntities() {
+        if (this.changedEntities == null) {
+            this.changedEntities = new HashMap<String, E>();
+
+            this.changedEntities.putAll(this.createdEntities);
+            this.changedEntities.putAll(this.updatedEntities);
+            this.changedEntities.putAll(this.deletedEntities);
+        }
+
+        return this.changedEntities;
     }
 }

@@ -37,17 +37,29 @@ public class OwnerProductShareCurator extends AbstractHibernateCurator<OwnerProd
         super(OwnerProductShare.class);
     }
 
+    private enum OwnerShareRole {
+        SHARING_OWNER,
+        RECIPIENT_OWNER,
+        SHARING_OR_RECIPIENT_OWNER
+    }
+
     public List<OwnerProductShare> findProductSharesByRecipient(Owner owner, boolean activeOnly,
         Collection<String> productIds) {
-        return findProductSharesByOwner(owner, true, activeOnly, productIds);
+        return findProductSharesByOwner(owner, OwnerShareRole.RECIPIENT_OWNER, activeOnly, productIds);
     }
 
     public List<OwnerProductShare> findProductSharesBySharer(Owner owner, boolean activeOnly,
         Collection<String> productIds) {
-        return findProductSharesByOwner(owner, false, activeOnly, productIds);
+        return findProductSharesByOwner(owner, OwnerShareRole.SHARING_OWNER, activeOnly, productIds);
     }
 
-    private List<OwnerProductShare> findProductSharesByOwner(Owner owner, boolean isRecipient,
+    public List<OwnerProductShare> findAllSharesRelatedToOwner(Owner owner, boolean activeOnly,
+        Collection<String> productIds) {
+        return findProductSharesByOwner(owner, OwnerShareRole.SHARING_OR_RECIPIENT_OWNER, activeOnly,
+            productIds);
+    }
+
+    private List<OwnerProductShare> findProductSharesByOwner(Owner owner, OwnerShareRole role,
         boolean activeOnly, Collection<String> productIds) {
 
         String jpql = "FROM OwnerProductShare ps WHERE ";
@@ -55,11 +67,14 @@ public class OwnerProductShareCurator extends AbstractHibernateCurator<OwnerProd
             jpql += "ps.productId in (:product_ids) AND ";
         }
 
-        if (isRecipient) {
+        if (role == OwnerShareRole.RECIPIENT_OWNER) {
             jpql += "ps.recipientOwner.id = :owner_id ";
         }
-        else {
+        else if (role == OwnerShareRole.SHARING_OWNER){
             jpql += "ps.sharingOwner.id = :owner_id ";
+        }
+        else {
+            jpql += "ps.sharingOwner.id = :owner_id or ps.recipientOwner.id = :owner_id";
         }
 
         if (activeOnly) {
