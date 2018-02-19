@@ -114,12 +114,20 @@ public class OwnerProductShare extends AbstractHibernateObject implements Owned,
         this.sharingOwner = owner;
     }
 
+    public boolean isSharing(Owner owner) {
+        return sharingOwner.getKey().contentEquals(owner.getKey());
+    }
+
     public Owner getRecipientOwner() {
         return this.recipientOwner;
     }
 
     public void setRecipientOwner(Owner recipient) {
         this.recipientOwner = recipient;
+    }
+
+    public boolean isRecipient(Owner owner) {
+        return recipientOwner.getKey().contentEquals(owner.getKey());
     }
 
     public Date getShareDate() {

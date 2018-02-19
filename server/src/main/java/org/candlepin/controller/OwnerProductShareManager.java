@@ -176,7 +176,7 @@ public class OwnerProductShareManager {
         return new ArrayList<Product>(result.values());
     }
 
-    private void markOwnerProductToBeResolved(Map<String, Set<String>> ownerProductsToResolve,
+    private void markResolutionRequired(Map<String, Set<String>> ownerProductsToResolve,
         Owner owner, String productId) {
         if (!ownerProductsToResolve.containsKey(owner.getKey())) {
             ownerProductsToResolve.put(owner.getKey(), new HashSet<String>());
@@ -198,26 +198,28 @@ public class OwnerProductShareManager {
             for (OwnerProductShare share : shares.get(product.getId())) {
                 // Todo: Vritant ensure inactive on ownerProduct existance
                 // For products removed from sharing orgs
-                if (share.isActive() && share.getSharingOwner().getKey().contentEquals(owner.getKey())) {
+                if (share.isSharing(owner)) {
                     sharesToDelete.add(share);
-                    markOwnerProductToBeResolved(ownerProductsToResolve, share.getRecipientOwner(), product.getId());
+                    if (share.isActive()) {
+                        markResolutionRequired(ownerProductsToResolve, share.getRecipientOwner(), product.getId());
+                    }
                 }
                 // For products removed from recipient orgs
-                if (share.getRecipientOwner().getKey().contentEquals(owner.getKey())) {
+                if (share.isRecipient(owner)) {
                     sharesToDelete.add(share);
-                    markOwnerProductToBeResolved(ownerProductsToResolve, owner, product.getId());
+                    markResolutionRequired(ownerProductsToResolve, owner, product.getId());
                 }
             }
         }
 
-        // For products updated in sharing orgs,
+        // For products updated in sharing orgs
         for (Product product : importResult.getUpdatedEntities().values()) {
             for (OwnerProductShare share : shares.get(product.getId())) {
-                if (share.getSharingOwner().getKey().contentEquals(owner.getKey())) {
+                if (share.isSharing(owner)) {
                     // Todo: update owner product reference on that share record
                     sharesToUpdate.add(share);
                     if (share.isActive()) {
-                        markOwnerProductToBeResolved(ownerProductsToResolve, share.getRecipientOwner(), product.getId());
+                        markResolutionRequired(ownerProductsToResolve, share.getRecipientOwner(), product.getId());
                     }
                 }
             }
@@ -227,7 +229,7 @@ public class OwnerProductShareManager {
         // re-resolution is required.
         for (Product product : importResult.getCreatedEntities().values()) {
             for (OwnerProductShare share : shares.get(product.getId())) {
-                markOwnerProductToBeResolved(ownerProductsToResolve, owner, product.getId());
+                markResolutionRequired(ownerProductsToResolve, owner, product.getId());
             }
         }
 
