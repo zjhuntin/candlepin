@@ -59,9 +59,7 @@ public class PoolDTO extends TimestampedCandlepinDTO<PoolDTO> implements Linkabl
         private final String productName;
 
         @JsonCreator
-        public ProvidedProductDTO(
-            @JsonProperty("productId") String productId,
-            @JsonProperty("productName") String productName) {
+        public ProvidedProductDTO(String productId, String productName) {
             if (productId == null || productId.isEmpty()) {
                 throw new IllegalArgumentException("The product id is null or empty.");
             }

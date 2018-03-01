@@ -16,6 +16,7 @@ package org.candlepin.audit;
 
 import org.candlepin.service.SubscriptionServiceAdapter;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -23,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.AnnotationIntrospectorPair;
 import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.google.inject.Inject;
 
 import org.slf4j.Logger;
@@ -42,6 +44,7 @@ public class ActivationListener implements EventListener {
     public ActivationListener(SubscriptionServiceAdapter subService) {
         this.subscriptionService = subService;
         mapper = new ObjectMapper();
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
         AnnotationIntrospector primary = new JacksonAnnotationIntrospector();
         AnnotationIntrospector secondary = new JaxbAnnotationIntrospector(mapper.getTypeFactory());
         AnnotationIntrospector pair = new AnnotationIntrospectorPair(primary, secondary);

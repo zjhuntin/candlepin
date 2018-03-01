@@ -22,6 +22,7 @@ import org.candlepin.config.ConfigProperties;
 import org.candlepin.jackson.DateSerializer;
 import org.candlepin.jackson.ProductCachedSerializationModule;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,6 +35,7 @@ import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import com.fasterxml.jackson.jaxrs.cfg.Annotations;
 import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.google.inject.Inject;
 
 import java.util.Date;
@@ -72,6 +74,7 @@ public class JsonProvider extends JacksonJsonProvider {
         dateModule.addSerializer(Date.class, new DateSerializer());
         mapper.registerModule(dateModule);
         mapper.registerModule(productCachedModules);
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
         configureHateoasObjectMapper(mapper, indentJson);
         setMapper(mapper);
     }

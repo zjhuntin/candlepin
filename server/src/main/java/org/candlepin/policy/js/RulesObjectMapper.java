@@ -17,6 +17,7 @@ package org.candlepin.policy.js;
 import org.candlepin.common.exceptions.IseException;
 import org.candlepin.jackson.ProductCachedSerializationModule;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
@@ -29,6 +30,7 @@ import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.google.inject.Inject;
 
 import org.slf4j.Logger;
@@ -86,6 +88,7 @@ public class RulesObjectMapper {
 
         mapper.registerModule(hbm);
         mapper.registerModule(poolCachedSerializationModule);
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
         // Very important for deployments so new rules files can return additional
         // properties that this current server doesn't know how to serialize, but still
         // shouldn't fail on.

@@ -14,6 +14,7 @@
  */
 package org.candlepin.audit;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.candlepin.audit.Event.Target;
 import org.candlepin.audit.Event.Type;
@@ -39,6 +40,7 @@ import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.google.inject.Inject;
 
 import org.slf4j.Logger;
@@ -85,6 +87,7 @@ public class EventFactory {
         Hibernate5Module hbm = new Hibernate5Module();
         hbm.enable(Hibernate5Module.Feature.FORCE_LAZY_LOADING);
         mapper.registerModule(hbm);
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
 
         AnnotationIntrospector primary = new JacksonAnnotationIntrospector();
         AnnotationIntrospector secondary = new JaxbAnnotationIntrospector(mapper.getTypeFactory());

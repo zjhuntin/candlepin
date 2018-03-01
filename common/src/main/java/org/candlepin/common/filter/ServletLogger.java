@@ -14,8 +14,10 @@
  */
 package org.candlepin.common.filter;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -37,6 +39,7 @@ public class ServletLogger {
 
     static {
         mapper = new ObjectMapper();
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
         writer = mapper.writerWithDefaultPrettyPrinter();
     }
 

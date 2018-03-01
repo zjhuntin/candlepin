@@ -19,7 +19,6 @@ import org.candlepin.dto.TimestampedCandlepinDTO;
 import org.candlepin.util.Util;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -46,9 +45,7 @@ public class EnvironmentDTO extends TimestampedCandlepinDTO<EnvironmentDTO> {
         protected Boolean enabled;
 
         @JsonCreator
-        public EnvironmentContentDTO(
-            @JsonProperty("content") ContentDTO content,
-            @JsonProperty("enabled") Boolean enabled) {
+        public EnvironmentContentDTO(ContentDTO content, Boolean enabled) {
 
             if (content == null || (content.getUuid() == null && content.getId() == null)) {
                 throw new IllegalArgumentException("content is null or is missing an identifier");

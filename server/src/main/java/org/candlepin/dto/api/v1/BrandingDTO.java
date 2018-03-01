@@ -15,7 +15,6 @@
 package org.candlepin.dto.api.v1;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.candlepin.dto.TimestampedCandlepinDTO;
@@ -64,10 +63,7 @@ public class BrandingDTO extends TimestampedCandlepinDTO<BrandingDTO> {
      * @param type this branding's type.
      */
     @JsonCreator
-    public BrandingDTO(
-        @JsonProperty("productId") String productId,
-        @JsonProperty("name") String name,
-        @JsonProperty("type") String type) {
+    public BrandingDTO(String productId, String name, String type) {
 
         if (productId == null || productId.isEmpty()) {
             throw new IllegalArgumentException("productId is null or empty");

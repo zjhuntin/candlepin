@@ -17,7 +17,6 @@ package org.candlepin.dto.manifest.v1;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
@@ -50,9 +49,7 @@ public class PoolDTO extends CandlepinDTO<PoolDTO> {
         private final String productName;
 
         @JsonCreator
-        public ProvidedProductDTO(
-            @JsonProperty("productId") String productId,
-            @JsonProperty("productName") String productName) {
+        public ProvidedProductDTO(String productId, String productName) {
             if (productId == null || productId.isEmpty()) {
                 throw new IllegalArgumentException("The product id is null or empty.");
             }

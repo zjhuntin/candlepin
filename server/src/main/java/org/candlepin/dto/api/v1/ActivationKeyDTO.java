@@ -47,9 +47,7 @@ public class ActivationKeyDTO extends TimestampedCandlepinDTO<ActivationKeyDTO> 
         protected final Long quantity;
 
         @JsonCreator
-        public ActivationKeyPoolDTO(
-            @JsonProperty("poolId") String poolId,
-            @JsonProperty("quantity") Long quantity) {
+        public ActivationKeyPoolDTO(String poolId, Long quantity) {
             if (poolId == null || poolId.isEmpty()) {
                 throw new IllegalArgumentException("pool id is null or empty");
             }
@@ -104,10 +102,7 @@ public class ActivationKeyDTO extends TimestampedCandlepinDTO<ActivationKeyDTO> 
         protected final String value;
 
         @JsonCreator
-        public ActivationKeyContentOverrideDTO(
-            @JsonProperty("contentLabel") String contentLabel,
-            @JsonProperty("name") String name,
-            @JsonProperty("value") String value) {
+        public ActivationKeyContentOverrideDTO(String contentLabel, String name, String value) {
             if (contentLabel == null || contentLabel.isEmpty()) {
                 throw new IllegalArgumentException("contentLabel is null or empty");
             }

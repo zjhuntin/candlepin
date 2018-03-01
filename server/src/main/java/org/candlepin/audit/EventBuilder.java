@@ -14,8 +14,11 @@
  */
 package org.candlepin.audit;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+
 import org.candlepin.audit.Event.Target;
 import org.candlepin.audit.Event.Type;
 import org.candlepin.common.exceptions.IseException;
@@ -48,6 +51,7 @@ public class EventBuilder {
 
     public EventBuilder(EventFactory factory, Target target, Type type) {
         this.mapper = new ObjectMapper();
+        this.mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
 
         event = new Event(type, target, null, factory.principalProvider.get(),
                 null, null, null, null, null, null);

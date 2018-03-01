@@ -14,6 +14,7 @@
  */
 package org.candlepin.swagger;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.BeanDescription;
@@ -26,6 +27,7 @@ import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.jsontype.NamedType;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Type;
@@ -68,6 +70,7 @@ public abstract class AbstractModelConverter implements ModelConverter {
         AnnotationIntrospector pair = new AnnotationIntrospectorPair(primary, secondary);
         mapper.setAnnotationIntrospector(pair);
 
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
         mapper.registerModule(new SimpleModule("swagger", Version.unknownVersion()) {
             @Override
             public void setupModule(SetupContext context) {

@@ -16,7 +16,9 @@ package org.candlepin.util;
 
 import org.candlepin.model.CuratorException;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.codec.binary.Hex;
@@ -61,7 +63,12 @@ public class Util {
      */
     public static final String UTC_STR = "UTC";
     private static Logger log = LoggerFactory.getLogger(Util.class);
-    private static ObjectMapper mapper = new ObjectMapper();
+    private static ObjectMapper mapper;
+
+    static {
+        mapper = new ObjectMapper();
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
+    }
 
     /**
      * Invokes the close() method of any given object, if present.

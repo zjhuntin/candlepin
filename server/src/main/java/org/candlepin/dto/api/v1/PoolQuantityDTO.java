@@ -17,7 +17,6 @@ package org.candlepin.dto.api.v1;
 import org.candlepin.dto.CandlepinDTO;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
@@ -62,9 +61,7 @@ public class PoolQuantityDTO extends CandlepinDTO<PoolQuantityDTO> {
      * @param quantity this pool quantity's quantity.
      */
     @JsonCreator
-    public PoolQuantityDTO(
-        @JsonProperty("pool") PoolDTO pool,
-        @JsonProperty("quantity") Integer quantity) {
+    public PoolQuantityDTO(PoolDTO pool, Integer quantity) {
 
         if (pool == null) {
             throw new IllegalArgumentException("pool is null");

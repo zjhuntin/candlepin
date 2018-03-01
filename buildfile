@@ -53,9 +53,12 @@ JACKSON = [group('jackson-annotations', 'jackson-core', 'jackson-databind',
            group('jackson-jaxrs-base', 'jackson-jaxrs-json-provider',
                  :under=> "#{JACKSON_NS}.jaxrs",
                  :version => JACKSON_VERSION),
-           group('jackson-module-jsonSchema', 'jackson-module-jaxb-annotations',
-                 :under=> "#{JACKSON_NS}.module",
-                 :version => JACKSON_VERSION),
+           group(
+             'jackson-module-jsonSchema',
+             'jackson-module-jaxb-annotations',
+             'jackson-module-parameter-names',
+             :under=> "#{JACKSON_NS}.module",
+             :version => JACKSON_VERSION),
            group('jackson-datatype-hibernate5',
                 :under=> "#{JACKSON_NS}.datatype",
                 :version => JACKSON_VERSION)]
@@ -234,7 +237,8 @@ define "candlepin" do
   project.version = pom_version(path_to('pom.xml'))
   manifest["Copyright"] = "Red Hat, Inc. #{Date.today.strftime('%Y')}"
 
-  compile.using(:debug => true, :source => '1.8', :target => '1.8')
+  # -parameters instructs javac to retain parameter names in the class files
+  compile.using(:debug => true, :source => '1.8', :target => '1.8', :other => ['-parameters'])
 
   desc "Custom Checkstyle checks for candlepin"
   define "checks" do

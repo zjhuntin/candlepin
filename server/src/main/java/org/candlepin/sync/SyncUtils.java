@@ -19,6 +19,7 @@ import org.candlepin.common.exceptions.IseException;
 import org.candlepin.config.ConfigProperties;
 import org.candlepin.jackson.ProductCachedSerializationModule;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +29,7 @@ import com.fasterxml.jackson.databind.introspect.JacksonAnnotationIntrospector;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
 import com.fasterxml.jackson.module.jaxb.JaxbAnnotationIntrospector;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import com.google.inject.Inject;
 
 import java.io.File;
@@ -81,6 +83,7 @@ class SyncUtils {
         filterProvider = filterProvider.addFilter("EntitlementFilter",
             SimpleBeanPropertyFilter.serializeAllExcept("consumer"));
         mapper.setFilterProvider(filterProvider);
+        mapper.registerModule(new ParameterNamesModule(JsonCreator.Mode.PROPERTIES));
         mapper.registerModule(productCachedModule);
 
         if (config != null) {
