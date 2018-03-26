@@ -31,6 +31,7 @@ import org.candlepin.policy.js.compliance.ComplianceStatus;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.UUID;
 
 /**
  * EventFactoryTest
@@ -62,7 +63,7 @@ public class EventFactoryTest {
         when(guestId.getId()).thenReturn("test");
         when(consumer.getOwner()).thenReturn(owner);
         when(consumer.getId()).thenReturn("consumer-id");
-        when(owner.getId()).thenReturn("owner-id");
+        when(owner.getId()).thenReturn(UUID.randomUUID());
 
         Event event = eventFactory.guestIdCreated(guestId);
         assertNotNull(event.getEntityId());

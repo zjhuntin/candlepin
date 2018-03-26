@@ -15,6 +15,7 @@
 package org.candlepin.model;
 
 import org.candlepin.model.activationkeys.ActivationKey;
+import org.candlepin.util.LegacyUtil;
 
 import com.google.inject.persist.Transactional;
 
@@ -37,8 +38,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-
+import java.util.UUID;
 
 /**
  * The OwnerProductCurator provides functionality for managing the mapping between owners and
@@ -59,7 +59,7 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
     }
 
     @Transactional
-    public Product getProductById(String ownerId, String productId) {
+    public Product getProductById(UUID ownerId, String productId) {
         return (Product) this.createSecureCriteria()
             .createAlias("owner", "owner")
             .createAlias("product", "product")
@@ -85,8 +85,8 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
         //     the MySQL/MariaDB or Oracle element limits.
         String jpql = "SELECT op.owner.id FROM OwnerProduct op WHERE op.product.id = :product_id";
 
-        List<String> ids = this.getEntityManager()
-            .createQuery(jpql, String.class)
+        List<UUID> ids = this.getEntityManager()
+            .createQuery(jpql, UUID.class)
             .setParameter("product_id", productId)
             .getResultList();
 
@@ -124,7 +124,7 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
      * @return
      *  a collection of product UUIDs belonging to the given owner
      */
-    public Collection<String> getProductUuidsByOwner(String ownerId) {
+    public Collection<String> getProductUuidsByOwner(UUID ownerId) {
         String jpql = "SELECT op.product.uuid FROM OwnerProduct op WHERE op.owner.id = :owner_id";
 
         List<String> uuids = this.getEntityManager()
@@ -157,7 +157,7 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
      * @return
      *  a query for fetching the products belonging to the given owner
      */
-    public CandlepinQuery<Product> getProductsByOwner(String ownerId) {
+    public CandlepinQuery<Product> getProductsByOwner(UUID ownerId) {
         // Impl note: See getOwnersByProduct for details on why we're doing this in two queries
         Collection<String> uuids = this.getProductUuidsByOwner(ownerId);
 
@@ -175,7 +175,7 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
         return this.getProductsByIds(owner.getId(), productIds);
     }
 
-    public CandlepinQuery<Product> getProductsByIds(String ownerId, Collection<String> productIds) {
+    public CandlepinQuery<Product> getProductsByIds(UUID ownerId, Collection<String> productIds) {
         if (productIds == null || productIds.isEmpty()) {
             return this.cpQueryFactory.<Product>buildQuery();
         }
@@ -505,7 +505,7 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
 
         // pool provided products
         List<String> ids = session.createSQLQuery("SELECT id FROM cp_pool WHERE owner_id = ?1")
-            .setParameter("1", owner.getId())
+            .setParameter("1", LegacyUtil.uuidAsString(owner.getId()))
             .list();
 
         if (ids != null && !ids.isEmpty()) {
@@ -527,7 +527,7 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
 
         // Activation key products
         ids = session.createSQLQuery("SELECT id FROM cp_activation_key WHERE owner_id = ?1")
-            .setParameter("1", owner.getId())
+            .setParameter("1", LegacyUtil.uuidAsString(owner.getId()))
             .list();
 
         if (ids != null && !ids.isEmpty()) {
@@ -623,7 +623,7 @@ public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> 
             // Activation key products ///////////////////////
             String sql = "SELECT id FROM " + ActivationKey.DB_TABLE + " WHERE owner_id = ?1";
             List<String> ids = session.createSQLQuery(sql)
-                .setParameter("1", owner.getId())
+                .setParameter("1", LegacyUtil.uuidAsString(owner.getId()))
                 .list();
 
             if (ids != null && !ids.isEmpty()) {

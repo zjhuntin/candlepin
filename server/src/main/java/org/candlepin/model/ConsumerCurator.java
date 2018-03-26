@@ -19,6 +19,7 @@ import org.candlepin.common.exceptions.BadRequestException;
 import org.candlepin.common.exceptions.NotFoundException;
 import org.candlepin.resteasy.parameter.KeyValueParameter;
 import org.candlepin.util.FactValidator;
+import org.candlepin.util.LegacyUtil;
 import org.candlepin.util.Util;
 
 import com.google.common.collect.Iterables;
@@ -52,6 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import javax.persistence.LockModeType;
@@ -151,7 +153,7 @@ public class ConsumerCurator extends AbstractHibernateCurator<Consumer> {
      * @return Consumer whose name matches the given virt.uuid, null otherwise.
      */
     @Transactional
-    public Consumer findByVirtUuid(String uuid, String ownerId) {
+    public Consumer findByVirtUuid(String uuid, UUID ownerId) {
         Consumer result = null;
         List<String> possibleGuestIds = Util.getPossibleUuids(uuid);
 
@@ -165,7 +167,7 @@ public class ConsumerCurator extends AbstractHibernateCurator<Consumer> {
 
         Query q = currentSession().createSQLQuery(sql);
         q.setParameterList("guestids", possibleGuestIds);
-        q.setParameter("ownerid", ownerId);
+        q.setParameter("ownerid", LegacyUtil.uuidAsString(ownerId));
         List<String> options = q.list();
 
         if (options != null && options.size() != 0) {
@@ -216,7 +218,7 @@ public class ConsumerCurator extends AbstractHibernateCurator<Consumer> {
 
         Query query = this.currentSession()
             .createSQLQuery(sql)
-            .setParameter("ownerid", owner.getId());
+            .setParameter("ownerid", LegacyUtil.uuidAsString(owner.getId()));
 
         for (List<String> block : blocks) {
             query.setParameterList("guestids", block);
@@ -710,7 +712,7 @@ public class ConsumerCurator extends AbstractHibernateCurator<Consumer> {
      */
     @SuppressWarnings("unchecked")
     @Transactional
-    public CandlepinQuery<Consumer> getHypervisorsBulk(Iterable<String> hypervisorIds, String ownerId) {
+    public CandlepinQuery<Consumer> getHypervisorsBulk(Iterable<String> hypervisorIds, UUID ownerId) {
         if (hypervisorIds == null || !hypervisorIds.iterator().hasNext()) {
             return this.cpQueryFactory.<Consumer>buildQuery();
         }
@@ -738,7 +740,7 @@ public class ConsumerCurator extends AbstractHibernateCurator<Consumer> {
 
     @SuppressWarnings("unchecked")
     @Transactional
-    public CandlepinQuery<Consumer> getHypervisorsForOwner(String ownerId) {
+    public CandlepinQuery<Consumer> getHypervisorsForOwner(UUID ownerId) {
         DetachedCriteria criteria = this.createSecureDetachedCriteria()
             .createAlias("owner", "o")
             .createAlias("hypervisorId", "hvsr")

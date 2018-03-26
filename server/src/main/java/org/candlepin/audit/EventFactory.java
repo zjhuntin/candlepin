@@ -32,6 +32,7 @@ import org.candlepin.model.activationkeys.ActivationKey;
 import org.candlepin.model.dto.Subscription;
 import org.candlepin.policy.js.compliance.ComplianceReason;
 import org.candlepin.policy.js.compliance.ComplianceStatus;
+import org.candlepin.util.LegacyUtil;
 
 import com.fasterxml.jackson.databind.AnnotationIntrospector;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -233,7 +234,8 @@ public class EventFactory {
             // UUID for the 'consumerId' and 'entityId' fields, since Katello
             // is concerned only with the consumer UUID field.
             return new Event(Event.Type.CREATED, Event.Target.COMPLIANCE,
-                consumer.getName(), principalProvider.get(), consumer.getOwner().getId(), consumer.getUuid(),
+                consumer.getName(), principalProvider.get(),
+                LegacyUtil.uuidAsString(consumer.getOwner().getId()), consumer.getUuid(),
                 consumer.getUuid(), eventDataJson, null, null);
         }
         catch (JsonProcessingException e) {

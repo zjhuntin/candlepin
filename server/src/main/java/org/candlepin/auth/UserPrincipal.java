@@ -18,6 +18,7 @@ import org.candlepin.auth.permissions.CheckJobStatusPermission;
 import org.candlepin.auth.permissions.Permission;
 import org.candlepin.auth.permissions.UserUserPermission;
 import org.candlepin.model.Owner;
+import org.candlepin.util.LegacyUtil;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -100,7 +101,7 @@ public class UserPrincipal extends Principal {
         List<String> ownerIds = new LinkedList<>();
 
         for (Owner owner : getOwners()) {
-            ownerIds.add(owner.getId());
+            ownerIds.add(LegacyUtil.uuidAsString(owner.getId()));
         }
 
         return ownerIds;

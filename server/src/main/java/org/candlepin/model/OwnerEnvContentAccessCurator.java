@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.UUID;
 
 import javax.persistence.Query;
 
@@ -41,7 +42,7 @@ public class OwnerEnvContentAccessCurator extends AbstractHibernateCurator<Owner
 
     @SuppressWarnings("unchecked")
     @Transactional
-    public OwnerEnvContentAccess getContentAccess(String ownerId, String environmentId) {
+    public OwnerEnvContentAccess getContentAccess(UUID ownerId, String environmentId) {
         List<OwnerEnvContentAccess> resultList;
 
         if (environmentId != null) {
@@ -79,7 +80,7 @@ public class OwnerEnvContentAccessCurator extends AbstractHibernateCurator<Owner
     }
 
     @Transactional
-    public void removeAllForOwner(String ownerId) {
+    public void removeAllForOwner(UUID ownerId) {
         this.currentSession().createQuery(
                 "delete from OwnerEnvContentAccess where owner_id = :ownerId")
                 .setParameter("ownerId", ownerId)

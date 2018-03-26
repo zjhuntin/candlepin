@@ -32,6 +32,7 @@ import org.candlepin.pinsetter.core.PinsetterJobListener;
 import org.candlepin.pinsetter.core.RetryJobException;
 import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.service.SubscriptionServiceAdapter;
+import org.candlepin.util.LegacyUtil;
 import org.candlepin.util.Util;
 
 import com.google.inject.persist.Transactional;
@@ -213,7 +214,7 @@ public class UndoImportsJob extends UniqueByEntityJob {
     public static JobDetail forOwner(Owner owner, Boolean lazy) {
         JobDataMap map = new JobDataMap();
         map.put(JobStatus.TARGET_TYPE, JobStatus.TargetType.OWNER);
-        map.put(JobStatus.TARGET_ID, owner.getId());
+        map.put(JobStatus.TARGET_ID, LegacyUtil.uuidAsString(owner.getId()));
         map.put(OWNER_KEY, owner.getKey());
         map.put(LAZY_REGEN, lazy);
         map.put(JobStatus.CORRELATION_ID, MDC.get(LoggingFilter.CSID));

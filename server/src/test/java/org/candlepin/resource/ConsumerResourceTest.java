@@ -120,6 +120,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.inject.Provider;
 import javax.ws.rs.core.Response;
@@ -220,7 +221,7 @@ public class ConsumerResourceTest {
             int rand = TestUtil.randomInt();
 
             if (owner.getId() == null) {
-                owner.setId("test-owner-" + rand);
+                owner.setId(UUID.randomUUID());
             }
 
             if (owner.getKey() == null) {
@@ -236,7 +237,7 @@ public class ConsumerResourceTest {
     protected Owner createOwner() {
         int rand = TestUtil.randomInt();
         Owner owner = new Owner("test-owner-key-" + rand, "Test Owner " + rand);
-        owner.setId("test-owner-" + rand);
+        owner.setId(UUID.randomUUID());
 
         this.mockOwner(owner);
 

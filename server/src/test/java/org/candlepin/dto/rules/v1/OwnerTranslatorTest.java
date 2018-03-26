@@ -24,7 +24,7 @@ import junitparams.JUnitParamsRunner;
 
 import org.junit.runner.RunWith;
 
-
+import java.util.UUID;
 
 /**
  * Test suite for the OwnerTranslator class
@@ -47,7 +47,7 @@ public class OwnerTranslatorTest extends AbstractTranslatorTest<Owner, OwnerDTO,
     @Override
     public Owner initSourceObject() {
         Owner source = new Owner();
-        source.setId("id");
+        source.setId(UUID.randomUUID());
         source.setDefaultServiceLevel("service_level");
 
         return source;

@@ -20,8 +20,7 @@ import org.hibernate.criterion.Projections;
 import org.hibernate.criterion.Restrictions;
 
 import java.util.Date;
-
-
+import java.util.UUID;
 
 /**
  * DeletedConsumerCurator
@@ -47,7 +46,7 @@ public class DeletedConsumerCurator extends AbstractHibernateCurator<DeletedCons
     }
 
     @SuppressWarnings("unchecked")
-    public CandlepinQuery<DeletedConsumer> findByOwnerId(String oid) {
+    public CandlepinQuery<DeletedConsumer> findByOwnerId(UUID oid) {
         DetachedCriteria criteria = DetachedCriteria.forClass(DeletedConsumer.class)
             .add(Restrictions.eq("ownerId", oid))
             .addOrder(Order.desc("created"));

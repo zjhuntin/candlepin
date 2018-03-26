@@ -17,8 +17,7 @@ package org.candlepin.dto.api.v1;
 import org.candlepin.dto.ModelTranslator;
 import org.candlepin.dto.TimestampedEntityTranslator;
 import org.candlepin.model.UpstreamConsumer;
-
-
+import org.candlepin.util.LegacyUtil;
 
 /**
  * The UpstreamConsumerTranslator provides translation from UpstreamConsumer model objects to
@@ -63,7 +62,7 @@ public class UpstreamConsumerTranslator extends
         dest.setId(source.getId());
         dest.setUuid(source.getUuid());
         dest.setName(source.getName());
-        dest.setOwnerId(source.getOwnerId());
+        dest.setOwnerId(LegacyUtil.uuidAsString(source.getOwnerId()));
         dest.setApiUrl(source.getApiUrl());
         dest.setWebUrl(source.getWebUrl());
         dest.setContentAccessMode(source.getContentAccessMode());

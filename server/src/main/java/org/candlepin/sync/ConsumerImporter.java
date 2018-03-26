@@ -26,6 +26,7 @@ import org.candlepin.model.IdentityCertificateCurator;
 import org.candlepin.model.Owner;
 import org.candlepin.model.OwnerCurator;
 import org.candlepin.model.UpstreamConsumer;
+import org.candlepin.util.LegacyUtil;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -35,6 +36,7 @@ import org.xnap.commons.i18n.I18n;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.UUID;
 
 /**
  * ConsumerImporter
@@ -158,7 +160,7 @@ public class ConsumerImporter {
         }
 
         if (dto.getId() != null) {
-            entity.setId(dto.getId());
+            entity.setId(LegacyUtil.uuidFromString(dto.getId()));
         }
 
         if (dto.getDisplayName() != null) {

@@ -69,8 +69,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-
-
+import java.util.UUID;
 
 /**
  * TestUtil for creating various testing objects. Objects backed by the database
@@ -566,7 +565,7 @@ public class TestUtil {
 
     public static Entitlement createEntitlement() {
         Owner owner = new Owner("Test Owner |" + randomInt());
-        owner.setId(String.valueOf(RANDOM.nextLong()));
+        owner.setId(UUID.randomUUID());
         return createEntitlement(
             owner,
             createConsumer(owner),

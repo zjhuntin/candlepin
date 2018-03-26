@@ -16,10 +16,10 @@ package org.candlepin.model;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
+import org.hibernate.annotations.Type;
 
 import java.io.Serializable;
-
-
+import java.util.UUID;
 
 /**
  * Class representing the composite key for OwnerContent instances
@@ -27,23 +27,24 @@ import java.io.Serializable;
 public class OwnerContentKey implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private String ownerId;
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
+    private UUID ownerId;
     private String contentUuid;
 
     public OwnerContentKey() {
         // Intentionally left empty
     }
 
-    public OwnerContentKey(String ownerId, String contentUuid) {
+    public OwnerContentKey(UUID ownerId, String contentUuid) {
         this.ownerId = ownerId;
         this.contentUuid = contentUuid;
     }
 
-    public String getOwnerId() {
+    public UUID getOwnerId() {
         return ownerId;
     }
 
-    public void setOwnerId(String ownerId) {
+    public void setOwnerId(UUID ownerId) {
         this.ownerId = ownerId;
     }
 

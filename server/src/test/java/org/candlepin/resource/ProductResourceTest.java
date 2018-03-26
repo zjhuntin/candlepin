@@ -96,7 +96,7 @@ public class ProductResourceTest extends DatabaseTestFixture {
         Owner owner = this.createOwner("Example-Corporation");
         ProductDTO dto = this.buildTestProductDTO();
 
-        assertNull(this.ownerProductCurator.getProductById(owner.getKey(), dto.getId()));
+        assertNull(this.ownerProductCurator.getProductById(owner.getId(), dto.getId()));
 
         productResource.createProduct(dto);
     }
@@ -108,10 +108,10 @@ public class ProductResourceTest extends DatabaseTestFixture {
         ContentDTO cdto = TestUtil.createContentDTO();
         pdto.addContent(cdto, true);
 
-        assertNull(this.ownerProductCurator.getProductById(owner.getKey(), pdto.getId()));
+        assertNull(this.ownerProductCurator.getProductById(owner.getId(), pdto.getId()));
 
         ProductDTO result = productResource.createProduct(pdto);
-        Product entity = this.ownerProductCurator.getProductById(owner.getKey(), pdto.getId());
+        Product entity = this.ownerProductCurator.getProductById(owner.getId(), pdto.getId());
         ProductDTO expected = this.modelTranslator.translate(entity, ProductDTO.class);
 
         assertNotNull(entity);

@@ -89,6 +89,7 @@ import org.candlepin.sync.ImporterException;
 import org.candlepin.test.DatabaseTestFixture;
 import org.candlepin.test.TestUtil;
 import org.candlepin.util.ContentOverrideValidator;
+import org.candlepin.util.LegacyUtil;
 import org.candlepin.util.ServiceLevelValidator;
 import org.candlepin.util.Util;
 
@@ -122,6 +123,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.inject.Inject;
 import javax.persistence.PersistenceException;
@@ -180,7 +182,7 @@ public class OwnerResourceTest extends DatabaseTestFixture {
 
     @Test
     public void testSimpleDeleteOwner() {
-        String id = owner.getId();
+        UUID id = owner.getId();
         ownerResource.deleteOwner(owner.getKey(), true, false);
         owner = ownerCurator.find(id);
         assertNull(owner);
@@ -1049,7 +1051,7 @@ public class OwnerResourceTest extends DatabaseTestFixture {
 
         assertNotNull(pout);
         assertNotNull(pout.getId());
-        assertNotNull(this.ownerCurator.find(pout.getId()));
+        assertNotNull(this.ownerCurator.find(LegacyUtil.uuidFromString(pout.getId())));
 
         OwnerDTO cout = this.ownerResource.createOwner(child);
 
@@ -1239,7 +1241,7 @@ public class OwnerResourceTest extends DatabaseTestFixture {
 
         // Update with Parent Owner only
         OwnerDTO parentDto = new OwnerDTO();
-        parentDto.setId(parentOwner2.getId());
+        parentDto.setId(LegacyUtil.uuidAsString(parentOwner2.getId()));
 
         dto = new OwnerDTO();
         dto.setParentOwner(parentDto);

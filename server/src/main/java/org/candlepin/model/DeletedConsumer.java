@@ -15,6 +15,9 @@
 package org.candlepin.model;
 
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
+
+import java.util.UUID;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -60,9 +63,9 @@ public class DeletedConsumer extends AbstractHibernateObject {
      * and we still want to keep this record around.
      */
     @Column(name = "owner_id", length = 32, nullable = false)
-    @Size(max = 32)
     @NotNull
-    private String ownerId;
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
+    private UUID ownerId;
 
     @Column(name = "owner_key", length = 255, nullable = false)
     @Size(max = 255)
@@ -72,7 +75,7 @@ public class DeletedConsumer extends AbstractHibernateObject {
     @Size(max = 255)
     private String ownerDisplayName;
 
-    public DeletedConsumer(String cuuid, String oid, String okey, String oname) {
+    public DeletedConsumer(String cuuid, UUID oid, String okey, String oname) {
         consumerUuid = cuuid;
         ownerId = oid;
         ownerKey = okey;
@@ -103,11 +106,11 @@ public class DeletedConsumer extends AbstractHibernateObject {
         return consumerUuid;
     }
 
-    public void setOwnerId(String oid) {
+    public void setOwnerId(UUID oid) {
         ownerId = oid;
     }
 
-    public String getOwnerId() {
+    public UUID getOwnerId() {
         return ownerId;
     }
 

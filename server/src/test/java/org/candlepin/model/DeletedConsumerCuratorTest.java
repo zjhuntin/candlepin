@@ -25,6 +25,7 @@ import org.junit.Test;
 
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import javax.inject.Inject;
 
@@ -43,7 +44,7 @@ public class DeletedConsumerCuratorTest extends DatabaseTestFixture {
     public void init() throws Exception {
         super.init();
 
-        DeletedConsumer dc = new DeletedConsumer("abcde", "10", "key", "name");
+        DeletedConsumer dc = new DeletedConsumer("abcde", UUID.randomUUID(), "key", "name");
         dcc.create(dc);
         try {
             Thread.sleep(5);
@@ -57,7 +58,7 @@ public class DeletedConsumerCuratorTest extends DatabaseTestFixture {
         // save the current time, DCs created after this will have
         // a created timestamp after this time
         twoResultsDate = new Date();
-        dc = new DeletedConsumer("fghij", "10", "key", "name");
+        dc = new DeletedConsumer("fghij", UUID.randomUUID(), "key", "name");
         dcc.create(dc);
         try {
             Thread.sleep(5);
@@ -68,7 +69,7 @@ public class DeletedConsumerCuratorTest extends DatabaseTestFixture {
         }
 
         oneResultDate = new Date();
-        dc = new DeletedConsumer("klmno", "20", "key", "name");
+        dc = new DeletedConsumer("klmno", UUID.randomUUID(), "key", "name");
         dcc.create(dc);
     }
 
@@ -88,14 +89,14 @@ public class DeletedConsumerCuratorTest extends DatabaseTestFixture {
 
     @Test
     public void byOwnerId() {
-        List<DeletedConsumer> found = dcc.findByOwnerId("10").list();
+        List<DeletedConsumer> found = dcc.findByOwnerId(UUID.randomUUID()).list();
         assertEquals(2, found.size());
     }
 
     @Test
     public void byOwner() {
         Owner o = mock(Owner.class);
-        when(o.getId()).thenReturn("20");
+        when(o.getId()).thenReturn(UUID.randomUUID());
         List<DeletedConsumer> found = dcc.findByOwner(o).list();
         assertEquals(1, found.size());
     }
@@ -134,7 +135,7 @@ public class DeletedConsumerCuratorTest extends DatabaseTestFixture {
 
     @Test
     public void descOrderByOwnerId() {
-        DeletedConsumer newest = dcc.findByOwnerId("10").list().get(0);
+        DeletedConsumer newest = dcc.findByOwnerId(UUID.randomUUID()).list().get(0);
         assertEquals("fghij", newest.getConsumerUuid());
     }
 }

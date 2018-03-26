@@ -34,6 +34,7 @@ import org.candlepin.model.Product;
 import org.candlepin.resource.util.CalculatedAttributesUtil;
 import org.candlepin.test.DatabaseTestFixture;
 import org.candlepin.test.TestUtil;
+import org.candlepin.util.LegacyUtil;
 
 import org.hamcrest.collection.IsCollectionWithSize;
 import org.junit.Before;
@@ -130,11 +131,12 @@ public class PoolResourceTest extends DatabaseTestFixture {
 
     @Test
     public void testListForOrg() {
-        List<PoolDTO> pools = poolResource.list(owner1.getId(), null, null,
+        List<PoolDTO> pools = poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, null,
             false, null, adminPrincipal, null);
         assertEquals(2, pools.size());
         Principal p = setupPrincipal(owner2, Access.ALL);
-        pools = poolResource.list(owner2.getId(), null, null, false, null, p, null);
+        pools = poolResource.list(LegacyUtil.uuidAsString(owner2.getId()), null, null, false, null, p,
+            null);
         assertEquals(1, pools.size());
     }
 
@@ -151,14 +153,16 @@ public class PoolResourceTest extends DatabaseTestFixture {
 
     @Test
     public void testListForOrgAndProduct() {
-        List<PoolDTO> pools = poolResource.list(owner1.getId(), null, product1.getId(), false,
+        List<PoolDTO> pools = poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, product1.getId
+                (), false,
             null, adminPrincipal, null);
         assertEquals(1, pools.size());
     }
 
     @Test(expected = NotFoundException.class)
     public void testCannotListPoolsInAnotherOwner() {
-        List<PoolDTO> pools = poolResource.list(owner2.getId(), null, product2.getId(),
+        List<PoolDTO> pools = poolResource.list(LegacyUtil.uuidAsString(owner2.getId()), null,
+            product2.getId(),
             false, null, adminPrincipal, null);
         assertEquals(0, pools.size());
     }
@@ -184,7 +188,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
     // owner of that consumer), so make sure we error if someone tries.
     @Test(expected = BadRequestException.class)
     public void testListBlocksConsumerOwnerFiltering() {
-        poolResource.list(owner1.getId(), passConsumer.getUuid(),
+        poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), passConsumer.getUuid(),
             product1.getId(), false, null, adminPrincipal, null);
     }
 
@@ -211,20 +215,22 @@ public class PoolResourceTest extends DatabaseTestFixture {
 
     @Test
     public void testListNoSuchProduct() {
-        assertEquals(0, poolResource.list(owner1.getId(), null, "boogity", false,
+        assertEquals(0, poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, "boogity", false,
             null, adminPrincipal, null).size());
     }
 
     @Test(expected = NotFoundException.class)
     public void ownerAdminCannotListAnotherOwnersPools() {
-        List<PoolDTO> pools = poolResource.list(owner1.getId(), null, null, false, null,
+        List<PoolDTO> pools = poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, null,
+            false, null,
             adminPrincipal, null);
         assertEquals(2, pools.size());
 
         Principal anotherPrincipal = setupPrincipal(owner2, Access.ALL);
         securityInterceptor.enable();
 
-        poolResource.list(owner1.getId(), null, null, false, null, anotherPrincipal, null);
+        poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, null, false, null,
+            anotherPrincipal, null);
     }
 
 
@@ -241,7 +247,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
         Principal p = setupPrincipal(new ConsumerPrincipal(foreignConsumer));
         securityInterceptor.enable();
 
-        poolResource.list(owner1.getId(), null, null, false, null, p, null);
+        poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, null, false, null, p, null);
     }
 
     @Test
@@ -249,12 +255,13 @@ public class PoolResourceTest extends DatabaseTestFixture {
         Principal p = setupPrincipal(new ConsumerPrincipal(passConsumer));
         securityInterceptor.enable();
 
-        poolResource.list(owner1.getId(), null, null, false, null, p, null);
+        poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, null, false, null, p, null);
     }
 
     @Test(expected = BadRequestException.class)
     public void testBadActiveOnDate() {
-        poolResource.list(owner1.getId(), null, null, false, "bc", adminPrincipal, null);
+        poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, null, false, "bc",
+            adminPrincipal, null);
     }
 
     @Test
@@ -266,7 +273,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
         assertEquals(3, pools.size());
 
         activeOn = Integer.toString(START_YEAR - 1);
-        pools = poolResource.list(owner1.getId(), null, null, false, activeOn,
+        pools = poolResource.list(LegacyUtil.uuidAsString(owner1.getId()), null, null, false, activeOn,
             adminPrincipal, null);
         assertEquals(0, pools.size());
     }

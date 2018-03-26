@@ -17,8 +17,7 @@ package org.candlepin.dto.rules.v1;
 import org.candlepin.dto.ModelTranslator;
 import org.candlepin.dto.ObjectTranslator;
 import org.candlepin.model.Owner;
-
-
+import org.candlepin.util.LegacyUtil;
 
 /**
  * The OwnerTranslator provides translation from Owner model objects to OwnerDTOs,
@@ -63,7 +62,7 @@ public class OwnerTranslator implements ObjectTranslator<Owner, OwnerDTO> {
             throw new IllegalArgumentException("destination is null");
         }
 
-        dest.setId(source.getId());
+        dest.setId(LegacyUtil.uuidAsString(source.getId()));
         dest.setDefaultServiceLevel(source.getDefaultServiceLevel());
 
         return dest;

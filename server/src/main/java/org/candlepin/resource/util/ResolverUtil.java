@@ -25,6 +25,7 @@ import org.candlepin.model.ProductCurator;
 import org.candlepin.model.ProvidedProduct;
 import org.candlepin.model.dto.ProductData;
 import org.candlepin.model.dto.Subscription;
+import org.candlepin.util.LegacyUtil;
 
 import com.google.inject.Inject;
 
@@ -67,7 +68,7 @@ public class ResolverUtil {
             }
         }
         else {
-            String id = owner.getId();
+            String id = LegacyUtil.uuidAsString(owner.getId());
             owner = ownerCurator.find(owner.getId());
 
             if (owner == null) {

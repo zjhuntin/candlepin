@@ -14,16 +14,19 @@
  */
 package org.candlepin.model;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import org.junit.Test;
+
+import java.util.UUID;
 
 /**
  * DeletedConsumerTest
  */
 public class DeletedConsumerTest {
 
-    private DeletedConsumer dc = new DeletedConsumer("abcde", "10", "key", "displayname");
+    private UUID deletedUUID = UUID.randomUUID();
+    private DeletedConsumer dc = new DeletedConsumer("abcde", deletedUUID, "key", "displayname");
 
     @Test
     public void consumerId() {
@@ -34,9 +37,9 @@ public class DeletedConsumerTest {
 
     @Test
     public void ownerId() {
-        assertEquals("10", dc.getOwnerId());
-        dc.setOwnerId("11");
-        assertEquals("11", dc.getOwnerId());
+        assertEquals(deletedUUID, dc.getOwnerId());
+        dc.setOwnerId(UUID.randomUUID());
+        assertNotEquals(deletedUUID, dc.getOwnerId());
     }
 
     @Test

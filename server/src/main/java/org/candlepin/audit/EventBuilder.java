@@ -27,11 +27,14 @@ import org.candlepin.model.Named;
 import org.candlepin.model.Owned;
 import org.candlepin.model.Owner;
 import org.candlepin.model.Pool;
+import org.candlepin.util.LegacyUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * ConsumerEventBuilder Allows us to easily build a consumer modified
@@ -89,7 +92,7 @@ public class EventBuilder {
                 Owner entityOwner = ((Owned) entity).getOwner();
 
                 if (entityOwner != null && entityOwner.getId() != null) {
-                    event.setOwnerId(entityOwner.getId());
+                    event.setOwnerId(LegacyUtil.uuidAsString(entityOwner.getId()));
                 }
             }
 
@@ -103,7 +106,12 @@ public class EventBuilder {
             }
 
             if (entity.getId() != null) {
-                event.setEntityId((String) entity.getId());
+                if (entity.getId() instanceof UUID) {
+                    event.setEntityId(LegacyUtil.uuidAsString((UUID) entity.getId()));
+                }
+                else {
+                    event.setEntityId((String) entity.getId());
+                }
 
                 if (entity instanceof ConsumerProperty) {
                     Consumer owningConsumer = ((ConsumerProperty) entity).getConsumer();

@@ -88,6 +88,7 @@ import org.candlepin.service.OwnerServiceAdapter;
 import org.candlepin.service.SubscriptionServiceAdapter;
 import org.candlepin.test.MockResultIterator;
 import org.candlepin.test.TestUtil;
+import org.candlepin.util.LegacyUtil;
 
 import junitparams.JUnitParamsRunner;
 import junitparams.Parameters;
@@ -1840,7 +1841,7 @@ public class PoolManagerTest {
 
         Event event = new Event();
         event.setConsumerId(guest.getUuid());
-        event.setOwnerId(owner.getId());
+        event.setOwnerId(LegacyUtil.uuidAsString(owner.getId()));
         event.setTarget(Target.ENTITLEMENT);
         event.setType(Type.EXPIRED);
         when(eventFactory.entitlementExpired(eq(ent))).thenReturn(event);

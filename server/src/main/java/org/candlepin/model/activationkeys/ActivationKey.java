@@ -34,6 +34,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -213,8 +214,8 @@ public class ActivationKey extends AbstractHibernateObject<ActivationKey> implem
 
             // Pull the owner IDs, as we're not interested in verifying that the owners
             // themselves are equal; just so long as they point to the same owner.
-            String thisOwnerId = this.getOwner() != null ? this.getOwner().getId() : null;
-            String thatOwnerId = that.getOwner() != null ? that.getOwner().getId() : null;
+            UUID thisOwnerId = this.getOwner() != null ? this.getOwner().getId() : null;
+            UUID thatOwnerId = that.getOwner() != null ? that.getOwner().getId() : null;
 
             equals = new EqualsBuilder()
                 .append(this.getId(), that.getId())

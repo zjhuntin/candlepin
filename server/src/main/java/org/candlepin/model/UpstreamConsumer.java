@@ -21,6 +21,9 @@ import com.fasterxml.jackson.annotation.JsonFilter;
 
 import org.hibernate.annotations.ForeignKey;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
+
+import java.util.UUID;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -78,7 +81,8 @@ public class UpstreamConsumer extends AbstractHibernateObject<UpstreamConsumer> 
 
     @Column(name = "owner_id", length = 32, nullable = false)
     @NotNull
-    private String ownerId;
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
+    private UUID ownerId;
 
     @Column(name = "prefix_url_web")
     @Size(max = 255)
@@ -186,7 +190,7 @@ public class UpstreamConsumer extends AbstractHibernateObject<UpstreamConsumer> 
     /**
      * @return the owner of this Consumer.
      */
-    public String getOwnerId() {
+    public UUID getOwnerId() {
         return ownerId;
     }
 
@@ -194,7 +198,7 @@ public class UpstreamConsumer extends AbstractHibernateObject<UpstreamConsumer> 
      * Associates an owner to this Consumer.
      * @param oid owner to associate to this Consumer.
      */
-    public void setOwnerId(String oid) {
+    public void setOwnerId(UUID oid) {
         this.ownerId = oid;
     }
 

@@ -22,6 +22,7 @@ import org.candlepin.common.paging.Page;
 import org.candlepin.common.paging.PageRequest;
 import org.candlepin.config.DatabaseConfigFactory;
 import org.candlepin.guice.PrincipalProvider;
+import org.candlepin.util.LegacyUtil;
 
 import org.apache.commons.collections.CollectionUtils;
 
@@ -63,6 +64,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 
 import javax.persistence.CacheRetrieveMode;
 import javax.persistence.CacheStoreMode;
@@ -1329,6 +1331,10 @@ public abstract class AbstractHibernateCurator<E extends Persisted> {
                             query.setParameterList(String.valueOf(++param), inBlock);
                         }
                     }
+                    else if (criterion instanceof UUID) {
+                        query.setParameter(String.valueOf(++param), LegacyUtil.uuidAsString((UUID)
+                            criterion));
+                    }
                     else {
                         query.setParameter(String.valueOf(++param), criterion);
                     }
@@ -1423,6 +1429,9 @@ public abstract class AbstractHibernateCurator<E extends Persisted> {
                     for (List inBlock : inBlocks) {
                         query.setParameterList(String.valueOf(++param), inBlock);
                     }
+                }
+                else if (criterion instanceof UUID) {
+                    query.setParameter(String.valueOf(++param), LegacyUtil.uuidAsString((UUID) criterion));
                 }
                 else {
                     query.setParameter(String.valueOf(++param), criterion);

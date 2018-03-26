@@ -49,6 +49,7 @@ import java.io.StringReader;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * ConsumerImporterTest
@@ -118,7 +119,7 @@ public class ConsumerImporterTest {
         ConsumerDTO consumer = mock(ConsumerDTO.class);
         ConsumerTypeDTO type = mock(ConsumerTypeDTO.class);
 
-        when(ownerDTO.getId()).thenReturn("test-owner-id");
+        when(ownerDTO.getId()).thenReturn(UUID.randomUUID().toString().replace("-", ""));
         when(consumer.getUuid()).thenReturn("test-uuid");
         when(consumer.getOwner()).thenReturn(ownerDTO);
         when(consumer.getType()).thenReturn(type);
@@ -171,7 +172,7 @@ public class ConsumerImporterTest {
         consumer.setUuid("test-uuid");
 
         Owner anotherOwner = new Owner("other", "Other");
-        anotherOwner.setId("blah");
+        anotherOwner.setId(UUID.randomUUID());
         anotherOwner.setUpstreamConsumer(uc);
         when(curator.lookupWithUpstreamUuid(consumer.getUuid())).thenReturn(anotherOwner);
 

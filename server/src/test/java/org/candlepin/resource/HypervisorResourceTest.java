@@ -80,6 +80,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.inject.Provider;
 
@@ -259,7 +260,7 @@ public class HypervisorResourceTest {
         hostGuestMap.put(hypervisorId, new ArrayList(Arrays.asList(new GuestIdDTO("GUEST_B"))));
 
         Owner o = new Owner("owner-id", "Owner ID");
-        o.setId("owner-id");
+        o.setId(UUID.randomUUID());
         Consumer existing = new Consumer();
         existing.setUuid("test-host");
         existing.setOwner(o);

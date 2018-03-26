@@ -54,6 +54,7 @@ import org.xnap.commons.i18n.I18nFactory;
 
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.inject.Provider;
 
@@ -93,7 +94,7 @@ public class HypervisorUpdateJobTest extends BaseJobTest {
         consumerTypeCurator = mock(ConsumerTypeCurator.class);
         subAdapter = mock(SubscriptionServiceAdapter.class);
         complianceRules = mock(ComplianceRules.class);
-        when(owner.getId()).thenReturn("joe");
+        when(owner.getId()).thenReturn(UUID.randomUUID());
 
         ConsumerType ctype = new ConsumerType(ConsumerTypeEnum.HYPERVISOR);
         ctype.setId("test-ctype");

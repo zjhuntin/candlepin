@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.inject.Inject;
 
@@ -71,7 +72,7 @@ public class OwnerCuratorPermissionsTest extends DatabaseTestFixture {
 
     @Test
     public void testListAllByIdsOwnerPermissionFiltering() {
-        List<String> ids = Arrays.asList(owner1.getId(), owner2.getId(), owner3.getId());
+        List<UUID> ids = Arrays.asList(owner1.getId(), owner2.getId(), owner3.getId());
         List<Owner> results = ownerCurator.listAllByIds(ids).list();
         // Even though we asked for three by ID, we should only get two returned:
         assertEquals(2, results.size());

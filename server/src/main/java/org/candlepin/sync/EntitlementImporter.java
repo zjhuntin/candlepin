@@ -39,6 +39,7 @@ import org.candlepin.model.SourceStack;
 import org.candlepin.model.SubscriptionsCertificate;
 import org.candlepin.model.dto.ProductData;
 import org.candlepin.model.dto.Subscription;
+import org.candlepin.util.LegacyUtil;
 import org.candlepin.util.Util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,6 +55,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * EntitlementImporter - turn an upstream Entitlement into a local subscription
@@ -482,7 +484,7 @@ public class EntitlementImporter {
         }
 
         if (dto.getId() != null) {
-            entity.setId(dto.getId());
+            entity.setId(LegacyUtil.uuidFromString(dto.getId()));
         }
 
         if (dto.getDisplayName() != null) {
@@ -518,7 +520,7 @@ public class EntitlementImporter {
             Owner parent = new Owner();
 
             if (pdto.getId() != null) {
-                parent.setId(pdto.getId());
+                parent.setId(LegacyUtil.uuidFromString(pdto.getId()));
             }
 
             if (pdto.getDisplayName() != null) {

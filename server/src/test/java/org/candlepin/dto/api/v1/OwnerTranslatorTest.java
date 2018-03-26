@@ -17,6 +17,7 @@ package org.candlepin.dto.api.v1;
 import org.candlepin.dto.AbstractTranslatorTest;
 import org.candlepin.dto.ModelTranslator;
 import org.candlepin.model.Owner;
+import org.candlepin.util.LegacyUtil;
 
 import static org.junit.Assert.*;
 
@@ -25,8 +26,7 @@ import junitparams.JUnitParamsRunner;
 import org.junit.runner.RunWith;
 
 import java.util.Date;
-
-
+import java.util.UUID;
 
 /**
  * Test suite for the OwnerTranslator class
@@ -58,7 +58,7 @@ public class OwnerTranslatorTest extends
         for (int i = 0; i < 3; ++i) {
             Owner owner = new Owner();
 
-            owner.setId("owner_id-" + i);
+            owner.setId(UUID.randomUUID());
             owner.setKey("owner_key-" + i);
             owner.setDisplayName("owner_name-" + i);
             owner.setParentOwner(parent);
@@ -86,7 +86,7 @@ public class OwnerTranslatorTest extends
     @Override
     protected void verifyOutput(Owner source, OwnerDTO dest, boolean childrenGenerated) {
         if (source != null) {
-            assertEquals(source.getId(), dest.getId());
+            assertEquals(LegacyUtil.uuidAsString(source.getId()), dest.getId());
             assertEquals(source.getKey(), dest.getKey());
             assertEquals(source.getDisplayName(), dest.getDisplayName());
             assertEquals(source.getContentPrefix(), dest.getContentPrefix());

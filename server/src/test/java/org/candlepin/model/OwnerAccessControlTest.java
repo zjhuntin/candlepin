@@ -22,6 +22,7 @@ import org.candlepin.common.exceptions.ForbiddenException;
 import org.candlepin.dto.api.v1.OwnerDTO;
 import org.candlepin.resource.OwnerResource;
 import org.candlepin.test.DatabaseTestFixture;
+import org.candlepin.util.LegacyUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -56,7 +57,7 @@ public class OwnerAccessControlTest extends DatabaseTestFixture {
         dto = resource.createOwner(dto);
 
         assertNotNull(dto.getId());
-        assertNotNull(ownerCurator.find(dto.getId()));
+        assertNotNull(ownerCurator.find(LegacyUtil.uuidFromString(dto.getId())));
     }
 
     @Test(expected = ForbiddenException.class)

@@ -26,7 +26,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.UUID;
 
 /**
  * UserPrincipalTest
@@ -62,7 +62,7 @@ public class UserPrincipalTest {
 
     @Test
     public void accessOwnerGivenPermission() {
-        when(owner.getId()).thenReturn("1");
+        when(owner.getId()).thenReturn(UUID.randomUUID());
         when(owner.getKey()).thenReturn("owner1");
         when(ownerPerm.getOwner()).thenReturn(owner);
         List<Permission> ops = new ArrayList<>();
@@ -77,7 +77,7 @@ public class UserPrincipalTest {
 
     @Test
     public void accessOwnerKeysGivenPermission() {
-        when(owner.getId()).thenReturn("1");
+        when(owner.getId()).thenReturn(UUID.randomUUID());
         when(owner.getKey()).thenReturn("owner1");
         when(ownerPerm.getOwner()).thenReturn(owner);
         List<Permission> ops = new ArrayList<>();
@@ -92,7 +92,7 @@ public class UserPrincipalTest {
 
     @Test
     public void accessOwnerIdsGivenPermission() {
-        when(owner.getId()).thenReturn("1");
+        when(owner.getId()).thenReturn(UUID.randomUUID());
         when(owner.getKey()).thenReturn("owner1");
         when(ownerPerm.getOwner()).thenReturn(owner);
         List<Permission> ops = new ArrayList<>();

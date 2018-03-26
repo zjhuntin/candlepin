@@ -28,6 +28,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.persistence.PersistenceException;
 import javax.persistence.RollbackException;
@@ -42,11 +43,12 @@ public class OwnerCuratorTest extends DatabaseTestFixture {
     @Test
     public void basicImport() {
         Owner owner = new Owner("testing");
-        owner.setId("testing-primary-key");
+        UUID id = UUID.randomUUID();
+        owner.setId(id);
 
         this.ownerCurator.replicate(owner);
 
-        assertEquals("testing", this.ownerCurator.find("testing-primary-key").getKey());
+        assertEquals("testing", this.ownerCurator.find(id).getKey());
     }
 
     @Test(expected = RollbackException.class)

@@ -14,6 +14,8 @@
  */
 package org.candlepin.model;
 
+import org.candlepin.util.LegacyUtil;
+
 import com.google.inject.persist.Transactional;
 
 import org.hibernate.Criteria;
@@ -32,8 +34,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-
+import java.util.UUID;
 
 /**
  * The OwnerContentCurator provides functionality for managing the mapping between owners and
@@ -54,7 +55,7 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
     }
 
     @Transactional
-    public Content getContentById(String ownerId, String contentId) {
+    public Content getContentById(UUID ownerId, String contentId) {
         return (Content) this.createSecureCriteria()
             .createAlias("owner", "owner")
             .createAlias("content", "content")
@@ -80,8 +81,8 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
         //     the MySQL/MariaDB or Oracle element limits.
         String jpql = "SELECT oc.owner.id FROM OwnerContent oc WHERE oc.content.id = :content_id";
 
-        List<String> ids = this.getEntityManager()
-            .createQuery(jpql, String.class)
+        List<UUID> ids = this.getEntityManager()
+            .createQuery(jpql, UUID.class)
             .setParameter("content_id", contentId)
             .getResultList();
 
@@ -119,7 +120,7 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
      * @return
      *  a collection of content UUIDs belonging to the given owner
      */
-    public Collection<String> getContentUuidsByOwner(String ownerId) {
+    public Collection<String> getContentUuidsByOwner(UUID ownerId) {
         String jpql = "SELECT oc.content.uuid FROM OwnerContent oc WHERE oc.owner.id = :owner_id";
 
         List<String> uuids = this.getEntityManager()
@@ -152,7 +153,7 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
      * @return
      *  a query for fetching the content belonging to the given owner
      */
-    public CandlepinQuery<Content> getContentByOwner(String ownerId) {
+    public CandlepinQuery<Content> getContentByOwner(UUID ownerId) {
         // Impl note: See getOwnersByContent for details on why we're doing this in two queries
         Collection<String> uuids = this.getContentUuidsByOwner(ownerId);
 
@@ -170,7 +171,7 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
         return this.getContentByIds(owner.getId(), contentIds);
     }
 
-    public CandlepinQuery<Content> getContentByIds(String ownerId, Collection<String> contentIds) {
+    public CandlepinQuery<Content> getContentByIds(UUID ownerId, Collection<String> contentIds) {
         if (contentIds == null || contentIds.isEmpty()) {
             return this.cpQueryFactory.<Content>buildQuery();
         }
@@ -469,7 +470,7 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
 
         // environment content
         List<String> ids = session.createSQLQuery("SELECT id FROM cp_environment WHERE owner_id = ?1")
-            .setParameter("1", owner.getId())
+            .setParameter("1", LegacyUtil.uuidAsString(owner.getId()))
             .list();
 
         if (ids != null && !ids.isEmpty()) {
@@ -531,7 +532,7 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
             // environment content
             String sql = "SELECT id FROM " + Environment.DB_TABLE + " WHERE owner_id = ?1";
             List<String> ids = session.createSQLQuery(sql)
-                .setParameter("1", owner.getId())
+                .setParameter("1", LegacyUtil.uuidAsString(owner.getId()))
                 .list();
 
             if (ids != null && !ids.isEmpty()) {

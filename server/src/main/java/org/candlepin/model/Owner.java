@@ -27,6 +27,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 
 import io.swagger.annotations.ApiModelProperty;
 
@@ -34,6 +35,7 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -75,12 +77,11 @@ public class Owner extends AbstractHibernateObject<Owner>
     private Owner parentOwner;
 
     @Id
-    @GeneratedValue(generator = "system-uuid")
-    @GenericGenerator(name = "system-uuid", strategy = "uuid")
-    @Column(length = 32)
+    @GeneratedValue
     @NotNull
     @ApiModelProperty(readOnly = true)
-    private String id;
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
+    private UUID id;
 
     @Column(name = "account", nullable = false, unique = true)
     @Size(max = 255)
@@ -183,14 +184,14 @@ public class Owner extends AbstractHibernateObject<Owner>
      */
     @Override
     @HateoasInclude
-    public String getId() {
+    public UUID getId() {
         return id;
     }
 
     /**
      * @param id the id to set
      */
-    public void setId(String id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -324,8 +325,8 @@ public class Owner extends AbstractHibernateObject<Owner>
 
             // Pull the parent owner IDs, as we're not interested in verifying that the parent owners
             // themselves are equal; just so long as they point to the same parent owner.
-            String lpoid = this.getParentOwner() != null ? this.getParentOwner().getId() : null;
-            String rpoid = that.getParentOwner() != null ? that.getParentOwner().getId() : null;
+            UUID lpoid = this.getParentOwner() != null ? this.getParentOwner().getId() : null;
+            UUID rpoid = that.getParentOwner() != null ? that.getParentOwner().getId() : null;
 
             // Same with the upstream consumer
             String lucid = this.getUpstreamConsumer() != null ? this.getUpstreamConsumer().getId() : null;

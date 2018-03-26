@@ -26,7 +26,7 @@ import junitparams.JUnitParamsRunner;
 
 import org.junit.runner.RunWith;
 
-
+import java.util.UUID;
 
 /**
  * Test suite for the UpstreamConsumerTranslator class
@@ -63,7 +63,7 @@ public class UpstreamConsumerTranslatorTest extends
         consumer.setName("consumer_name");
         consumer.setApiUrl("http://www.url.com");
         consumer.setWebUrl("http://www.url.com");
-        consumer.setOwnerId("owner_id");
+        consumer.setOwnerId(UUID.randomUUID());
         consumer.setType(this.consumerTypeTranslatorTest.initSourceObject());
         consumer.setIdCert((IdentityCertificate) this.certificateTranslatorTest.initSourceObject());
 

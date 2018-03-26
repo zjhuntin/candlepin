@@ -14,7 +14,10 @@
  */
 package org.candlepin.model;
 
+import org.hibernate.annotations.Type;
+
 import java.io.Serializable;
+import java.util.UUID;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -65,7 +68,8 @@ public class OwnerContent implements Persisted, Serializable {
 
     @Id
     @Column(name = "owner_id")
-    private String ownerId;
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
+    private UUID ownerId;
 
     @Id
     @Column(name = "content_uuid")

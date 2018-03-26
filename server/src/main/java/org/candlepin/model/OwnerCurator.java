@@ -32,8 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
-
-
+import java.util.UUID;
 
 /**
  * OwnerCurator
@@ -170,7 +169,7 @@ public class OwnerCurator extends AbstractHibernateCurator<Owner> {
     }
 
     @SuppressWarnings("unchecked")
-    public CandlepinQuery<String> getConsumerIds(String ownerId) {
+    public CandlepinQuery<String> getConsumerIds(UUID ownerId) {
         DetachedCriteria criteria = DetachedCriteria.forClass(Consumer.class)
             .add(Restrictions.eq("owner.id", ownerId))
             .setProjection(Property.forName("id"));
@@ -183,7 +182,7 @@ public class OwnerCurator extends AbstractHibernateCurator<Owner> {
     }
 
     @SuppressWarnings("unchecked")
-    public CandlepinQuery<String> getConsumerUuids(String ownerId) {
+    public CandlepinQuery<String> getConsumerUuids(UUID ownerId) {
         DetachedCriteria criteria = DetachedCriteria.forClass(Consumer.class)
             .add(Restrictions.eq("owner.id", ownerId))
             .setProjection(Property.forName("uuid"));

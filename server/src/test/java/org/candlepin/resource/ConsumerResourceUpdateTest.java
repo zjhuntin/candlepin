@@ -92,6 +92,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 import javax.inject.Provider;
 
@@ -207,7 +208,7 @@ public class ConsumerResourceUpdateTest {
 
         Consumer consumer = new Consumer();
         Owner owner = new Owner();
-        owner.setId("FAKEOWNERID");
+        owner.setId(UUID.randomUUID());
         String uuid = "FAKEUUID";
         consumer.setUuid(uuid);
         consumer.setOwner(owner);
@@ -933,7 +934,7 @@ public class ConsumerResourceUpdateTest {
         Consumer a = new Consumer();
         a.setType(ctype);
         Owner owner = new Owner();
-        owner.setId("FAKEOWNERID");
+        owner.setId(UUID.randomUUID());
         a.setOwner(owner);
         for (String guestId : guestIds) {
             a.addGuestId(new GuestId(guestId));

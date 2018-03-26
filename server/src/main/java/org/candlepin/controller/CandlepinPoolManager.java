@@ -69,6 +69,7 @@ import org.candlepin.policy.js.pool.PoolUpdate;
 import org.candlepin.resource.dto.AutobindData;
 import org.candlepin.service.OwnerServiceAdapter;
 import org.candlepin.service.SubscriptionServiceAdapter;
+import org.candlepin.util.LegacyUtil;
 import org.candlepin.util.Util;
 import org.candlepin.util.Traceable;
 import org.candlepin.util.TraceableParam;
@@ -390,7 +391,7 @@ public class CandlepinPoolManager implements PoolManager {
             }
         }
         else {
-            String id = owner.getId();
+            String id = LegacyUtil.uuidAsString(owner.getId());
             owner = ownerCurator.find(owner.getId());
 
             if (owner == null) {
