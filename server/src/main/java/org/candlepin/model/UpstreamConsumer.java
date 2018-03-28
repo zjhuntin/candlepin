@@ -16,11 +16,13 @@ package org.candlepin.model;
 
 import org.candlepin.common.jackson.HateoasArrayExclude;
 import org.candlepin.common.jackson.HateoasInclude;
+import org.candlepin.util.CandlepinUUID;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
 
 import org.hibernate.annotations.ForeignKey;
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -76,9 +78,10 @@ public class UpstreamConsumer extends AbstractHibernateObject<UpstreamConsumer> 
     @NotNull
     private ConsumerType type;
 
-    @Column(name = "owner_id", length = 32, nullable = false)
+    @Column(name = "owner_id")
     @NotNull
-    private String ownerId;
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
+    private CandlepinUUID ownerId;
 
     @Column(name = "prefix_url_web")
     @Size(max = 255)
@@ -99,7 +102,7 @@ public class UpstreamConsumer extends AbstractHibernateObject<UpstreamConsumer> 
 
         this.name = name;
         if (owner != null) {
-            this.ownerId = owner.getId();
+            this.ownerId = CandlepinUUID.fromString(owner.getId());
         }
         this.type = type;
         this.uuid = uuid;
@@ -187,7 +190,7 @@ public class UpstreamConsumer extends AbstractHibernateObject<UpstreamConsumer> 
      * @return the owner of this Consumer.
      */
     public String getOwnerId() {
-        return ownerId;
+        return ownerId.toString();
     }
 
     /**
@@ -195,7 +198,7 @@ public class UpstreamConsumer extends AbstractHibernateObject<UpstreamConsumer> 
      * @param oid owner to associate to this Consumer.
      */
     public void setOwnerId(String oid) {
-        this.ownerId = oid;
+        this.ownerId = CandlepinUUID.fromString(oid);
     }
 
     /**

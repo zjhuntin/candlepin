@@ -18,6 +18,7 @@ import org.candlepin.common.jackson.HateoasInclude;
 import org.candlepin.model.activationkeys.ActivationKey;
 import org.candlepin.resteasy.InfoProperty;
 import org.candlepin.service.ContentAccessCertServiceAdapter;
+import org.candlepin.util.CandlepinUUID;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -27,6 +28,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 
 import io.swagger.annotations.ApiModelProperty;
 
@@ -75,12 +77,13 @@ public class Owner extends AbstractHibernateObject<Owner>
     private Owner parentOwner;
 
     @Id
-    @GeneratedValue(generator = "system-uuid")
-    @GenericGenerator(name = "system-uuid", strategy = "uuid")
-    @Column(length = 32)
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "uuid2")
+    @Column
     @NotNull
     @ApiModelProperty(readOnly = true)
-    private String id;
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
+    private CandlepinUUID id;
 
     @Column(name = "account", nullable = false, unique = true)
     @Size(max = 255)
@@ -184,14 +187,14 @@ public class Owner extends AbstractHibernateObject<Owner>
     @Override
     @HateoasInclude
     public String getId() {
-        return id;
+        return id.toString();
     }
 
     /**
      * @param id the id to set
      */
     public void setId(String id) {
-        this.id = id;
+        this.id = CandlepinUUID.fromString(id);
     }
 
     @InfoProperty("key")
@@ -379,7 +382,7 @@ public class Owner extends AbstractHibernateObject<Owner>
     public void setUpstreamConsumer(UpstreamConsumer upstream) {
         this.upstreamConsumer = upstream;
         if (upstream != null) {
-            upstream.setOwnerId(id);
+            upstream.setOwnerId(id.toString());
         }
     }
 
