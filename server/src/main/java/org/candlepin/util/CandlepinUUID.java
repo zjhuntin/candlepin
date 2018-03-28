@@ -14,6 +14,7 @@
  */
 package org.candlepin.util;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.UUID;
 
@@ -23,7 +24,7 @@ import javax.xml.bind.DatatypeConverter;
  * Class that represents Candlepin's unique approach to UUIDs.  We do not store or emit UUIDs with hyphens
  * in them.  Delegates to the JDK UUID since that class is declared final and we can't extend it.
  */
-public class CandlepinUUID {
+public class CandlepinUUID implements Serializable {
     private final UUID uuid;
 
     public CandlepinUUID(long mostSigBits, long leastSigBits) {
