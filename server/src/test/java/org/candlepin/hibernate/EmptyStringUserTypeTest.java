@@ -39,7 +39,7 @@ public class EmptyStringUserTypeTest {
     private EntityManager em;
 
     @Entity
-    @Table(name = "Thing")
+    @Table(name = "EmptyStringThing")
     public static class Thing {
         @Id
         private int id;
