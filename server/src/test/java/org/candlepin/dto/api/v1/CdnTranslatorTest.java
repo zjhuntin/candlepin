@@ -20,9 +20,12 @@ import org.candlepin.dto.ModelTranslator;
 import org.candlepin.model.Cdn;
 import org.candlepin.model.CdnCertificate;
 import org.candlepin.model.CertificateSerial;
+import org.candlepin.util.LegacyUtil;
+
 import org.junit.runner.RunWith;
 
 import java.util.Date;
+import java.util.UUID;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -52,7 +55,7 @@ public class CdnTranslatorTest extends AbstractTranslatorTest<Cdn, CdnDTO, CdnTr
     protected Cdn initSourceObject() {
         Cdn source = new Cdn();
         source.setName("cdn-name");
-        source.setId("cdn-id");
+        source.setId(LegacyUtil.uuidAsString(UUID.randomUUID()));
         source.setUrl("cdn-url");
         source.setLabel("cdn-label");
 

@@ -18,11 +18,12 @@ import org.candlepin.model.dto.ProductContentData;
 
 import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
-
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 
 import java.io.Serializable;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -50,6 +51,8 @@ public class ProductContent extends AbstractHibernateObject {
     @GeneratedValue(generator = "system-uuid")
     @GenericGenerator(name = "system-uuid", strategy = "uuid")
     @NotNull
+    @Column(columnDefinition = "BINARY(16)")
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
     private String id;
 
     @ManyToOne

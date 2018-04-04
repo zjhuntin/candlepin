@@ -15,6 +15,7 @@
 package org.candlepin.model;
 
 import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -44,10 +45,11 @@ public class Cdn extends AbstractHibernateObject {
     public static final String DB_TABLE = "cp_cdn";
 
     @Id
+    @NotNull
     @GeneratedValue(generator = "system-uuid")
     @GenericGenerator(name = "system-uuid", strategy = "uuid")
-    @Column(length = 32)
-    @NotNull
+    @Column(columnDefinition = "BINARY(16)")
+    @Type(type = "org.candlepin.hibernate.StringUUIDUserType")
     private String id;
 
     @Column(nullable = false)
