@@ -39,6 +39,14 @@ import org.mockito.runners.MockitoJUnitRunner;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.HashMap;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ConsumerExporterTest
@@ -106,5 +114,48 @@ public class ConsumerExporterTest {
         json.append("\"urlWeb\":\"/subscriptions\",");
         json.append("\"contentAccessMode\":\"access_mode\"}");
         assertTrue(TestUtil.isJsonEqual(json.toString(), writer.toString()));
+    }
+
+    @Test
+    public void testThreadPool() throws Exception {
+        int numThreads = 2;
+        BlockingQueue blockingQueue = new LinkedBlockingQueue(4);
+        ThreadPoolExecutor service = new ThreadPoolExecutor(numThreads, numThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue(4));
+        try {
+            for (int i = 0; i < 16; i++) {
+                try {
+                    service.execute(new Runnable() {
+                        @Override
+                        public void run() {
+                            System.out.println("RUNNING");
+                            try {
+//                                Thread.sleep(2000);
+                            } catch (Exception e) {
+
+                            }
+                        }
+                    });
+                }
+                catch (RejectedExecutionException ree) {
+                    System.out.println("No more space in queue.");
+
+                    System.out.println(service.getActiveCount());
+                }
+            }
+        }
+        finally {
+
+        }
+
+    }
+
+    @Test
+    public void testExc() throws Exception {
+        try {
+            throw new RuntimeException("TEST");
+        }
+        catch (Exception e) {
+            System.out.println("I CAUGHT!" + e.getMessage());
+        }
     }
 }

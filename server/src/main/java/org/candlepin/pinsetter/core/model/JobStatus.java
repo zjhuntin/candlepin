@@ -24,6 +24,7 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
 
 import java.util.Date;
+import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -68,7 +69,19 @@ public class JobStatus extends AbstractHibernateObject {
         FINISHED,
         CANCELED,
         FAILED,
-        WAITING; // added late, reordering would be problematic now
+        WAITING,
+        QUEUED; // added late, reordering would be problematic now
+    }
+
+    /**
+     * The type of job this is.
+     *
+     * QUARTZ: This is a quartz job.
+     * MESSAGING: This is a messaging job.
+     */
+    public enum JobType {
+        QUARTZ,
+        MESSAGING
     }
 
     /**
@@ -117,16 +130,23 @@ public class JobStatus extends AbstractHibernateObject {
     @Type(type = "org.candlepin.hibernate.ResultDataUserType")
     private Object resultData;
 
+    // FIXME Likely don't have to re-use this, but is a quick way to get it working.
+    @Type(type = "org.candlepin.hibernate.ResultDataUserType")
+    private Object runtimeArgs;
+
+    private JobType type;
+
     @Transient
     private boolean cloakData = false;
 
     public JobStatus() { }
 
-    public JobStatus(JobDetail jobDetail) {
-        this(jobDetail, false);
+    public JobStatus(JobDetail jobDetail, JobType type) {
+        this(jobDetail, false, type);
     }
 
-    public JobStatus(JobDetail jobDetail, boolean waiting) {
+    // FIXME Remove the reference to JobDetail as this class is no longer only related to Quartz Jobs.
+    public JobStatus(JobDetail jobDetail, boolean waiting, JobType type) {
         this.id = jobDetail.getKey().getName();
         this.jobGroup = jobDetail.getKey().getGroup();
         this.state = waiting ? JobState.WAITING : JobState.CREATED;
@@ -136,6 +156,22 @@ public class JobStatus extends AbstractHibernateObject {
         this.principalName = getPrincipalName(jobDetail);
         this.jobClass = getJobClass(jobDetail);
         this.correlationId = getCorrelationId(jobDetail);
+        this.type = type;
+    }
+
+    public JobStatus(String id, String jobGroup, String ownerId, TargetType targetType, String targetId,
+                     String principalName, String jobClass, String correlationId, JobType type,
+                     boolean waiting) {
+        this.id = id;
+        this.jobGroup = jobGroup;
+        this.state = waiting ? JobState.WAITING : JobState.CREATED;
+        this.ownerId = ownerId;
+        this.targetType = targetType;
+        this.targetId = targetId;
+        this.principalName = principalName;
+        this.jobClass = jobClass;
+        this.correlationId = correlationId;
+        this.type = type;
     }
 
     private String getPrincipalName(JobDetail detail) {
@@ -194,6 +230,23 @@ public class JobStatus extends AbstractHibernateObject {
             setResult(jobResult.toString());
             setResultData(jobResult);
         }
+    }
+
+    // FIXME Supports only the JobMessage case.
+    public void update(Long startTime, Long endTime) {
+        if (startTime != null) {
+            this.startTime = new Date(startTime);
+        }
+        if (endTime != null) {
+            this.finishTime = new Date(endTime);
+        }
+    }
+
+    // FIXME Supports only the JobMessage case.
+    public void updateResult(Object resultData) {
+        String message = resultData != null ? resultData.toString() : "";
+        setResult(message);
+        setResultData(resultData);
     }
 
     public String getId() {
@@ -284,19 +337,36 @@ public class JobStatus extends AbstractHibernateObject {
         return (this.cloakData) ? "[cloaked]" : this.resultData;
     }
 
+    public void setRuntimeArgs(Object runtimeArgs) {
+        this.runtimeArgs = runtimeArgs;
+    }
+
+    public Object getRuntimeArgs() {
+        return this.runtimeArgs;
+    }
+
+    public JobType getType() {
+        return this.type;
+    }
+
+    public void setType(JobType type) {
+        this.type = type;
+    }
+
     public JobStatus cloakResultData(boolean cloak) {
         this.cloakData = cloak;
         return this;
     }
 
     public String toString() {
-        return String.format("JobStatus [id: %s, type: %s, owner: %s, target: %s (%s), state: %s]",
+        return String.format("JobStatus [id: %s, type: %s, owner: %s, target: %s (%s), state: %s, type: %s]",
             this.id,
             this.jobClass,
             this.ownerId,
             this.targetId,
             this.targetType,
-            this.state
+            this.state,
+            this.type
         );
     }
 }

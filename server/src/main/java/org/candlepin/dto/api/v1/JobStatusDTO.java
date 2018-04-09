@@ -46,6 +46,7 @@ public class JobStatusDTO extends TimestampedCandlepinDTO<JobStatusDTO> {
     private String correlationId;
 
     private Object resultData;
+    private Object runtimeArgs;
     private Boolean done;
 
     /**
@@ -319,6 +320,24 @@ public class JobStatusDTO extends TimestampedCandlepinDTO<JobStatusDTO> {
     }
 
     /**
+     * Retrieves the runtime args associated with this job.
+     *
+     * @return the args specified when this job was run.
+     */
+    public Object getRuntimeArgs() {
+        return this.runtimeArgs;
+    }
+
+    /**
+     * Sets the runtime args associated with this job.
+     * @param runtimeArgs
+     */
+    public JobStatusDTO setRuntimeArgs(Object runtimeArgs) {
+        this.runtimeArgs = runtimeArgs;
+        return this;
+    }
+
+    /**
      * Returns true if the job that this JobStatusDTO object represents is done. False otherwise.
      *
      * @return true if the job that this JobStatusDTO object represents is done. False otherwise.
@@ -382,7 +401,8 @@ public class JobStatusDTO extends TimestampedCandlepinDTO<JobStatusDTO> {
                 .append(this.getState(), that.getState())
                 .append(this.getTargetId(), that.getTargetId())
                 .append(this.getTargetType(), that.getTargetType())
-                .append(this.isDone(), that.isDone());
+                .append(this.isDone(), that.isDone())
+                .append(this.getRuntimeArgs(), that.getRuntimeArgs());
 
             return builder.isEquals();
         }
@@ -409,7 +429,8 @@ public class JobStatusDTO extends TimestampedCandlepinDTO<JobStatusDTO> {
             .append(this.getState())
             .append(this.getTargetId())
             .append(this.getTargetType())
-            .append(this.isDone());
+            .append(this.isDone())
+            .append(this.getRuntimeArgs());
 
         return builder.toHashCode();
     }
@@ -449,7 +470,8 @@ public class JobStatusDTO extends TimestampedCandlepinDTO<JobStatusDTO> {
             .setState(source.getState())
             .setTargetId(source.getTargetId())
             .setTargetType(source.getTargetType())
-            .setDone(source.isDone());
+            .setDone(source.isDone())
+            .setRuntimeArgs(source.getRuntimeArgs());
 
         return this;
     }

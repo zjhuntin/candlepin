@@ -91,6 +91,7 @@ import org.candlepin.policy.js.pool.PoolRules;
 import org.candlepin.resource.ActivationKeyContentOverrideResource;
 import org.candlepin.resource.ActivationKeyResource;
 import org.candlepin.resource.AdminResource;
+import org.candlepin.resource.AsyncJobResource;
 import org.candlepin.resource.AtomFeedResource;
 import org.candlepin.resource.CdnResource;
 import org.candlepin.resource.CertificateSerialResource;
@@ -210,6 +211,7 @@ public class CandlepinModule extends AbstractModule {
         bind(X509ExtensionUtil.class);
         bind(ResolverUtil.class);
         bind(GuestMigration.class);
+        bind(AsyncJobResource.class);
         bind(ConsumerResource.class);
         bind(ConsumerContentOverrideResource.class);
         bind(ActivationKeyContentOverrideResource.class);

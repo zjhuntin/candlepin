@@ -17,6 +17,8 @@ package org.candlepin.config;
 
 import static org.candlepin.common.config.ConfigurationPrefixes.JPA_CONFIG_PREFIX;
 
+import org.candlepin.async.jobs.RefreshPoolsMessageJob;
+import org.candlepin.async.jobs.TestPersistenceJob;
 import org.candlepin.pinsetter.tasks.ActiveEntitlementJob;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
 import org.candlepin.pinsetter.tasks.CertificateRevocationListTask;
@@ -180,6 +182,23 @@ public class ConfigProperties {
     public static final String AMQP_TRUSTSTORE_PASSWORD = "candlepin.amqp.truststore_password";
     public static final String AMQP_CONNECTION_RETRY_ATTEMPTS = "gutterball.amqp.connection.retry_attempts";
     public static final String AMQP_CONNECTION_RETRY_INTERVAL = "gutterball.amqp.connection.retry_interval";
+
+    // Async Job configuration
+    /**
+     * The maximum number of jobs that can be run at the same time.
+     */
+    public static final String ASYNC_JOBS_MAX_THREADS = "candlepin.async.jobs.max_threads";
+
+    /**
+     * The maximum number of jobs that can be waiting for an available thread in
+     * the job queue.
+     */
+    public static final String ASYNC_JOBS_QUEUE_SIZE = "candlepin.async.jobs.queue_size";
+
+    /**
+     * A comma separated list of the AsyncJob classes that are allowed to be run.
+     */
+    public static final String ALLOWED_ASYNC_JOBS = "candlepin.async.jobs.allowed_jobs";
 
     /**
      * A possibility to enable Suspend Mode. By default, the suspend mode is enabled
@@ -457,6 +476,16 @@ public class ConfigProperties {
             // ManifestCleanerJob config
             // Max Age: 24 hours
             this.put(MANIFEST_CLEANER_JOB_MAX_AGE_IN_MINUTES, "1440");
+
+            // Async job defaults
+            this.put(ASYNC_JOBS_QUEUE_SIZE, "10");
+            this.put(ASYNC_JOBS_MAX_THREADS, "25");
+
+            String[] allowed = new String[] {
+                RefreshPoolsMessageJob.class.getCanonicalName(),
+                TestPersistenceJob.class.getCanonicalName()
+            };
+            this.put(ALLOWED_ASYNC_JOBS, StringUtils.join(allowed, ","));
         }
     };
 

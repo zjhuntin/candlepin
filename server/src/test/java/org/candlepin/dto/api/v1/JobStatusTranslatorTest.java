@@ -72,7 +72,7 @@ public class JobStatusTranslatorTest
         when(jobDataMap.get(OWNER_ID)).thenReturn("test-owner-id");
         when(jobDataMap.get(CORRELATION_ID)).thenReturn("test-correlation-id");
 
-        JobStatus source = new JobStatus(jobDetail);
+        JobStatus source = new JobStatus(jobDetail, JobStatus.JobType.QUARTZ);
         source.setState(JobStatus.JobState.CREATED);
         source.setResult("result of job");
         source.setResultData("result data of job");

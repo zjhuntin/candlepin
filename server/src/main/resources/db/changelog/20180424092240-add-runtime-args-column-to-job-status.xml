@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="20180424092240-1" author="mstead" dbms="mysql">
+        <comment>Add runtime args to cp_job so that a job can be re-run later.</comment>
+        <addColumn tableName="cp_job">
+            <column name="runtimeargs" type="LONGBLOB"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="20180424092240-2" author="mstead" dbms="oracle, hsqldb">
+        <comment>Add runtime args to cp_job so that a job can be re-run later.</comment>
+
+        <addColumn tableName="cp_job">
+            <column name="runtimeargs" type="BLOB"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="20180424092240-3" author="mstead" dbms="postgresql">
+        <comment>Add runtime args to cp_job so that a job can be re-run later.</comment>
+
+        <addColumn tableName="cp_job">
+            <column name="runtimeargs" type="BYTEA"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
+<!-- vim: set expandtab sts=4 sw=4 ai: -->

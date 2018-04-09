@@ -291,7 +291,7 @@ public class HypervisorUpdateJobTest extends BaseJobTest {
     @Test
     public void monogamousJobTest() throws JobExecutionException, SchedulerException {
         JobDetail detail = HypervisorUpdateJob.forOwner(owner, hypervisorJson, true, principal, null);
-        JobStatus newJob = new JobStatus(detail);
+        JobStatus newJob = new JobStatus(detail, JobStatus.JobType.QUARTZ);
         JobCurator jobCurator = mock(JobCurator.class);
         when(jobCurator.findNumRunningByClassAndTarget(owner.getKey(), HypervisorUpdateJob.class))
             .thenReturn(1L);

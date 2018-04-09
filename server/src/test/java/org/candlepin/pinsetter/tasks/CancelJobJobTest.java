@@ -95,7 +95,7 @@ public class CancelJobJobTest extends BaseJobTest{
         List<JobDetail> jobDetailList = Arrays.asList(jd1, jd2, jd3);
         Set<JobStatus> jl = new HashSet<>();
         for (JobDetail jd : jobDetailList) {
-            jl.add(new JobStatus(jd1));
+            jl.add(new JobStatus(jd1, JobStatus.JobType.QUARTZ));
         }
 
         Set<JobKey> jobKeys = new HashSet<>();

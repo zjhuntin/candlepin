@@ -14,6 +14,7 @@
  */
 package org.candlepin.resource;
 
+import org.candlepin.async.JobMessageFactory;
 import org.candlepin.common.auth.SecurityHole;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.common.exceptions.BadRequestException;
@@ -31,6 +32,7 @@ import org.candlepin.model.ProductCertificate;
 import org.candlepin.model.ProductCertificateCurator;
 import org.candlepin.model.ProductCurator;
 import org.candlepin.model.ResultIterator;
+import org.candlepin.pinsetter.core.model.JobStatus;
 import org.candlepin.pinsetter.tasks.RefreshPoolsJob;
 
 import com.google.inject.Inject;
@@ -77,11 +79,12 @@ public class ProductResource {
     private Configuration config;
     private I18n i18n;
     private ModelTranslator translator;
+    private JobMessageFactory jobMessageFactory;
 
     @Inject
     public ProductResource(ProductCurator productCurator, OwnerCurator ownerCurator,
         ProductCertificateCurator productCertCurator, Configuration config, I18n i18n,
-        ModelTranslator translator) {
+        ModelTranslator translator, JobMessageFactory jobMessageFactory) {
 
         this.productCurator = productCurator;
         this.productCertCurator = productCertCurator;
@@ -89,6 +92,7 @@ public class ProductResource {
         this.config = config;
         this.i18n = i18n;
         this.translator = translator;
+        this.jobMessageFactory = jobMessageFactory;
     }
 
     /**
@@ -275,7 +279,7 @@ public class ProductResource {
     @Path("/subscriptions")
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.WILDCARD)
-    public JobDetail[] refreshPoolsForProduct(
+    public List<JobStatus> refreshPoolsForProduct(
         @ApiParam(value = "Multiple product UUIDs", required = true)
         @QueryParam("product") List<String> productUuids,
         @QueryParam("lazy_regen") @DefaultValue("true") Boolean lazyRegen) {
@@ -292,14 +296,15 @@ public class ProductResource {
         // TODO:
         // Replace this with the commented out block below once the job scheduling is no longer performed
         // via PinsetterAsyncFilter
+
         ResultIterator<Owner> iterator = this.ownerCurator.getOwnersWithProducts(productUuids).iterate();
-        List<JobDetail> details = new LinkedList<>();
+        List<JobStatus> jobStatuses = new LinkedList<>();
+
         while (iterator.hasNext()) {
-            details.add(RefreshPoolsJob.forOwner(iterator.next(), lazyRegen));
+            jobStatuses.add(jobMessageFactory.createRefreshPoolsJob(iterator.next(), lazyRegen));
         }
         iterator.close();
-
-        return details.toArray(new JobDetail[0]);
+        return jobStatuses;
 
         // final Boolean lazy = lazyRegen; // Necessary to deal with Java's limitations with closures
         // return this.ownerCurator.lookupOwnersWithProduct(productUuids).transform(

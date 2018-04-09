@@ -15,6 +15,9 @@
 package org.candlepin.audit;
 
 import org.apache.activemq.artemis.core.config.DivertConfiguration;
+import org.candlepin.async.JobMessageFactory;
+import org.apache.activemq.artemis.api.core.ActiveMQException;
+import org.candlepin.async.JobMessageSource;
 import org.candlepin.config.ConfigProperties;
 
 import com.google.common.collect.Lists;
@@ -42,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,10 +61,12 @@ public class ActiveMQContextListener {
 
     private EmbeddedActiveMQ activeMQServer;
     private EventSource eventSource;
+    private JobMessageSource jobMessageSource;
 
     public void contextDestroyed() {
         if (activeMQServer != null) {
             eventSource.shutDown();
+            jobMessageSource.shutDown();
             try {
                 activeMQServer.stop();
                 log.info("ActiveMQ server stopped.");
@@ -114,7 +120,13 @@ public class ActiveMQContextListener {
             config.setJournalDirectory(new File(baseDir, "journal").toString());
             config.setLargeMessagesDirectory(new File(baseDir, "largemsgs").toString());
             config.setPagingDirectory(new File(baseDir, "paging").toString());
-            config.setAddressesSettings(buildAddressSettings(eventListeners, candlepinConfig));
+
+            // Build AddressSettings for the event handlers.
+            Map<String, AddressSettings> addressSettings = new HashMap<>();
+            addressSettings.putAll(buildAddressSettings(eventListeners, candlepinConfig));
+            addressSettings.putAll(buildAsyncJobAddressSettings(candlepinConfig));
+
+            config.setAddressesSettings(addressSettings);
             config.addDivertConfiguration(buildDivertConfig());
 
             int maxScheduledThreads = candlepinConfig.getInt(ConfigProperties.ACTIVEMQ_MAX_SCHEDULED_THREADS);
@@ -160,9 +172,19 @@ public class ActiveMQContextListener {
         for (EventListener listener : eventListeners) {
             try {
                 eventSource.registerListener(listener);
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 log.warn("Unable to register listener {}", listener, e);
+            }
+        }
+
+        // Register configured Job message listeners.
+        jobMessageSource = injector.getInstance(JobMessageSource.class);
+        for (String jobListenerClass : getJobListeners(candlepinConfig)) {
+            try {
+                jobMessageSource.registerListener(jobListenerClass);
+            }
+            catch (ActiveMQException amqe) {
+                log.warn("Unable to register job message listener {}.", jobListenerClass, amqe);
             }
         }
 
@@ -176,11 +198,29 @@ public class ActiveMQContextListener {
             log.error("Failed to initialize EventSink:", e);
             throw new RuntimeException(e);
         }
+
+        // Initialize the JobMessageFactory AFTER the server has been started.
+        JobMessageFactory factory = injector.getInstance(JobMessageFactory.class);
+        try {
+            factory.initialize();
+        }
+        catch (Exception e) {
+            log.error("Unable to initialize JobMessageFactory. Async jobs willnot be started.", e);
+            throw new RuntimeException(e);
+        }
     }
 
-    private Map<String, AddressSettings> buildAddressSettings(List<EventListener> eventListeners,
-        org.candlepin.common.config.Configuration candlepinConfig) {
-        Map<String, AddressSettings> settings = new HashMap<>();
+    private void registerEventListener(Injector injector, String className) {
+        try {
+            Class<?> clazz = this.getClass().getClassLoader().loadClass(className);
+            eventSource.registerListener((EventListener) injector.getInstance(clazz));
+        }
+        catch (Exception e) {
+            log.warn("Unable to register listener {}.", className, e);
+        }
+    }
+
+    private AddressSettings defaultAddressSettings(org.candlepin.common.config.Configuration candlepinConfig) {
         String addressPolicyString =
             candlepinConfig.getString(ConfigProperties.ACTIVEMQ_ADDRESS_FULL_POLICY);
         long maxQueueSizeInMb = candlepinConfig.getInt(ConfigProperties.ACTIVEMQ_MAX_QUEUE_SIZE);
@@ -198,15 +238,34 @@ public class ActiveMQContextListener {
                                                    addressPolicyString + " . Please use one of: PAGE, BLOCK");
         }
 
+        AddressSettings settings = new AddressSettings();
+        // Paging sizes need to be converted to bytes
+        settings.setMaxSizeBytes(maxQueueSizeInMb * FileUtils.ONE_MB);
+        if (addressPolicy == AddressFullMessagePolicy.PAGE) {
+            settings.setPageSizeBytes(maxPageSizeInMb * FileUtils.ONE_MB);
+        }
+        settings.setAddressFullMessagePolicy(addressPolicy);
+
+        return settings;
+    }
+
+    private Map<String, AddressSettings> buildAsyncJobAddressSettings(org.candlepin.common.config.Configuration candlepinConfig) {
+        Map<String, AddressSettings> settings = new HashMap<>();
+        AddressSettings asyncJobsConfig = this.defaultAddressSettings(candlepinConfig);
+        configureMessageRetry(asyncJobsConfig, candlepinConfig);
+        // TODO Any async job queue specific settings for retry ect... Change filter and
+        //      add new setting config per handler if required.
+        settings.put(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS, asyncJobsConfig);
+        return settings;
+    }
+
+    private Map<String, AddressSettings> buildAddressSettings(List<EventListener> eventListeners,
+        org.candlepin.common.config.Configuration candlepinConfig) {
+        Map<String, AddressSettings> settings = new HashMap<>();
+
         for (EventListener listener : eventListeners) {
             String address = MessageAddress.DEFAULT_EVENT_MESSAGE_ADDRESS;
-            AddressSettings commonAddressConfig = new AddressSettings();
-            // Paging sizes need to be converted to bytes
-            commonAddressConfig.setMaxSizeBytes(maxQueueSizeInMb * FileUtils.ONE_MB);
-            if (addressPolicy == AddressFullMessagePolicy.PAGE) {
-                commonAddressConfig.setPageSizeBytes(maxPageSizeInMb * FileUtils.ONE_MB);
-            }
-            commonAddressConfig.setAddressFullMessagePolicy(addressPolicy);
+            AddressSettings listenerAddressConfig = defaultAddressSettings(candlepinConfig);
 
             // Set the retry settings on the common address configuration.
             if (listener.requiresQpid()) {
@@ -214,17 +273,17 @@ public class ActiveMQContextListener {
                 // so that it goes right back to the top of the queue. When there's an issue with
                 // Qpid, the receiver will shut down the Consumer and the messages will remain in
                 // order.
-                commonAddressConfig.setRedeliveryDelay(0);
-                commonAddressConfig.setMaxDeliveryAttempts(1);
+                listenerAddressConfig.setRedeliveryDelay(0);
+                listenerAddressConfig.setMaxDeliveryAttempts(1);
                 address = MessageAddress.QPID_EVENT_MESSAGE_ADDRESS;
             }
             else {
                 // Message retry will be configured for anything other than the Qpid
                 // listener and requires different settings.
-                configureMessageRetry(commonAddressConfig, candlepinConfig);
+                configureMessageRetry(listenerAddressConfig, candlepinConfig);
             }
 
-            settings.put(address, commonAddressConfig);
+            settings.put(address, listenerAddressConfig);
         }
         return settings;
     }
@@ -299,6 +358,10 @@ public class ActiveMQContextListener {
             listeners.add(AMQPBusPublisher.class.getName());
         }
         return listeners;
+    }
+
+    public static List<String> getJobListeners(org.candlepin.common.config.Configuration candlepinConfig) {
+        return candlepinConfig.getList(ConfigProperties.ALLOWED_ASYNC_JOBS, Collections.EMPTY_LIST);
     }
 
     /**

@@ -34,6 +34,11 @@ public final class MessageAddress {
      */
     static final String QPID_EVENT_MESSAGE_ADDRESS = String.format("%s.qpid", EVENT_ADDRESS_PREFIX);
 
+    /**
+     * The address that all async job messages are sent to.
+     */
+    static final String QPID_ASYNC_JOB_MESSAGE_ADDRESS = "job";
+
     private MessageAddress() {
     }
 }

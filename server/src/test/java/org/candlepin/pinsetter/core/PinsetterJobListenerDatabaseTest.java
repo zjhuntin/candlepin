@@ -86,7 +86,7 @@ public class PinsetterJobListenerDatabaseTest {
         when(detail.getKey()).thenReturn(jobKey("name", "group"));
         when(detail.getJobDataMap()).thenReturn(map);
 
-        JobStatus status = new JobStatus(detail);
+        JobStatus status = new JobStatus(detail, JobStatus.JobType.QUARTZ);
 
         // store a merge so we can find it in the test run
         curator.merge(status);

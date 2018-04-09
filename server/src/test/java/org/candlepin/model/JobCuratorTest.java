@@ -524,7 +524,7 @@ public class JobCuratorTest extends DatabaseTestFixture {
             map.put(JobStatus.CORRELATION_ID, "test-csid");
             JobStatus status = new JobStatus(
                 newJob(jobClass).withIdentity(id, PinsetterKernel.SINGLE_JOB_GROUP)
-                .usingJobData(map).build());
+                .usingJobData(map).build(), JobStatus.JobType.QUARTZ);
             JobExecutionContext context = mock(JobExecutionContext.class);
             when(context.getFireTime()).thenReturn(startDt);
             long time = -1;

@@ -14,6 +14,7 @@
  */
 package org.candlepin.resource;
 
+import org.candlepin.async.JobMessageFactory;
 import org.candlepin.audit.EventSink;
 import org.candlepin.audit.QueueStatus;
 import org.candlepin.auth.Principal;
@@ -33,7 +34,9 @@ import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.cache.Cache;
 import javax.ws.rs.GET;
@@ -57,17 +60,20 @@ public class AdminResource {
     private UserServiceAdapter userService;
     private UserCurator userCurator;
     private EventSink sink;
+    private JobMessageFactory jobs;
     private Configuration config;
     private CandlepinCache candlepinCache;
 
     @Inject
     public AdminResource(UserServiceAdapter userService, UserCurator userCurator,
-        EventSink dispatcher, Configuration config, CandlepinCache candlepinCache) {
+        EventSink dispatcher, Configuration config, CandlepinCache candlepinCache,
+        JobMessageFactory jobFactory) {
         this.userService = userService;
         this.userCurator = userCurator;
         this.sink = dispatcher;
         this.config = config;
         this.candlepinCache = candlepinCache;
+        this.jobs = jobFactory;
     }
 
     @GET
@@ -110,8 +116,11 @@ public class AdminResource {
     @ApiOperation(
         notes = "Basic information on the ActiveMQ queues and how many messages are pending in each.",
         value = "Get Queue Stats")
-    public List<QueueStatus> getQueueStats() {
-        return sink.getQueueInfo();
+    public Map<String, List<QueueStatus>> getQueueStats() {
+        Map<String, List<QueueStatus>> all = new HashMap<>();
+        all.put("events", sink.getQueueInfo());
+        all.put("jobs", jobs.getQueueInfo());
+        return all;
     }
 
     @DELETE

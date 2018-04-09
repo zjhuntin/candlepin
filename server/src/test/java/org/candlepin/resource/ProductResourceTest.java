@@ -127,7 +127,8 @@ public class ProductResourceTest extends DatabaseTestFixture {
     public void testDeleteProductWithSubscriptions() {
         ProductCurator pc = mock(ProductCurator.class);
         I18n i18n = I18nFactory.getI18n(getClass(), Locale.US, I18nFactory.FALLBACK);
-        ProductResource pr = new ProductResource(pc, null, null, config, i18n, this.modelTranslator);
+        ProductResource pr = new ProductResource(pc, null, null, config, i18n, this.modelTranslator,
+                                                 jobMessageFactory);
         Owner o = mock(Owner.class);
         Product p = mock(Product.class);
         // when(pc.getById(eq(o), eq("10"))).thenReturn(p);
@@ -236,24 +237,22 @@ public class ProductResourceTest extends DatabaseTestFixture {
         productResource.getProductOwners(new LinkedList<>());
     }
 
-    private void verifyRefreshPoolsJobs(JobDetail[] jobs, List<Owner> owners, boolean lazyRegen) {
-        for (JobDetail job : jobs) {
-            assertTrue(RefreshPoolsJob.class.isAssignableFrom(job.getJobClass()));
+    // FIXME Lazy regen isn't being tested at the moment since it is part of the refresh message.
+    private void verifyRefreshPoolsJobs(List<JobStatus> jobs, List<Owner> owners, boolean lazyRegen) {
+        for (JobStatus job : jobs) {
+//            assertTrue(RefreshPoolsJob.class.isAssignableFrom(job.getJobClass()));
+            assertEquals(RefreshPoolsJob.class.getCanonicalName(), job.getJobClass());
+//            assertTrue(jdmap.containsKey(JobStatus.OWNER_ID));
+//            assertTrue(jdmap.containsKey(JobStatus.TARGET_TYPE));
+//            assertTrue(jdmap.containsKey(JobStatus.TARGET_ID));
 
-            JobDataMap jdmap = job.getJobDataMap();
-
-            assertTrue(jdmap.containsKey(JobStatus.OWNER_ID));
-            assertTrue(jdmap.containsKey(JobStatus.TARGET_TYPE));
-            assertTrue(jdmap.containsKey(JobStatus.TARGET_ID));
-            assertTrue(jdmap.containsKey(RefreshPoolsJob.LAZY_REGEN));
-
-            assertEquals(JobStatus.TargetType.OWNER, jdmap.get(JobStatus.TARGET_TYPE));
-            assertEquals(jdmap.get(JobStatus.OWNER_ID), jdmap.get(JobStatus.TARGET_ID));
-            assertEquals(lazyRegen, jdmap.get(RefreshPoolsJob.LAZY_REGEN));
+            assertEquals(JobStatus.TargetType.OWNER, job.getTargetType());
+            assertEquals(job.getOwnerId(), job.getTargetId());
+//            assertEquals(lazyRegen, jdmap.get(RefreshPoolsJob.LAZY_REGEN));
 
             boolean found = false;
             for (Owner owner : owners) {
-                if (owner.getKey().equals(jdmap.get(JobStatus.OWNER_ID))) {
+                if (owner.getKey().equals(job.getOwnerId())) {
                     found = true;
                     break;
                 }
@@ -269,33 +268,33 @@ public class ProductResourceTest extends DatabaseTestFixture {
         config.setProperty(ConfigProperties.STANDALONE, "false");
 
         ProductResource productResource = new ProductResource(this.productCurator, this.ownerCurator,
-            this.productCertificateCurator, config, this.i18n, this.modelTranslator);
+            this.productCertificateCurator, config, this.i18n, this.modelTranslator, jobMessageFactory);
 
         List<Owner> owners = this.setupDBForOwnerProdTests();
         Owner owner1 = owners.get(0);
         Owner owner2 = owners.get(1);
         Owner owner3 = owners.get(2);
 
-        JobDetail[] jobs;
+        List<JobStatus> jobs;
 
         jobs = productResource.refreshPoolsForProduct(Arrays.asList("p1"), true);
         assertNotNull(jobs);
-        assertEquals(2, jobs.length);
+        assertEquals(2, jobs.size());
         this.verifyRefreshPoolsJobs(jobs, Arrays.asList(owner1, owner2), true);
 
         jobs = productResource.refreshPoolsForProduct(Arrays.asList("p1", "p2"), false);
         assertNotNull(jobs);
-        assertEquals(3, jobs.length);
+        assertEquals(3, jobs.size());
         this.verifyRefreshPoolsJobs(jobs, Arrays.asList(owner1, owner2, owner3), false);
 
         jobs = productResource.refreshPoolsForProduct(Arrays.asList("p3"), false);
         assertNotNull(jobs);
-        assertEquals(1, jobs.length);
+        assertEquals(1, jobs.size());
         this.verifyRefreshPoolsJobs(jobs, Arrays.asList(owner3), false);
 
         jobs = productResource.refreshPoolsForProduct(Arrays.asList("nope"), false);
         assertNotNull(jobs);
-        assertEquals(0, jobs.length);
+        assertEquals(0, jobs.size());
     }
 
     // Temporarily disabled; reenable and remove the test above when the JobDetail streaming issue

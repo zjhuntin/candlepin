@@ -238,7 +238,7 @@ public class PinsetterJobListenerTest {
         when(detail.getJobDataMap()).thenReturn(map);
         when(ctx.getJobDetail()).thenReturn(detail);
 
-        JobStatus status = new JobStatus(detail);
+        JobStatus status = new JobStatus(detail, JobStatus.JobType.QUARTZ);
         when(jcurator.get(eq("name"))).thenReturn(status);
 
         String longstr = RandomStringUtils.randomAlphanumeric(300);

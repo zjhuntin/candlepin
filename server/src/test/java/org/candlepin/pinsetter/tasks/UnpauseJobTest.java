@@ -77,7 +77,7 @@ public class UnpauseJobTest extends BaseJobTest{
             .withIdentity("Kayfabe", "Deluxe")
             .build();
 
-        JobStatus js = new JobStatus(jd, true);
+        JobStatus js = new JobStatus(jd, true, JobStatus.JobType.QUARTZ);
         List<JobStatus> jl = new ArrayList<>();
         jl.add(js);
 

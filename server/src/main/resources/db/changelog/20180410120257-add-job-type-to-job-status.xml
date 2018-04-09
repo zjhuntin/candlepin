@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet dbms="postgresql" id="20180410120257-1" author="mstead">
+        <comment>Adding a type column to cp_job.</comment>
+        <addColumn tableName="cp_job">
+            <column name="type" defaultValue="0" type="int4">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet dbms="mysql" id="20180410120257-2" author="mstead">
+        <comment>Adding a type column to cp_job.</comment>
+        <addColumn tableName="cp_job">
+            <column name="type" defaultValue="0" type="integer">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet dbms="oracle" id="20180410120257-3" author="mstead">
+        <comment>Adding a type column to cp_job.</comment>
+        <addColumn tableName="cp_job">
+            <column name="type" defaultValue="0" type="java.sql.Types.INTEGER">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>
+<!-- vim: set expandtab sts=4 sw=4 ai: -->

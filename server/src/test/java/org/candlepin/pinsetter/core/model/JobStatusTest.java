@@ -43,7 +43,7 @@ public class JobStatusTest {
         map.put(JobStatus.TARGET_ID, "10");
         when(detail.getKey()).thenReturn(JobKey.jobKey("name", "group"));
         when(detail.getJobDataMap()).thenReturn(map);
-        status = new JobStatus(detail);
+        status = new JobStatus(detail, JobStatus.JobType.QUARTZ);
     }
 
     @Test
@@ -113,7 +113,7 @@ public class JobStatusTest {
         map.put(JobStatus.TARGET_TYPE, JobStatus.TargetType.OWNER);
         when(detail.getKey()).thenReturn(JobKey.jobKey("name", "group"));
         when(detail.getJobDataMap()).thenReturn(map);
-        status = new JobStatus(detail);
+        status = new JobStatus(detail, JobStatus.JobType.QUARTZ);
 
         assertEquals("owner", status.getTargetType());
     }
@@ -143,7 +143,7 @@ public class JobStatusTest {
         when(detail.getKey()).thenReturn(JobKey.jobKey("name", "group"));
         when(detail.getJobDataMap()).thenReturn(map);
 
-        status = new JobStatus(detail);
+        status = new JobStatus(detail, JobStatus.JobType.QUARTZ);
         assertEquals("admin", status.getPrincipalName());
     }
 }
