@@ -14,6 +14,7 @@
  */
 package org.candlepin.cache;
 
+import com.google.inject.Singleton;
 import org.candlepin.model.Product;
 
 import com.google.inject.Inject;
@@ -26,6 +27,7 @@ import javax.cache.CacheManager;
  * @author fnguyen
  *
  */
+@Singleton
 public class CandlepinCache {
     private static final String CACHE_PRODUCT_FULL = "productfullcache";
 

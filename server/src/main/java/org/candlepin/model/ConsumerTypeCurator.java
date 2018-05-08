@@ -14,6 +14,7 @@
  */
 package org.candlepin.model;
 
+import com.google.inject.Singleton;
 import org.hibernate.criterion.Restrictions;
 
 import org.candlepin.model.ConsumerType.ConsumerTypeEnum;
@@ -27,6 +28,7 @@ import javax.persistence.NoResultException;
 /**
  * ConsumerTypeCurator
  */
+@Singleton
 public class ConsumerTypeCurator extends AbstractHibernateCurator<ConsumerType> {
 
     public ConsumerTypeCurator() {

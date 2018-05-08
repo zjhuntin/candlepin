@@ -14,6 +14,7 @@
  */
 package org.candlepin.model;
 
+import com.google.inject.Singleton;
 import org.candlepin.common.exceptions.BadRequestException;
 import org.candlepin.common.paging.Page;
 import org.candlepin.common.paging.PageRequest;

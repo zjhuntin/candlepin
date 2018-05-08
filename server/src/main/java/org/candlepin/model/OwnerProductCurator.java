@@ -14,6 +14,7 @@
  */
 package org.candlepin.model;
 
+import com.google.inject.Singleton;
 import org.candlepin.model.activationkeys.ActivationKey;
 
 import com.google.inject.persist.Transactional;
@@ -44,6 +45,7 @@ import java.util.Set;
  * The OwnerProductCurator provides functionality for managing the mapping between owners and
  * products.
  */
+@Singleton
 public class OwnerProductCurator extends AbstractHibernateCurator<OwnerProduct> {
     private static Logger log = LoggerFactory.getLogger(OwnerProductCurator.class);
 

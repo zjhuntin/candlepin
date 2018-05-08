@@ -14,6 +14,7 @@
  */
 package org.candlepin.model;
 
+import com.google.inject.Singleton;
 import org.candlepin.cache.CandlepinCache;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.util.AttributeValidator;
@@ -54,6 +55,7 @@ import javax.persistence.criteria.Path;
 /**
  * interact with Products.
  */
+@Singleton
 public class ProductCurator extends AbstractHibernateCurator<Product> {
     private static Logger log = LoggerFactory.getLogger(ProductCurator.class);
 

@@ -14,6 +14,7 @@
  */
 package org.candlepin.model;
 
+import com.google.inject.Singleton;
 import org.hibernate.Session;
 import org.hibernate.criterion.DetachedCriteria;
 
@@ -24,6 +25,7 @@ import org.hibernate.criterion.DetachedCriteria;
  * The CandlepinQueryFactory is responsible for building CandlepinQuery instances based on the
  * given input.
  */
+@Singleton
 public class CandlepinQueryFactory {
 
     /**
