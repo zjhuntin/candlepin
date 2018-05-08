@@ -14,6 +14,8 @@
  */
 package org.candlepin.util;
 
+import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.config.ConfigProperties;
 
@@ -29,12 +31,13 @@ import java.util.Set;
  * The AttributeValidator is a PropertyValidator implementation, configured to validate pool or
  * product attributes.
  */
+@Singleton
 public class AttributeValidator extends PropertyValidator {
     /** The maximum length of any fact key (name) or value */
     public static final int ATTRIBUTE_MAX_LENGTH = 255;
 
     @Inject
-    public AttributeValidator(Configuration config, I18n i18n) {
+    public AttributeValidator(Configuration config, Provider<I18n> i18n) {
         Set<String> attributes;
 
         // Add integer attributes...

@@ -18,6 +18,7 @@ import static org.candlepin.config.ConfigProperties.ENCRYPTED_PROPERTIES;
 import static org.candlepin.config.ConfigProperties.ACTIVEMQ_ENABLED;
 import static org.candlepin.config.ConfigProperties.PASSPHRASE_SECRET_FILE;
 
+import com.google.inject.*;
 import org.candlepin.audit.AMQPBusPublisher;
 import org.candlepin.audit.ActiveMQContextListener;
 import org.candlepin.audit.QpidQmf;
@@ -38,10 +39,6 @@ import org.candlepin.resteasy.ResourceLocatorMap;
 import org.candlepin.swagger.CandlepinSwaggerModelConverter;
 import org.candlepin.util.Util;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Injector;
-import com.google.inject.Module;
-import com.google.inject.Stage;
 import com.google.inject.util.Modules;
 
 import org.apache.commons.lang.StringUtils;
@@ -139,7 +136,12 @@ public class CandlepinContextListener extends GuiceResteasyBootstrapServletConte
         log.debug("Candlepin stored config on context.");
 
         // set things up BEFORE calling the super class' initialize method.
-        super.contextInitialized(sce);
+        try {
+            super.contextInitialized(sce);
+        }
+        catch (Exception e) {
+            log.error(e.toString());
+        }
         log.info("Candlepin context initialized.");
     }
 

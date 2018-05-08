@@ -14,6 +14,8 @@
  */
 package org.candlepin.util;
 
+import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import org.candlepin.common.config.Configuration;
 import org.candlepin.config.ConfigProperties;
 
@@ -28,12 +30,13 @@ import java.util.Set;
 /**
  * The FactValidator is a PropertyValidator implementation, configured to validate consumer facts.
  */
+@Singleton
 public class FactValidator extends PropertyValidator {
     /** The maximum length of any fact key (name) or value */
     public static final int FACT_MAX_LENGTH = 255;
 
     @Inject
-    public FactValidator(Configuration config, I18n i18n) {
+    public FactValidator(Configuration config, Provider<I18n> i18n) {
         Set<String> attributes;
 
         // Add integer attributes...

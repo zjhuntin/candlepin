@@ -14,6 +14,7 @@
  */
 package org.candlepin.util;
 
+import com.google.inject.Provider;
 import org.xnap.commons.i18n.I18n;
 
 import java.util.Arrays;
@@ -36,10 +37,10 @@ public abstract class PropertyValidator {
      * Mini-class for performing validation of a class of values
      */
     protected abstract static class Validator {
-        protected I18n i18n;
+        protected Provider<I18n> i18n;
         protected String propertyType;
 
-        public Validator(I18n i18n, String propertyType) {
+        public Validator(Provider<I18n> i18n, String propertyType) {
             if (i18n == null) {
                 throw new IllegalArgumentException("i18n is null");
             }
@@ -61,7 +62,7 @@ public abstract class PropertyValidator {
     protected static class LengthValidator extends Validator {
         private int length;
 
-        public LengthValidator(I18n i18n, String propertyType, int length) {
+        public LengthValidator(Provider<I18n> i18n, String propertyType, int length) {
             super(i18n, propertyType);
 
             if (length < 0) {
@@ -73,14 +74,14 @@ public abstract class PropertyValidator {
 
         public void validate(String key, String value) {
             if (key.length() > this.length) {
-                throw new PropertyValidationException(this.i18n.tr(
+                throw new PropertyValidationException(this.i18n.get().tr(
                     "The {0} name \"{1}\" must not exceed {2} characters in length",
                     this.propertyType, key, this.length
                 ));
             }
 
             if (value != null && value.length() > this.length) {
-                throw new PropertyValidationException(this.i18n.tr(
+                throw new PropertyValidationException(this.i18n.get().tr(
                     "The value for {0} \"{1}\" must not exceed {2} characters in length",
                     this.propertyType, key, this.length
                 ));
@@ -92,7 +93,7 @@ public abstract class PropertyValidator {
      * Validator providing validation for integer properties
      */
     protected static class IntegerValidator extends Validator {
-        public IntegerValidator(I18n i18n, String propertyType) {
+        public IntegerValidator(Provider<I18n> i18n, String propertyType) {
             super(i18n, propertyType);
         }
 
@@ -101,7 +102,7 @@ public abstract class PropertyValidator {
                 Integer.parseInt(value);
             }
             catch (NumberFormatException nfe) {
-                throw new PropertyValidationException(this.i18n.tr(
+                throw new PropertyValidationException(this.i18n.get().tr(
                     "The {0} \"{1}\" must be an integer value", this.propertyType, key));
             }
         }
@@ -111,7 +112,7 @@ public abstract class PropertyValidator {
      * Validator providing validation for non-negative properties
      */
     protected static class NonNegativeIntegerValidator extends Validator {
-        public NonNegativeIntegerValidator(I18n i18n, String propertyType) {
+        public NonNegativeIntegerValidator(Provider<I18n> i18n, String propertyType) {
             super(i18n, propertyType);
         }
 
@@ -120,12 +121,12 @@ public abstract class PropertyValidator {
                 int parsed = Integer.parseInt(value);
 
                 if (parsed < 0) {
-                    throw new PropertyValidationException(this.i18n.tr(
+                    throw new PropertyValidationException(this.i18n.get().tr(
                         "The {0} \"{1}\" must be a positive, integer value", this.propertyType, key));
                 }
             }
             catch (NumberFormatException nfe) {
-                throw new PropertyValidationException(this.i18n.tr(
+                throw new PropertyValidationException(this.i18n.get().tr(
                     "The {0} \"{1}\" must be a positive, integer value", this.propertyType, key));
             }
         }
@@ -135,7 +136,7 @@ public abstract class PropertyValidator {
      * Validator providing validation for long-integer properties
      */
     protected static class LongValidator extends Validator {
-        public LongValidator(I18n i18n, String propertyType) {
+        public LongValidator(Provider<I18n> i18n, String propertyType) {
             super(i18n, propertyType);
         }
 
@@ -144,7 +145,7 @@ public abstract class PropertyValidator {
                 Long.parseLong(value);
             }
             catch (NumberFormatException nfe) {
-                throw new PropertyValidationException(this.i18n.tr(
+                throw new PropertyValidationException(this.i18n.get().tr(
                     "The {0} \"{1}\" must be a long-integer value", this.propertyType, key));
             }
         }
@@ -154,7 +155,7 @@ public abstract class PropertyValidator {
      * Validator providing validation for non-negative, long-integer properties
      */
     protected static class NonNegativeLongValidator extends Validator {
-        public NonNegativeLongValidator(I18n i18n, String propertyType) {
+        public NonNegativeLongValidator(Provider<I18n> i18n, String propertyType) {
             super(i18n, propertyType);
         }
 
@@ -163,12 +164,12 @@ public abstract class PropertyValidator {
                 long parsed = Long.parseLong(value);
 
                 if (parsed < 0) {
-                    throw new PropertyValidationException(this.i18n.tr(
+                    throw new PropertyValidationException(this.i18n.get().tr(
                         "The {0} \"{1}\" must be a positive, long-integer value", this.propertyType, key));
                 }
             }
             catch (NumberFormatException nfe) {
-                throw new PropertyValidationException(this.i18n.tr(
+                throw new PropertyValidationException(this.i18n.get().tr(
                     "The {0} \"{1}\" must be a positive, long-integer value", this.propertyType, key));
             }
         }
@@ -181,13 +182,13 @@ public abstract class PropertyValidator {
         private static final Set<String> BOOLEAN_VALUES = Collections.unmodifiableSet(
             new HashSet<>(Arrays.asList("true", "false", "1", "0")));
 
-        public BooleanValidator(I18n i18n, String propertyType) {
+        public BooleanValidator(Provider<I18n> i18n, String propertyType) {
             super(i18n, propertyType);
         }
 
         public void validate(String key, String value) {
             if (!(BOOLEAN_VALUES.contains(value.trim().toLowerCase()))) {
-                throw new PropertyValidationException(this.i18n.tr(
+                throw new PropertyValidationException(this.i18n.get().tr(
                     "The {0} \"{1}\" must be a Boolean value", this.propertyType, key));
             }
         }
