@@ -343,9 +343,19 @@ function get_pool_priority(pool, consumer, context) {
         priority -= 10;
     }
 
+    if (pool.hasAttribute("offering") && consumer.offering !== null &&
+        Utils.equalsIgnoreCase(pool.getAttribute("offering"), consumer.offering)) {
+        priority += 1400;
+    }
+
     // We no longer filter pools on SLA mismatch, but prioritize for match.
     if(should_pool_be_prioritized_for_sla(context, pool)) {
         priority += 700;
+    }
+
+    if (pool.hasAttribute("usage") && consumer.usage !== null &&
+        Utils.equalsIgnoreCase(pool.getAttribute("usage"), consumer.usage)) {
+        priority += 350;
     }
 
     /*
