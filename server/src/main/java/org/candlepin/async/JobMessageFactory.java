@@ -29,8 +29,9 @@ import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.apache.activemq.artemis.api.core.client.ServerLocator;
 import org.apache.activemq.artemis.core.remoting.impl.invm.InVMConnectorFactory;
 import org.candlepin.async.jobs.RefreshPoolsMessageJob;
+import org.candlepin.async.jobs.TestJob;
 import org.candlepin.async.jobs.TestPersistenceJob;
-import org.candlepin.audit.ActiveMQContextListener;
+import org.candlepin.audit.MessageAddress;
 import org.candlepin.audit.QueueStatus;
 import org.candlepin.auth.Principal;
 import org.candlepin.common.config.Configuration;
@@ -50,8 +51,11 @@ import java.util.List;
  */
 @Singleton
 public class JobMessageFactory {
+    private static final String MESSAGE_FILTER_PROPERTY = "job_class";
+    public static final String JOB_QUEUE_NAME = "job_queue";
+    public static final String JOB_MESSAGE_FILTER_TEMPLATE = MESSAGE_FILTER_PROPERTY + "='%s'";
+
     private static Logger log = LoggerFactory.getLogger(JobMessageFactory.class);
-    protected static final String QUEUE_ADDRESS = "job";
 
     private ThreadLocal<ClientSession> sessions = new ThreadLocal<>();
     private ThreadLocal<ClientProducer> producers = new ThreadLocal<>();
@@ -79,8 +83,6 @@ public class JobMessageFactory {
         this.clientSessionFactory = createClientSessionFactory();
     }
 
-    // FIXME Wow! This really sucks. Need to find a better way to build up the JobStatus/JobMessage
-    // FIXME Creating one object and converting to the other would be a little more convenient
     public JobStatus createRefreshPoolsJob(Owner owner, boolean lazyRegen) {
         JobStatus status = RefreshPoolsMessageJob.forOwner(principalProvider.get(), owner, lazyRegen);
         sendNewJobMessage(status);
@@ -91,6 +93,12 @@ public class JobMessageFactory {
                                               Boolean persist) {
         JobStatus status = TestPersistenceJob.testJob(principalProvider.get(), owner, forceFailure, sleep,
             persist);
+        sendNewJobMessage(status);
+        return status;
+    }
+
+    public JobStatus createTestJob(Owner owner) {
+        JobStatus status = TestJob.testJob(principalProvider.get(), owner);
         sendNewJobMessage(status);
         return status;
     }
@@ -138,10 +146,12 @@ public class JobMessageFactory {
         try {
             ClientSession session = getClientSession();
             ClientMessage message = session.createMessage(true);
+            message.putStringProperty(MESSAGE_FILTER_PROPERTY, jobMessage.getJobClass());
+
             String eventString = mapper.writeValueAsString(jobMessage);
             message.getBodyBuffer().writeString(eventString);
 
-            String address = String.format("%s.%s", QUEUE_ADDRESS, jobMessage.getJobClass());
+            String address = MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS;
             log.debug("Sending message to {}", address);
             getClientProducer().send(address, message);
         }
@@ -176,7 +186,7 @@ public class JobMessageFactory {
         ClientProducer producer = producers.get();
         if (producer == null) {
             try {
-                producer = getClientSession().createProducer(QUEUE_ADDRESS);
+                producer = getClientSession().createProducer(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS);
             }
             catch (ActiveMQException e) {
                 throw new RuntimeException(e);
@@ -192,11 +202,14 @@ public class JobMessageFactory {
 
             ClientSession session = getClientSession();
             session.start();
-            for (String listenerClassName : ActiveMQContextListener.getJobListeners(config)) {
-                String queueName = "job." + listenerClassName;
-                long msgCount = session.queueQuery(new SimpleString(queueName)).getMessageCount();
-                results.add(new QueueStatus(queueName, msgCount));
-            }
+//            for (String listenerClassName : ActiveMQContextListener.getJobListeners(config)) {
+//                String queueName = "job." + listenerClassName;
+//                long msgCount = session.queueQuery(new SimpleString(queueName)).getMessageCount();
+//                results.add(new QueueStatus(queueName, msgCount));
+//            }
+            // FIXME This can be accomplished with the QueueControl object.
+            results.add(new QueueStatus(JOB_QUEUE_NAME,
+                session.queueQuery(new SimpleString(JOB_QUEUE_NAME)).getMessageCount()));
         }
         catch (Exception e) {
             log.error("Error looking up ActiveMQ queue info: ", e);

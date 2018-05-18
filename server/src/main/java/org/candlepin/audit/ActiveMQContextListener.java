@@ -14,7 +14,21 @@
  */
 package org.candlepin.audit;
 
+import com.google.inject.Singleton;
+import org.apache.activemq.artemis.api.config.ActiveMQDefaultConfiguration;
+import org.apache.activemq.artemis.api.core.BroadcastEndpointFactory;
+import org.apache.activemq.artemis.api.core.BroadcastGroupConfiguration;
+import org.apache.activemq.artemis.api.core.DiscoveryGroupConfiguration;
+import org.apache.activemq.artemis.api.core.RoutingType;
+import org.apache.activemq.artemis.api.core.TransportConfigurationHelper;
+import org.apache.activemq.artemis.api.core.UDPBroadcastEndpointFactory;
+import org.apache.activemq.artemis.api.core.management.ActiveMQServerControl;
+import org.apache.activemq.artemis.core.config.ClusterConnectionConfiguration;
 import org.apache.activemq.artemis.core.config.DivertConfiguration;
+import org.apache.activemq.artemis.core.remoting.impl.netty.NettyAcceptorFactory;
+import org.apache.activemq.artemis.core.remoting.impl.netty.NettyConnectorFactory;
+import org.apache.activemq.artemis.core.remoting.impl.netty.TransportConstants;
+import org.apache.activemq.artemis.core.server.cluster.impl.MessageLoadBalancingType;
 import org.candlepin.async.JobMessageFactory;
 import org.apache.activemq.artemis.api.core.ActiveMQException;
 import org.candlepin.async.JobMessageSource;
@@ -45,17 +59,21 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 
 /**
  * ActiveMQContextListener - Invoked from our core CandlepinContextListener, thus
  * doesn't actually implement ServletContextListener.
  */
+@Singleton
 public class ActiveMQContextListener {
     private static  Logger log = LoggerFactory.getLogger(ActiveMQContextListener.class);
 
@@ -102,10 +120,6 @@ public class ActiveMQContextListener {
                 .getName()));
             config.setAcceptorConfigurations(transports);
 
-            // alter the default pass to silence log output
-            config.setClusterUser(null);
-            config.setClusterPassword(null);
-
             // in vm, who needs security?
             config.setSecurityEnabled(false);
 
@@ -150,9 +164,49 @@ public class ActiveMQContextListener {
             config.setJournalBufferSize_AIO(largeMsgSize);
             config.setJournalBufferSize_NIO(largeMsgSize);
 
+
+            // Configure the cluster.
+            String url = String.format("tcp://%s:%s",
+                candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST),
+                candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
+
+            log.info("Local URL: {}", url);
+
+            List<String> staticUrls = candlepinConfig.getList(ConfigProperties.ACTIVEMQ_CLUSTER_STATIC_URLS,
+                Collections.EMPTY_LIST);
+
+            try {
+                config.addAcceptorConfiguration("local-acceptor", url);
+                config.addConnectorConfiguration("local-connector", url);
+
+                List<String> staticNames = new LinkedList<>();
+                for (String staticUrl : staticUrls) {
+                    String name = String.format("remote%d", staticNames.size() + 1);
+                    staticNames.add(name);
+                    log.info("Configuring static artemis server url for cluster: {} | {}", name, staticUrl);
+                    config.addConnectorConfiguration(name, staticUrl);
+                }
+
+                config.addClusterConfiguration(new ClusterConnectionConfiguration()
+                    .setAddress(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS)
+                    .setName("my-cluster")
+                    .setMaxHops(1)
+                    .setRetryInterval(500)
+                    .setConnectorName("local-connector")
+                    .setMessageLoadBalancingType(MessageLoadBalancingType.ON_DEMAND)
+                    .setStaticConnectors(staticNames));
+
+                config.setClusterUser("candlepin");
+                config.setClusterPassword("redhat");
+            }
+            catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+
             activeMQServer = new EmbeddedActiveMQ();
             activeMQServer.setConfiguration(config);
         }
+
         try {
             activeMQServer.start();
             log.info("ActiveMQ server started");
@@ -177,16 +231,39 @@ public class ActiveMQContextListener {
             }
         }
 
-        // Register configured Job message listeners.
-        jobMessageSource = injector.getInstance(JobMessageSource.class);
-        for (String jobListenerClass : getJobListeners(candlepinConfig)) {
+        // Set up async job queue
+        SimpleString jobQueueName = new SimpleString(JobMessageFactory.JOB_QUEUE_NAME);
+        if (this.activeMQServer.getActiveMQServer().locateQueue(jobQueueName) == null) {
             try {
-                jobMessageSource.registerListener(jobListenerClass);
+                this.activeMQServer.getActiveMQServer().createQueue(
+                    new SimpleString(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS),
+                    RoutingType.MULTICAST, jobQueueName, null, true, false);
             }
-            catch (ActiveMQException amqe) {
-                log.warn("Unable to register job message listener {}.", jobListenerClass, amqe);
+            catch (Exception e) {
+                throw new RuntimeException("Could not create job message queue", e);
             }
         }
+
+        // Register configured Job message listeners.
+        try {
+            jobMessageSource = injector.getInstance(JobMessageSource.class);
+            jobMessageSource.registerListeners(getJobListeners(candlepinConfig));
+        } catch (ActiveMQException amqe) {
+            throw new RuntimeException("Unable to initialize JobMessageSource.", amqe);
+        }
+
+        // FIXME Should we be using a single Queue or be going with multiple?
+        // TODO  I like using one, but we'll have set up filters on our consumers.
+        // TODO If we use multiple queues, we will need to create them above.
+//        for (String jobListenerClass : getJobListeners(candlepinConfig)) {
+//            try {
+//                log.info("Registering async message job listener: {}", jobListenerClass);
+//                jobMessageSource.registerListener(jobListenerClass);
+//            }
+//            catch (ActiveMQException amqe) {
+//                log.warn("Unable to register job message listener {}.", jobListenerClass, amqe);
+//            }
+//        }
 
         // Initialize the Event sink AFTER the internal server has been
         // created and started.
@@ -209,6 +286,30 @@ public class ActiveMQContextListener {
             throw new RuntimeException(e);
         }
     }
+
+//    private void setupClusterDiscovery(Configuration config, ClusterConnectionConfiguration clusterConfig,
+//        org.candlepin.common.config.Configuration candlepinConfig) {
+//        UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory()
+//            .setLocalBindAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST))
+//            .setLocalBindPort(-1)
+//            .setGroupAddress("231.7.7.7")
+//            .setGroupPort(9876);
+//
+//            config.addBroadcastGroupConfiguration(new BroadcastGroupConfiguration()
+//                .setName("async_jobs_broadcast")
+//                .setConnectorInfos(Arrays.asList("async-connector"))
+//                .setEndpointFactory(udpBroadcast)
+//            );
+//
+//            config.addDiscoveryGroupConfiguration("async_jobs_discovery",
+//                new DiscoveryGroupConfiguration()
+//                    .setName("async_jobs_discovery")
+//                    .setBroadcastEndpointFactory(udpBroadcast)
+//            );
+//
+//
+//        clusterConfig.setDiscoveryGroupName("async_jobs_discovery"));
+//    }
 
     private void registerEventListener(Injector injector, String className) {
         try {
@@ -252,6 +353,8 @@ public class ActiveMQContextListener {
     private Map<String, AddressSettings> buildAsyncJobAddressSettings(org.candlepin.common.config.Configuration candlepinConfig) {
         Map<String, AddressSettings> settings = new HashMap<>();
         AddressSettings asyncJobsConfig = this.defaultAddressSettings(candlepinConfig);
+        asyncJobsConfig.setAutoCreateQueues(false);
+        asyncJobsConfig.setRedistributionDelay(5000);
         configureMessageRetry(asyncJobsConfig, candlepinConfig);
         // TODO Any async job queue specific settings for retry ect... Change filter and
         //      add new setting config per handler if required.
@@ -339,8 +442,7 @@ public class ActiveMQContextListener {
             candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_MAX_REDELIVERY_DELAY));
         addressSettings.setRedeliveryMultiplier(
             candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_MULTIPLIER));
-        addressSettings.setMaxDeliveryAttempts(
-            candlepinConfig.getInt(ConfigProperties.ACTIVEMQ_MAX_DELIVERY_ATTEMPTS));
+        addressSettings.setMaxDeliveryAttempts(0);
     }
 
     /**
@@ -361,7 +463,13 @@ public class ActiveMQContextListener {
     }
 
     public static List<String> getJobListeners(org.candlepin.common.config.Configuration candlepinConfig) {
-        return candlepinConfig.getList(ConfigProperties.ALLOWED_ASYNC_JOBS, Collections.EMPTY_LIST);
+        List<String> listeners = candlepinConfig.getList(ConfigProperties.ALLOWED_ASYNC_JOBS,
+            Collections.EMPTY_LIST);
+        // HACK ALERT: This is to fix an issue in PropertyConverter that will return "" as a list element.
+        if (!listeners.isEmpty() && listeners.get(0).isEmpty()) {
+            return Collections.EMPTY_LIST;
+        }
+        return listeners;
     }
 
     /**
@@ -380,17 +488,21 @@ public class ActiveMQContextListener {
             ClientSession session = factory.createSession(true, true);
             session.start();
 
-            for (int i = 0; i < queues.length; i++) {
+            for (String queue : queues) {
+                // Only clean up our own queues.
+                if (!queue.startsWith(MessageAddress.EVENT_ADDRESS_PREFIX) ||
+                    !queue.startsWith(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS)) {
+                    continue;
+                }
+
                 long msgCount =
-                    session.queueQuery(new SimpleString(queues[i])).getMessageCount();
+                    session.queueQuery(new SimpleString(queue)).getMessageCount();
                 if (msgCount == 0) {
-                    log.debug(String.format("found queue '%s' with 0 messages. deleting",
-                        queues[i]));
-                    session.deleteQueue(queues[i]);
+                    log.debug(String.format("found queue '%s' with 0 messages. deleting", queue));
+                    session.deleteQueue(queue);
                 }
                 else {
-                    log.debug(String.format("found queue '%s' with %d messages. kept",
-                        queues[i], msgCount));
+                    log.debug(String.format("found queue '%s' with %d messages. kept", queue, msgCount));
                 }
             }
 
@@ -401,5 +513,9 @@ public class ActiveMQContextListener {
             log.error("Problem cleaning old message queues:", e);
             throw new RuntimeException("Problem cleaning message queue", e);
         }
+    }
+
+    public ActiveMQServerControl getServerControl() {
+        return this.activeMQServer.getActiveMQServer().getActiveMQServerControl();
     }
 }

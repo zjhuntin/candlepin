@@ -22,8 +22,11 @@ import org.apache.activemq.artemis.api.core.client.ClientMessage;
 import org.apache.activemq.artemis.api.core.client.ClientSession;
 import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.apache.activemq.artemis.api.core.client.MessageHandler;
+import org.candlepin.audit.MessageAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collection;
 
 
 // FIXME Lots of duplication here with the EventMessageReceiver class
@@ -35,13 +38,11 @@ public class JobMessageReceiver implements MessageHandler {
     private ObjectMapper mapper;
     private JobExecutor jobs;
 
-    public JobMessageReceiver(String jobClass, ClientSessionFactory sessionFactory, ObjectMapper mapper,
-                              JobExecutor jobs) throws ActiveMQException {
+    public JobMessageReceiver(ClientSessionFactory sessionFactory, ObjectMapper mapper, JobExecutor jobs)
+        throws ActiveMQException {
         this.jobs = jobs;
         this.mapper = mapper;
 
-        String queueName = JobMessageSource.QUEUE_ADDRESS + "." + jobClass;
-        log.debug("Registering listener for {}", queueName);
 
         // The client session is created without auto-acking enabled. This means
         // that the client handlers will have to manage the session themselves.
@@ -50,23 +51,29 @@ public class JobMessageReceiver implements MessageHandler {
         // A message ack batch size of 0 is specified to prevent duplicate messages
         // if the server goes down before the batch ack size is reached.
         session = sessionFactory.createSession(false, false, 0);
+    }
 
-        try {
-            // Create a durable queue that will be persisted to disk:
-            session.createQueue(queueName, queueName, true);
-            log.debug("created new event queue: {}", queueName);
-        }
-        catch (ActiveMQException e) {
-            // if the queue exists already we already created it in a previous run,
-            // so that's fine.
-            if (e.getType() != ActiveMQExceptionType.QUEUE_EXISTS) {
-                throw e;
+    public void start() throws ActiveMQException {
+        session.start();
+    }
+
+    public void stop() throws ActiveMQException {
+        session.stop();
+    }
+
+    public void addJobListeners(Collection<String> jobListenerClasses) {
+        for (String listenerClass : jobListenerClasses) {
+            String filter = String.format(JobMessageFactory.JOB_MESSAGE_FILTER_TEMPLATE, listenerClass);
+            log.info("Job message consumer added for {} with filter {}", listenerClass, filter);
+
+            try {
+                ClientConsumer consumer = session.createConsumer(JobMessageFactory.JOB_QUEUE_NAME, filter);
+                consumer.setMessageHandler(this);
+            }
+            catch (ActiveMQException amqe) {
+                log.warn("Attempted to register job listener {} but failed.", listenerClass, amqe);
             }
         }
-
-        ClientConsumer consumer = session.createConsumer(queueName);
-        consumer.setMessageHandler(this);
-        session.start();
     }
 
     @Override

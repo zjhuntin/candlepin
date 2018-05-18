@@ -22,22 +22,22 @@ public final class MessageAddress {
     /**
      * The address prefix for all of candlepin's event message addresses.
      */
-    static final String EVENT_ADDRESS_PREFIX = "event";
+    public static final String EVENT_ADDRESS_PREFIX = "event";
 
     /**
      * The default address that all event based messages are sent.
      */
-    static final String DEFAULT_EVENT_MESSAGE_ADDRESS = String.format("%s.default", EVENT_ADDRESS_PREFIX);
+    public static final String DEFAULT_EVENT_MESSAGE_ADDRESS = String.format("%s.default", EVENT_ADDRESS_PREFIX);
 
     /**
      * The address that Qpid bound messages are sent to.
      */
-    static final String QPID_EVENT_MESSAGE_ADDRESS = String.format("%s.qpid", EVENT_ADDRESS_PREFIX);
+    public static final String QPID_EVENT_MESSAGE_ADDRESS = String.format("%s.qpid", EVENT_ADDRESS_PREFIX);
 
     /**
      * The address that all async job messages are sent to.
      */
-    static final String QPID_ASYNC_JOB_MESSAGE_ADDRESS = "job";
+    public static final String QPID_ASYNC_JOB_MESSAGE_ADDRESS = "job";
 
     private MessageAddress() {
     }
