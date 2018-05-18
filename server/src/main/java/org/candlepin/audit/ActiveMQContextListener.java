@@ -14,7 +14,17 @@
  */
 package org.candlepin.audit;
 
+import org.apache.activemq.artemis.api.core.BroadcastEndpointFactory;
+import org.apache.activemq.artemis.api.core.BroadcastGroupConfiguration;
+import org.apache.activemq.artemis.api.core.DiscoveryGroupConfiguration;
+import org.apache.activemq.artemis.api.core.TransportConfigurationHelper;
+import org.apache.activemq.artemis.api.core.UDPBroadcastEndpointFactory;
+import org.apache.activemq.artemis.core.config.ClusterConnectionConfiguration;
 import org.apache.activemq.artemis.core.config.DivertConfiguration;
+import org.apache.activemq.artemis.core.remoting.impl.netty.NettyAcceptorFactory;
+import org.apache.activemq.artemis.core.remoting.impl.netty.NettyConnectorFactory;
+import org.apache.activemq.artemis.core.remoting.impl.netty.TransportConstants;
+import org.apache.activemq.artemis.core.server.cluster.impl.MessageLoadBalancingType;
 import org.candlepin.async.JobMessageFactory;
 import org.apache.activemq.artemis.api.core.ActiveMQException;
 import org.candlepin.async.JobMessageSource;
@@ -45,6 +55,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -149,6 +160,48 @@ public class ActiveMQContextListener {
             int largeMsgSize = candlepinConfig.getInt(ConfigProperties.ACTIVEMQ_LARGE_MSG_SIZE);
             config.setJournalBufferSize_AIO(largeMsgSize);
             config.setJournalBufferSize_NIO(largeMsgSize);
+
+
+            // Configure the server acceptors (how connections can be made).
+//            config.addAcceptorConfiguration(new TransportConfiguration(InVMAcceptorFactory.class.getName()));
+
+            Map<String, Object> nettyConfig = new HashMap<>();
+            nettyConfig.put(TransportConstants.HOST_PROP_NAME, "192.168.2.103");
+            TransportConfiguration netty = new TransportConfiguration(NettyAcceptorFactory.class.getName(), nettyConfig, "async-connector");
+            config.addAcceptorConfiguration(netty);
+
+            config.addConnectorConfiguration("netty",
+                new TransportConfiguration(NettyConnectorFactory.class.getName(), nettyConfig, "async-connector"));
+
+
+            // Configure clustering
+
+            UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory();
+            udpBroadcast.setLocalBindAddress("192.168.2.103");
+            udpBroadcast.setLocalBindPort(5432);
+            udpBroadcast.setGroupAddress("231.7.7.7");
+            udpBroadcast.setGroupPort(2000);
+
+            BroadcastGroupConfiguration broadcast = new BroadcastGroupConfiguration();
+            broadcast.setName("async_jobs_broadcast");
+            broadcast.setConnectorInfos(Arrays.asList("netty"));
+            broadcast.setEndpointFactory(udpBroadcast);
+            config.addBroadcastGroupConfiguration(broadcast);
+
+            DiscoveryGroupConfiguration discovery = new DiscoveryGroupConfiguration();
+            discovery.setName("async_jobs_discovery");
+            discovery.setBroadcastEndpointFactory(udpBroadcast);
+            config.addDiscoveryGroupConfiguration("async_jobs_discovery", discovery);
+
+            ClusterConnectionConfiguration cluster = new ClusterConnectionConfiguration();
+            cluster.setAddress("");
+            cluster.setName("my-cluster");
+            cluster.setMaxHops(1);
+            cluster.setRetryInterval(500);
+            cluster.setConnectorName("netty");
+            cluster.setMessageLoadBalancingType(MessageLoadBalancingType.STRICT);
+            cluster.setDiscoveryGroupName("async_jobs_discovery");
+            config.addClusterConfiguration(cluster);
 
             activeMQServer = new EmbeddedActiveMQ();
             activeMQServer.setConfiguration(config);
