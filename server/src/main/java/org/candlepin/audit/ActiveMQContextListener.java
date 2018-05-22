@@ -113,10 +113,6 @@ public class ActiveMQContextListener {
                 .getName()));
             config.setAcceptorConfigurations(transports);
 
-            // alter the default pass to silence log output
-            config.setClusterUser(null);
-            config.setClusterPassword(null);
-
             // in vm, who needs security?
             config.setSecurityEnabled(false);
 
@@ -162,46 +158,46 @@ public class ActiveMQContextListener {
             config.setJournalBufferSize_NIO(largeMsgSize);
 
 
-            // Configure the server acceptors (how connections can be made).
-//            config.addAcceptorConfiguration(new TransportConfiguration(InVMAcceptorFactory.class.getName()));
+            // Configure the cluster.
 
-            Map<String, Object> nettyConfig = new HashMap<>();
-            nettyConfig.put(TransportConstants.HOST_PROP_NAME, candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST));
-            nettyConfig.put(TransportConstants.PORT_PROP_NAME, candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
-            TransportConfiguration netty = new TransportConfiguration(NettyAcceptorFactory.class.getName(), nettyConfig, "async-acceptor");
-            config.addAcceptorConfiguration(netty);
+            String url = String.format("tcp://%s:%s",
+                candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST),
+                candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
 
-            config.addConnectorConfiguration("netty",
-                new TransportConfiguration(NettyConnectorFactory.class.getName(), nettyConfig, "async-connector"));
+            UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory()
+                .setGroupAddress("231.7.7.7")
+                .setGroupPort(9876);
 
+            try {
+                config.addAcceptorConfiguration("async-acceptor", url);
+                config.addConnectorConfiguration("async-connector", url);
 
-            // Configure clustering
+                config.addBroadcastGroupConfiguration(new BroadcastGroupConfiguration()
+                    .setName("async_jobs_broadcast")
+                    .setConnectorInfos(Arrays.asList("async-connector"))
+                    .setEndpointFactory(udpBroadcast)
+                );
 
-            UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory();
-//            udpBroadcast.setLocalBindAddress("192.168.2.103");
-//            udpBroadcast.setLocalBindPort(TransportConstants.DEFAULT_PORT);
-            udpBroadcast.setGroupAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_GROUP_ADDR));
-            udpBroadcast.setGroupPort(candlepinConfig.getInt(ConfigProperties.ACTIVEMQ_CLUSTER_GROUP_PORT));
+                config.addDiscoveryGroupConfiguration("async_jobs_discovery",
+                    new DiscoveryGroupConfiguration()
+                        .setName("async_jobs_discovery")
+                        .setBroadcastEndpointFactory(udpBroadcast)
+                );
 
-            BroadcastGroupConfiguration broadcast = new BroadcastGroupConfiguration();
-            broadcast.setName("async_jobs_broadcast");
-            broadcast.setConnectorInfos(Arrays.asList("netty"));
-            broadcast.setEndpointFactory(udpBroadcast);
-            config.addBroadcastGroupConfiguration(broadcast);
+                config.addClusterConfiguration(new ClusterConnectionConfiguration()
+                    .setName("my-cluster")
+                    .setMaxHops(1)
+                    .setRetryInterval(500)
+                    .setConnectorName("netty")
+                    .setMessageLoadBalancingType(MessageLoadBalancingType.STRICT)
+                    .setDiscoveryGroupName("async_jobs_discovery"));
 
-            DiscoveryGroupConfiguration discovery = new DiscoveryGroupConfiguration();
-            discovery.setName("async_jobs_discovery");
-            discovery.setBroadcastEndpointFactory(udpBroadcast);
-            config.addDiscoveryGroupConfiguration("async_jobs_discovery", discovery);
-
-            ClusterConnectionConfiguration cluster = new ClusterConnectionConfiguration();
-            cluster.setName("my-cluster");
-            cluster.setMaxHops(1);
-            cluster.setRetryInterval(500);
-            cluster.setConnectorName("netty");
-            cluster.setMessageLoadBalancingType(MessageLoadBalancingType.STRICT);
-            cluster.setDiscoveryGroupName("async_jobs_discovery");
-            config.addClusterConfiguration(cluster);
+                config.setClusterUser("candlepin");
+                config.setClusterPassword("redhat");
+            }
+            catch (Exception e) {
+                throw new RuntimeException(e);
+            }
 
             activeMQServer = new EmbeddedActiveMQ();
             activeMQServer.setConfiguration(config);
