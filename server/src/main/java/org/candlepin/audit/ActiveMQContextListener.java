@@ -166,8 +166,9 @@ public class ActiveMQContextListener {
 //            config.addAcceptorConfiguration(new TransportConfiguration(InVMAcceptorFactory.class.getName()));
 
             Map<String, Object> nettyConfig = new HashMap<>();
-            nettyConfig.put(TransportConstants.HOST_PROP_NAME, "192.168.2.103");
-            TransportConfiguration netty = new TransportConfiguration(NettyAcceptorFactory.class.getName(), nettyConfig, "async-connector");
+            nettyConfig.put(TransportConstants.HOST_PROP_NAME, candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST));
+            nettyConfig.put(TransportConstants.PORT_PROP_NAME, candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
+            TransportConfiguration netty = new TransportConfiguration(NettyAcceptorFactory.class.getName(), nettyConfig, "async-acceptor");
             config.addAcceptorConfiguration(netty);
 
             config.addConnectorConfiguration("netty",
@@ -177,10 +178,10 @@ public class ActiveMQContextListener {
             // Configure clustering
 
             UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory();
-            udpBroadcast.setLocalBindAddress("192.168.2.103");
-            udpBroadcast.setLocalBindPort(5432);
-            udpBroadcast.setGroupAddress("231.7.7.7");
-            udpBroadcast.setGroupPort(2000);
+//            udpBroadcast.setLocalBindAddress("192.168.2.103");
+//            udpBroadcast.setLocalBindPort(TransportConstants.DEFAULT_PORT);
+            udpBroadcast.setGroupAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_GROUP_ADDR));
+            udpBroadcast.setGroupPort(candlepinConfig.getInt(ConfigProperties.ACTIVEMQ_CLUSTER_GROUP_PORT));
 
             BroadcastGroupConfiguration broadcast = new BroadcastGroupConfiguration();
             broadcast.setName("async_jobs_broadcast");
@@ -194,7 +195,6 @@ public class ActiveMQContextListener {
             config.addDiscoveryGroupConfiguration("async_jobs_discovery", discovery);
 
             ClusterConnectionConfiguration cluster = new ClusterConnectionConfiguration();
-            cluster.setAddress("");
             cluster.setName("my-cluster");
             cluster.setMaxHops(1);
             cluster.setRetryInterval(500);
