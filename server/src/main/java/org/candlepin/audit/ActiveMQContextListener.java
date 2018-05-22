@@ -188,7 +188,7 @@ public class ActiveMQContextListener {
                     .setName("my-cluster")
                     .setMaxHops(1)
                     .setRetryInterval(500)
-                    .setConnectorName("netty")
+                    .setConnectorName("async-connector")
                     .setMessageLoadBalancingType(MessageLoadBalancingType.STRICT)
                     .setDiscoveryGroupName("async_jobs_discovery"));
 
