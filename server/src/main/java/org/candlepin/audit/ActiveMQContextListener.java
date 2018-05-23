@@ -165,6 +165,8 @@ public class ActiveMQContextListener {
                 candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
 
             UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory()
+                .setLocalBindAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST))
+                .setLocalBindPort(5555)
                 .setGroupAddress("231.7.7.7")
                 .setGroupPort(9876);
 
