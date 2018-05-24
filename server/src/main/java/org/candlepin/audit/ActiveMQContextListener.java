@@ -15,9 +15,11 @@
 package org.candlepin.audit;
 
 import com.google.inject.Singleton;
+import org.apache.activemq.artemis.api.config.ActiveMQDefaultConfiguration;
 import org.apache.activemq.artemis.api.core.BroadcastEndpointFactory;
 import org.apache.activemq.artemis.api.core.BroadcastGroupConfiguration;
 import org.apache.activemq.artemis.api.core.DiscoveryGroupConfiguration;
+import org.apache.activemq.artemis.api.core.RoutingType;
 import org.apache.activemq.artemis.api.core.TransportConfigurationHelper;
 import org.apache.activemq.artemis.api.core.UDPBroadcastEndpointFactory;
 import org.apache.activemq.artemis.api.core.management.ActiveMQServerControl;
@@ -244,17 +246,38 @@ public class ActiveMQContextListener {
             }
         }
 
-        // Register configured Job message listeners.
-        jobMessageSource = injector.getInstance(JobMessageSource.class);
-        for (String jobListenerClass : getJobListeners(candlepinConfig)) {
+
+        // Set up async job queue
+        SimpleString jobQueueName = new SimpleString("job_queue");
+        if (this.activeMQServer.getActiveMQServer().locateQueue(jobQueueName) == null) {
             try {
-                log.info("Registering async message job listener: {}", jobListenerClass);
-                jobMessageSource.registerListener(jobListenerClass);
+                this.activeMQServer.getActiveMQServer().createQueue(new SimpleString(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS), RoutingType.MULTICAST, jobQueueName, null, true, false);
             }
-            catch (ActiveMQException amqe) {
-                log.warn("Unable to register job message listener {}.", jobListenerClass, amqe);
+            catch (Exception e) {
+                throw new RuntimeException("Could not create job message queue", e);
             }
         }
+
+
+        boolean processAsyncJobs = candlepinConfig.getBoolean(ConfigProperties.ASYNC_JOB_PROCESSING_ENABLED);
+        jobMessageSource = injector.getInstance(JobMessageSource.class);
+        if (processAsyncJobs) {
+            // Register configured Job message listeners.
+            try {
+                jobMessageSource.registerListener("GENERAL_JOB_LISTENER");
+            } catch (ActiveMQException amqe) {
+                log.warn("Unable to register job message listener {}.", "GENERAL_JOB_LISTENER", amqe);
+            }
+        }
+//        for (String jobListenerClass : getJobListeners(candlepinConfig)) {
+//            try {
+//                log.info("Registering async message job listener: {}", jobListenerClass);
+//                jobMessageSource.registerListener(jobListenerClass);
+//            }
+//            catch (ActiveMQException amqe) {
+//                log.warn("Unable to register job message listener {}.", jobListenerClass, amqe);
+//            }
+//        }
 
         // Initialize the Event sink AFTER the internal server has been
         // created and started.

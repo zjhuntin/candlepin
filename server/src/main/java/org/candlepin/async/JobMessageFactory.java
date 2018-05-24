@@ -31,6 +31,7 @@ import org.apache.activemq.artemis.core.remoting.impl.invm.InVMConnectorFactory;
 import org.candlepin.async.jobs.RefreshPoolsMessageJob;
 import org.candlepin.async.jobs.TestPersistenceJob;
 import org.candlepin.audit.ActiveMQContextListener;
+import org.candlepin.audit.MessageAddress;
 import org.candlepin.audit.QueueStatus;
 import org.candlepin.auth.Principal;
 import org.candlepin.common.config.Configuration;
@@ -141,7 +142,7 @@ public class JobMessageFactory {
             String eventString = mapper.writeValueAsString(jobMessage);
             message.getBodyBuffer().writeString(eventString);
 
-            String address = String.format("%s.%s", QUEUE_ADDRESS, jobMessage.getJobClass());
+            String address = MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS;
             log.debug("Sending message to {}", address);
             getClientProducer().send(address, message);
         }
