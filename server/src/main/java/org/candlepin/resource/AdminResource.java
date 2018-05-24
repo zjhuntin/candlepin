@@ -14,7 +14,9 @@
  */
 package org.candlepin.resource;
 
+import org.apache.activemq.artemis.api.core.management.ActiveMQServerControl;
 import org.candlepin.async.JobMessageFactory;
+import org.candlepin.audit.ActiveMQContextListener;
 import org.candlepin.audit.EventSink;
 import org.candlepin.audit.QueueStatus;
 import org.candlepin.auth.Principal;
@@ -22,6 +24,7 @@ import org.candlepin.auth.SystemPrincipal;
 import org.candlepin.cache.CandlepinCache;
 import org.candlepin.common.auth.SecurityHole;
 import org.candlepin.common.config.Configuration;
+import org.candlepin.common.exceptions.CandlepinException;
 import org.candlepin.model.Product;
 import org.candlepin.model.User;
 import org.candlepin.model.UserCurator;
@@ -34,6 +37,7 @@ import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,17 +67,20 @@ public class AdminResource {
     private JobMessageFactory jobs;
     private Configuration config;
     private CandlepinCache candlepinCache;
+    private ActiveMQServerControl serverControl;
+
 
     @Inject
     public AdminResource(UserServiceAdapter userService, UserCurator userCurator,
-        EventSink dispatcher, Configuration config, CandlepinCache candlepinCache,
-        JobMessageFactory jobFactory) {
+                         EventSink dispatcher, Configuration config, CandlepinCache candlepinCache,
+                         JobMessageFactory jobFactory, ActiveMQContextListener amqContext) {
         this.userService = userService;
         this.userCurator = userCurator;
         this.sink = dispatcher;
         this.config = config;
         this.candlepinCache = candlepinCache;
         this.jobs = jobFactory;
+        this.serverControl = amqContext.getServerControl();
     }
 
     @GET
@@ -121,6 +128,23 @@ public class AdminResource {
         all.put("events", sink.getQueueInfo());
         all.put("jobs", jobs.getQueueInfo());
         return all;
+    }
+
+    @GET
+    @Produces({MediaType.APPLICATION_JSON})
+    @Path("cluster")
+    @ApiOperation(
+        notes = "Retrieves the network topology for the artemis server, including which other servers are " +
+                "clustered with it.",
+        value = "Get Network Topology"
+    )
+    public String getArtemisClusterInfo() {
+        try {
+            return serverControl.listNetworkTopology();
+        }
+        catch (Exception e) {
+            throw new RuntimeException("Unable to get network topology.", e);
+        }
     }
 
     @DELETE

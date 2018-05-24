@@ -14,11 +14,13 @@
  */
 package org.candlepin.audit;
 
+import com.google.inject.Singleton;
 import org.apache.activemq.artemis.api.core.BroadcastEndpointFactory;
 import org.apache.activemq.artemis.api.core.BroadcastGroupConfiguration;
 import org.apache.activemq.artemis.api.core.DiscoveryGroupConfiguration;
 import org.apache.activemq.artemis.api.core.TransportConfigurationHelper;
 import org.apache.activemq.artemis.api.core.UDPBroadcastEndpointFactory;
+import org.apache.activemq.artemis.api.core.management.ActiveMQServerControl;
 import org.apache.activemq.artemis.core.config.ClusterConnectionConfiguration;
 import org.apache.activemq.artemis.core.config.DivertConfiguration;
 import org.apache.activemq.artemis.core.remoting.impl.netty.NettyAcceptorFactory;
@@ -68,6 +70,7 @@ import java.util.Map;
  * ActiveMQContextListener - Invoked from our core CandlepinContextListener, thus
  * doesn't actually implement ServletContextListener.
  */
+@Singleton
 public class ActiveMQContextListener {
     private static  Logger log = LoggerFactory.getLogger(ActiveMQContextListener.class);
 
@@ -245,6 +248,7 @@ public class ActiveMQContextListener {
         jobMessageSource = injector.getInstance(JobMessageSource.class);
         for (String jobListenerClass : getJobListeners(candlepinConfig)) {
             try {
+                log.info("Registering async message job listener: {}", jobListenerClass);
                 jobMessageSource.registerListener(jobListenerClass);
             }
             catch (ActiveMQException amqe) {
@@ -465,5 +469,9 @@ public class ActiveMQContextListener {
             log.error("Problem cleaning old message queues:", e);
             throw new RuntimeException("Problem cleaning message queue", e);
         }
+    }
+
+    public ActiveMQServerControl getServerControl() {
+        return this.activeMQServer.getActiveMQServer().getActiveMQServerControl();
     }
 }
