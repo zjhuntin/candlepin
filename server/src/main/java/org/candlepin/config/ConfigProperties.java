@@ -144,6 +144,7 @@ public class ConfigProperties {
     public static final String ACTIVEMQ_CLUSTER_PORT = "candlepin.activemq.cluster.port";
     public static final String ACTIVEMQ_CLUSTER_GROUP_ADDR = "candlepin.activemq.cluster.group_addr";
     public static final String ACTIVEMQ_CLUSTER_GROUP_PORT = "candlepin.activemq.cluster.group_port";
+    public static final String ACTIVEMQ_CLUSTER_STATIC_URLS = "candlepin.activemq.cluster.static_urls";
 
     public static final String AUDIT_LISTENERS = "candlepin.audit.listeners";
     public static final String AUDIT_LOG_FILE = "candlepin.audit.log_file";
@@ -368,6 +369,8 @@ public class ConfigProperties {
             this.put(ACTIVEMQ_REDELIVERY_MULTIPLIER, "2");
             // By default, never stop delivery attempts.
             this.put(ACTIVEMQ_MAX_DELIVERY_ATTEMPTS, "0");
+
+//            this.put(ACTIVEMQ_CLUSTER_STATIC_URLS, "");
 
             // ActiveMQ Artemis Cluster Defaults
             this.put(ACTIVEMQ_CLUSTER_HOST, "localhost");

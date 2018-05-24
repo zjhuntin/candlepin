@@ -59,6 +59,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -164,35 +165,47 @@ public class ActiveMQContextListener {
                 candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST),
                 candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
 
-            UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory()
-                .setLocalBindAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST))
-                .setLocalBindPort(-1)
-                .setGroupAddress("231.7.7.7")
-                .setGroupPort(9876);
+            List<String> staticUrls = candlepinConfig.getList(ConfigProperties.ACTIVEMQ_CLUSTER_STATIC_URLS,
+                Collections.EMPTY_LIST);
+
+//            UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory()
+//                .setLocalBindAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST))
+//                .setLocalBindPort(-1)
+//                .setGroupAddress("231.7.7.7")
+//                .setGroupPort(9876);
 
             try {
-                config.addAcceptorConfiguration("async-acceptor", url);
-                config.addConnectorConfiguration("async-connector", url);
+                config.addAcceptorConfiguration("local-acceptor", url);
+                config.addConnectorConfiguration("local-connector", url);
 
-                config.addBroadcastGroupConfiguration(new BroadcastGroupConfiguration()
-                    .setName("async_jobs_broadcast")
-                    .setConnectorInfos(Arrays.asList("async-connector"))
-                    .setEndpointFactory(udpBroadcast)
-                );
+                List<String> staticNames = new LinkedList<>();
+                for (String staticUrl : staticUrls) {
+                    String name = String.format("cluster-static-%d", staticNames.size() + 1);
+                    staticNames.add(name);
+                    log.info("Configuring static artemis server url for cluster: {} | {}", name, staticUrl);
+                    config.addConnectorConfiguration(name, staticUrl);
+                }
 
-                config.addDiscoveryGroupConfiguration("async_jobs_discovery",
-                    new DiscoveryGroupConfiguration()
-                        .setName("async_jobs_discovery")
-                        .setBroadcastEndpointFactory(udpBroadcast)
-                );
+//                config.addBroadcastGroupConfiguration(new BroadcastGroupConfiguration()
+//                    .setName("async_jobs_broadcast")
+//                    .setConnectorInfos(Arrays.asList("async-connector"))
+//                    .setEndpointFactory(udpBroadcast)
+//                );
+
+//                config.addDiscoveryGroupConfiguration("async_jobs_discovery",
+//                    new DiscoveryGroupConfiguration()
+//                        .setName("async_jobs_discovery")
+//                        .setBroadcastEndpointFactory(udpBroadcast)
+//                );
 
                 config.addClusterConfiguration(new ClusterConnectionConfiguration()
                     .setName("my-cluster")
                     .setMaxHops(1)
                     .setRetryInterval(500)
-                    .setConnectorName("async-connector")
+                    .setConnectorName("local-connector")
                     .setMessageLoadBalancingType(MessageLoadBalancingType.STRICT)
-                    .setDiscoveryGroupName("async_jobs_discovery"));
+                    .setStaticConnectors(staticNames));
+//                    .setDiscoveryGroupName("async_jobs_discovery"));
 
                 config.setClusterUser("candlepin");
                 config.setClusterPassword("redhat");
