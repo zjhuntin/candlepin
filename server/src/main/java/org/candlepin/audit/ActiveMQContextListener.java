@@ -343,6 +343,7 @@ public class ActiveMQContextListener {
     private Map<String, AddressSettings> buildAsyncJobAddressSettings(org.candlepin.common.config.Configuration candlepinConfig) {
         Map<String, AddressSettings> settings = new HashMap<>();
         AddressSettings asyncJobsConfig = this.defaultAddressSettings(candlepinConfig);
+        asyncJobsConfig.setRedistributionDelay(5000);
         configureMessageRetry(asyncJobsConfig, candlepinConfig);
         // TODO Any async job queue specific settings for retry ect... Change filter and
         //      add new setting config per handler if required.
