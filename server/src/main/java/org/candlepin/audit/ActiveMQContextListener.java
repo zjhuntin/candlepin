@@ -208,7 +208,7 @@ public class ActiveMQContextListener {
                     .setMaxHops(1)
                     .setRetryInterval(500)
                     .setConnectorName("local-connector")
-                    .setMessageLoadBalancingType(MessageLoadBalancingType.STRICT)
+                    .setMessageLoadBalancingType(MessageLoadBalancingType.ON_DEMAND)
                     .setStaticConnectors(staticNames));
 //                    .setDiscoveryGroupName("async_jobs_discovery"));
 
