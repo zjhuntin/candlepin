@@ -232,7 +232,7 @@ public class ActiveMQContextListener {
             throw new RuntimeException(e);
         }
 
-        cleanupOldQueues();
+//        cleanupOldQueues();
 
         // Create the event source and register all listeners now that the server is started
         // and the old queues are cleaned up.
@@ -427,13 +427,13 @@ public class ActiveMQContextListener {
      */
     private void configureMessageRetry(AddressSettings addressSettings,
         org.candlepin.common.config.Configuration candlepinConfig) {
-        addressSettings.setRedeliveryDelay(
-            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_DELAY));
-        addressSettings.setMaxRedeliveryDelay(
-            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_MAX_REDELIVERY_DELAY));
-        addressSettings.setRedeliveryMultiplier(
-            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_MULTIPLIER));
-        addressSettings.setMaxDeliveryAttempts(1);
+//        addressSettings.setRedeliveryDelay(
+//            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_DELAY));
+//        addressSettings.setMaxRedeliveryDelay(
+//            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_MAX_REDELIVERY_DELAY));
+//        addressSettings.setRedeliveryMultiplier(
+//            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_MULTIPLIER));
+//        addressSettings.setMaxDeliveryAttempts(1);
     }
 
     /**
