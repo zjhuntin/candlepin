@@ -227,9 +227,7 @@ public class ActiveMQContextListener {
         try {
             activeMQServer.start();
             log.info("Waiting for cluster formation...");
-            if (!activeMQServer.waitClusterForming(10, TimeUnit.SECONDS, 10, 1)) {
-                log.warn("NO CLUSTER WAS FORMED!!!!");
-            }
+            Thread.sleep(10000);
             log.info("ActiveMQ server started");
         }
         catch (Exception e) {
