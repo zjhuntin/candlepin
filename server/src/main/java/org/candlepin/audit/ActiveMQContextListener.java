@@ -66,6 +66,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -225,6 +226,10 @@ public class ActiveMQContextListener {
         }
         try {
             activeMQServer.start();
+            log.info("Waiting for cluster formation...");
+            if (!activeMQServer.waitClusterForming(10, TimeUnit.SECONDS, 10, 1)) {
+                log.warn("NO CLUSTER WAS FORMED!!!!");
+            }
             log.info("ActiveMQ server started");
         }
         catch (Exception e) {
