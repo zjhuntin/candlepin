@@ -171,6 +171,8 @@ public class ActiveMQContextListener {
                 candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST),
                 candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
 
+            log.info("Local URL: {}", url);
+
             List<String> staticUrls = candlepinConfig.getList(ConfigProperties.ACTIVEMQ_CLUSTER_STATIC_URLS,
                 Collections.EMPTY_LIST);
 
@@ -186,7 +188,7 @@ public class ActiveMQContextListener {
 
                 List<String> staticNames = new LinkedList<>();
                 for (String staticUrl : staticUrls) {
-                    String name = String.format("cluster-static-%d", staticNames.size() + 1);
+                    String name = String.format("remote%d", staticNames.size() + 1);
                     staticNames.add(name);
                     log.info("Configuring static artemis server url for cluster: {} | {}", name, staticUrl);
                     config.addConnectorConfiguration(name, staticUrl);
@@ -205,7 +207,7 @@ public class ActiveMQContextListener {
 //                );
 
                 config.addClusterConfiguration(new ClusterConnectionConfiguration()
-                    .setAddress("#")
+//                    .setAddress("#")
                     .setName("my-cluster")
                     .setMaxHops(1)
                     .setRetryInterval(500)
