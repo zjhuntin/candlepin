@@ -463,7 +463,13 @@ public class ActiveMQContextListener {
     }
 
     public static List<String> getJobListeners(org.candlepin.common.config.Configuration candlepinConfig) {
-        return candlepinConfig.getList(ConfigProperties.ALLOWED_ASYNC_JOBS, Collections.EMPTY_LIST);
+        List<String> listeners = candlepinConfig.getList(ConfigProperties.ALLOWED_ASYNC_JOBS,
+            Collections.EMPTY_LIST);
+        // HACK ALERT: This is to fix an issue in PropertyConverter that will return "" as a list element.
+        if (!listeners.isEmpty() && listeners.get(0).isEmpty()) {
+            return Collections.EMPTY_LIST;
+        }
+        return listeners;
     }
 
     /**
