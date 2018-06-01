@@ -33,11 +33,10 @@ import java.util.List;
 public class JobMessageSource {
     private static Logger log = LoggerFactory.getLogger(JobMessageSource.class);
 
-    static final String QUEUE_ADDRESS = "job";
     private ClientSessionFactory factory;
     private ObjectMapper mapper;
     private JobExecutor jobExecuter;
-    private List<JobMessageReceiver> receivers = new LinkedList<>();
+    private JobMessageReceiver jobMessageReceiver;
 
     @Inject
     public JobMessageSource(JobExecutor jobExecutor, ObjectMapper mapper) {
@@ -46,14 +45,16 @@ public class JobMessageSource {
 
         try {
             factory =  createSessionFactory();
+            jobMessageReceiver = new JobMessageReceiver(factory, mapper, jobExecuter);
         }
         catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void registerListener(String jobClass) throws ActiveMQException {
-        this.receivers.add(new JobMessageReceiver(jobClass, factory, mapper, jobExecuter));
+    public void registerListeners(List<String> jobListenerClasses) throws ActiveMQException {
+        jobMessageReceiver.addJobListeners(jobListenerClasses);
+        jobMessageReceiver.start();
     }
 
     /**
@@ -66,12 +67,15 @@ public class JobMessageSource {
     }
 
     public void shutDown() {
-        closeJobMessageReceivers();
+        try {
+            jobMessageReceiver.stop();
+        }
+        catch (ActiveMQException e) {
+            log.warn("Unable to stop JobMessageReceiver: {}", e.getMessage());
+        }
+
         factory.close();
         jobExecuter.shutdown();
     }
 
-    private void closeJobMessageReceivers() {
-        this.receivers.forEach(JobMessageReceiver::close);
-    }
 }

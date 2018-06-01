@@ -232,7 +232,7 @@ public class ActiveMQContextListener {
         }
 
         // Set up async job queue
-        SimpleString jobQueueName = new SimpleString("job_queue");
+        SimpleString jobQueueName = new SimpleString(JobMessageFactory.JOB_QUEUE_NAME);
         if (this.activeMQServer.getActiveMQServer().locateQueue(jobQueueName) == null) {
             try {
                 this.activeMQServer.getActiveMQServer().createQueue(
@@ -244,17 +244,14 @@ public class ActiveMQContextListener {
             }
         }
 
-        boolean processAsyncJobs = candlepinConfig.getBoolean(ConfigProperties.ASYNC_JOB_PROCESSING_ENABLED);
-        jobMessageSource = injector.getInstance(JobMessageSource.class);
-        if (processAsyncJobs) {
-            // Register configured Job message listeners.
-            try {
-                // FIXME Need to decide what to do here. Currently only registering a single listener.
-                jobMessageSource.registerListener("GENERAL_JOB_LISTENER");
-            } catch (ActiveMQException amqe) {
-                log.warn("Unable to register job message listener {}.", "GENERAL_JOB_LISTENER", amqe);
-            }
+        // Register configured Job message listeners.
+        try {
+            jobMessageSource = injector.getInstance(JobMessageSource.class);
+            jobMessageSource.registerListeners(getJobListeners(candlepinConfig));
+        } catch (ActiveMQException amqe) {
+            throw new RuntimeException("Unable to initialize JobMessageSource.", amqe);
         }
+
         // FIXME Should we be using a single Queue or be going with multiple?
         // TODO  I like using one, but we'll have set up filters on our consumers.
         // TODO If we use multiple queues, we will need to create them above.

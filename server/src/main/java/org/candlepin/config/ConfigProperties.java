@@ -211,12 +211,6 @@ public class ConfigProperties {
     public static final String ALLOWED_ASYNC_JOBS = "candlepin.async.jobs.allowed_jobs";
 
     /**
-     * Enable async job processing on this node
-     */
-    // FIXME This shouldn't be needed once the support is added for multiple jobs/queues.
-    public static final String ASYNC_JOB_PROCESSING_ENABLED = "candlepin.async.jobs.job_processing_enabled";
-
-    /**
      * A possibility to enable Suspend Mode. By default, the suspend mode is enabled
      */
     public static final String SUSPEND_MODE_ENABLED = "candlepin.suspend_mode_enabled";
@@ -510,8 +504,6 @@ public class ConfigProperties {
                 TestPersistenceJob.class.getCanonicalName()
             };
             this.put(ALLOWED_ASYNC_JOBS, StringUtils.join(allowed, ","));
-
-            this.put(ASYNC_JOB_PROCESSING_ENABLED, "true");
         }
     };
 
