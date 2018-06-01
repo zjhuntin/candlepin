@@ -206,19 +206,16 @@ public class ActiveMQContextListener {
             activeMQServer = new EmbeddedActiveMQ();
             activeMQServer.setConfiguration(config);
         }
+
         try {
             activeMQServer.start();
-
-            // FIXME Do we really need to wait for the cluster formation? I don't think, but should test!
-            log.info("Waiting for cluster formation...");
-            Thread.sleep(10000);
             log.info("ActiveMQ server started");
         }
         catch (Exception e) {
             log.error("Failed to start ActiveMQ message server:", e);
             throw new RuntimeException(e);
         }
-        // FIXME Do we really need to do this? Does this have to be removed to allow clustering to work?
+
         cleanupOldQueues();
 
         // Create the event source and register all listeners now that the server is started
