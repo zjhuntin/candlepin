@@ -29,6 +29,7 @@ import org.apache.activemq.artemis.api.core.client.ClientSessionFactory;
 import org.apache.activemq.artemis.api.core.client.ServerLocator;
 import org.apache.activemq.artemis.core.remoting.impl.invm.InVMConnectorFactory;
 import org.candlepin.async.jobs.RefreshPoolsMessageJob;
+import org.candlepin.async.jobs.TestJob;
 import org.candlepin.async.jobs.TestPersistenceJob;
 import org.candlepin.audit.MessageAddress;
 import org.candlepin.audit.QueueStatus;
@@ -92,6 +93,12 @@ public class JobMessageFactory {
                                               Boolean persist) {
         JobStatus status = TestPersistenceJob.testJob(principalProvider.get(), owner, forceFailure, sleep,
             persist);
+        sendNewJobMessage(status);
+        return status;
+    }
+
+    public JobStatus createTestJob(Owner owner) {
+        JobStatus status = TestJob.testJob(principalProvider.get(), owner);
         sendNewJobMessage(status);
         return status;
     }

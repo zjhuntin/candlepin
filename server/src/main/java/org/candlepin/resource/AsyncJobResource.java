@@ -142,6 +142,19 @@ public class AsyncJobResource {
             forceFailure, sleep, persist), JobStatusDTO.class);
     }
 
+    @PUT
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.WILDCARD)
+    @Path("{owner_key}/test2")
+    public JobStatusDTO forceFailure(@PathParam("owner_key") String ownerKey) {
+        Owner owner = ownerCurator.getByKey(ownerKey);
+        if (owner == null) {
+            throw new NotFoundException(i18n.tr("owner with key: {0} was not found.", ownerKey));
+        }
+
+        return this.translator.translate(this.jobMessageFactory.createTestJob(owner), JobStatusDTO.class);
+    }
+
     @POST
     @Produces(MediaType.APPLICATION_JSON)
     @Consumes(MediaType.WILDCARD)
