@@ -51,19 +51,6 @@ public class JobMessageReceiver implements MessageHandler {
         // if the server goes down before the batch ack size is reached.
         session = sessionFactory.createSession(false, false, 0);
 
-//        try {
-//            // Create a durable queue that will be persisted to disk:
-//            session.createQueue(queueName, queueName, true);
-//            log.debug("created new event queue: {}", queueName);
-//        }
-//        catch (ActiveMQException e) {
-//            // if the queue exists already we already created it in a previous run,
-//            // so that's fine.
-//            if (e.getType() != ActiveMQExceptionType.QUEUE_EXISTS) {
-//                throw e;
-//            }
-//        }
-
         ClientConsumer consumer = session.createConsumer("job_queue");
         consumer.setMessageHandler(this);
         session.start();

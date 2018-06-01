@@ -142,9 +142,9 @@ public class ConfigProperties {
      */
     public static final String ACTIVEMQ_CLUSTER_HOST = "candlepin.activemq.cluster.host";
     public static final String ACTIVEMQ_CLUSTER_PORT = "candlepin.activemq.cluster.port";
-    public static final String ACTIVEMQ_CLUSTER_GROUP_ADDR = "candlepin.activemq.cluster.group_addr";
-    public static final String ACTIVEMQ_CLUSTER_GROUP_PORT = "candlepin.activemq.cluster.group_port";
     public static final String ACTIVEMQ_CLUSTER_STATIC_URLS = "candlepin.activemq.cluster.static_urls";
+//    public static final String ACTIVEMQ_CLUSTER_GROUP_ADDR = "candlepin.activemq.cluster.group_addr";
+//    public static final String ACTIVEMQ_CLUSTER_GROUP_PORT = "candlepin.activemq.cluster.group_port";
 
     public static final String AUDIT_LISTENERS = "candlepin.audit.listeners";
     public static final String AUDIT_LOG_FILE = "candlepin.audit.log_file";
@@ -213,6 +213,7 @@ public class ConfigProperties {
     /**
      * Enable async job processing on this node
      */
+    // FIXME This shouldn't be needed once the support is added for multiple jobs/queues.
     public static final String ASYNC_JOB_PROCESSING_ENABLED = "candlepin.async.jobs.job_processing_enabled";
 
     /**
@@ -375,13 +376,13 @@ public class ConfigProperties {
             // By default, never stop delivery attempts.
             this.put(ACTIVEMQ_MAX_DELIVERY_ATTEMPTS, "0");
 
-//            this.put(ACTIVEMQ_CLUSTER_STATIC_URLS, "");
-
             // ActiveMQ Artemis Cluster Defaults
             this.put(ACTIVEMQ_CLUSTER_HOST, "localhost");
             this.put(ACTIVEMQ_CLUSTER_PORT, "61616");
-            this.put(ACTIVEMQ_CLUSTER_GROUP_ADDR, "231.7.7.7");
-            this.put(ACTIVEMQ_CLUSTER_GROUP_PORT, "9876");
+
+            // Enable for cluster Discovery Group functionality
+//            this.put(ACTIVEMQ_CLUSTER_GROUP_ADDR, "231.7.7.7");
+//            this.put(ACTIVEMQ_CLUSTER_GROUP_PORT, "9876");
 
             this.put(AUDIT_LISTENERS,
                 "org.candlepin.audit.DatabaseListener," +

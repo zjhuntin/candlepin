@@ -166,7 +166,6 @@ public class ActiveMQContextListener {
 
 
             // Configure the cluster.
-
             String url = String.format("tcp://%s:%s",
                 candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST),
                 candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_PORT));
@@ -175,12 +174,6 @@ public class ActiveMQContextListener {
 
             List<String> staticUrls = candlepinConfig.getList(ConfigProperties.ACTIVEMQ_CLUSTER_STATIC_URLS,
                 Collections.EMPTY_LIST);
-
-//            UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory()
-//                .setLocalBindAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST))
-//                .setLocalBindPort(-1)
-//                .setGroupAddress("231.7.7.7")
-//                .setGroupPort(9876);
 
             try {
                 config.addAcceptorConfiguration("local-acceptor", url);
@@ -194,27 +187,13 @@ public class ActiveMQContextListener {
                     config.addConnectorConfiguration(name, staticUrl);
                 }
 
-//                config.addBroadcastGroupConfiguration(new BroadcastGroupConfiguration()
-//                    .setName("async_jobs_broadcast")
-//                    .setConnectorInfos(Arrays.asList("async-connector"))
-//                    .setEndpointFactory(udpBroadcast)
-//                );
-
-//                config.addDiscoveryGroupConfiguration("async_jobs_discovery",
-//                    new DiscoveryGroupConfiguration()
-//                        .setName("async_jobs_discovery")
-//                        .setBroadcastEndpointFactory(udpBroadcast)
-//                );
-
                 config.addClusterConfiguration(new ClusterConnectionConfiguration()
-//                    .setAddress("#")
                     .setName("my-cluster")
                     .setMaxHops(1)
                     .setRetryInterval(500)
                     .setConnectorName("local-connector")
                     .setMessageLoadBalancingType(MessageLoadBalancingType.ON_DEMAND)
                     .setStaticConnectors(staticNames));
-//                    .setDiscoveryGroupName("async_jobs_discovery"));
 
                 config.setClusterUser("candlepin");
                 config.setClusterPassword("redhat");
@@ -228,6 +207,8 @@ public class ActiveMQContextListener {
         }
         try {
             activeMQServer.start();
+
+            // FIXME Do we really need to wait for the cluster formation? I don't think, but should test!
             log.info("Waiting for cluster formation...");
             Thread.sleep(10000);
             log.info("ActiveMQ server started");
@@ -236,7 +217,7 @@ public class ActiveMQContextListener {
             log.error("Failed to start ActiveMQ message server:", e);
             throw new RuntimeException(e);
         }
-
+        // FIXME Do we really need to do this? Does this have to be removed to allow clustering to work?
 //        cleanupOldQueues();
 
         // Create the event source and register all listeners now that the server is started
@@ -252,29 +233,33 @@ public class ActiveMQContextListener {
             }
         }
 
-
         // Set up async job queue
         SimpleString jobQueueName = new SimpleString("job_queue");
         if (this.activeMQServer.getActiveMQServer().locateQueue(jobQueueName) == null) {
             try {
-                this.activeMQServer.getActiveMQServer().createQueue(new SimpleString(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS), RoutingType.MULTICAST, jobQueueName, null, true, false);
+                this.activeMQServer.getActiveMQServer().createQueue(
+                    new SimpleString(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS),
+                    RoutingType.MULTICAST, jobQueueName, null, true, false);
             }
             catch (Exception e) {
                 throw new RuntimeException("Could not create job message queue", e);
             }
         }
 
-
         boolean processAsyncJobs = candlepinConfig.getBoolean(ConfigProperties.ASYNC_JOB_PROCESSING_ENABLED);
         jobMessageSource = injector.getInstance(JobMessageSource.class);
         if (processAsyncJobs) {
             // Register configured Job message listeners.
             try {
+                // FIXME Need to decide what to do here. Currently only registering a single listener.
                 jobMessageSource.registerListener("GENERAL_JOB_LISTENER");
             } catch (ActiveMQException amqe) {
                 log.warn("Unable to register job message listener {}.", "GENERAL_JOB_LISTENER", amqe);
             }
         }
+        // FIXME Should we be using a single Queue or be going with multiple?
+        // TODO  I like using one, but we'll have set up filters on our consumers.
+        // TODO If we use multiple queues, we will need to create them above.
 //        for (String jobListenerClass : getJobListeners(candlepinConfig)) {
 //            try {
 //                log.info("Registering async message job listener: {}", jobListenerClass);
@@ -306,6 +291,30 @@ public class ActiveMQContextListener {
             throw new RuntimeException(e);
         }
     }
+
+//    private void setupClusterDiscovery(Configuration config, ClusterConnectionConfiguration clusterConfig,
+//        org.candlepin.common.config.Configuration candlepinConfig) {
+//        UDPBroadcastEndpointFactory udpBroadcast = new UDPBroadcastEndpointFactory()
+//            .setLocalBindAddress(candlepinConfig.getString(ConfigProperties.ACTIVEMQ_CLUSTER_HOST))
+//            .setLocalBindPort(-1)
+//            .setGroupAddress("231.7.7.7")
+//            .setGroupPort(9876);
+//
+//            config.addBroadcastGroupConfiguration(new BroadcastGroupConfiguration()
+//                .setName("async_jobs_broadcast")
+//                .setConnectorInfos(Arrays.asList("async-connector"))
+//                .setEndpointFactory(udpBroadcast)
+//            );
+//
+//            config.addDiscoveryGroupConfiguration("async_jobs_discovery",
+//                new DiscoveryGroupConfiguration()
+//                    .setName("async_jobs_discovery")
+//                    .setBroadcastEndpointFactory(udpBroadcast)
+//            );
+//
+//
+//        clusterConfig.setDiscoveryGroupName("async_jobs_discovery"));
+//    }
 
     private void registerEventListener(Injector injector, String className) {
         try {
@@ -432,6 +441,7 @@ public class ActiveMQContextListener {
      */
     private void configureMessageRetry(AddressSettings addressSettings,
         org.candlepin.common.config.Configuration candlepinConfig) {
+        // FIXME Does retry have to be disabled for this to work? Is retry required for async?
 //        addressSettings.setRedeliveryDelay(
 //            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_DELAY));
 //        addressSettings.setMaxRedeliveryDelay(

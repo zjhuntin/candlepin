@@ -193,11 +193,13 @@ public class JobMessageFactory {
 
             ClientSession session = getClientSession();
             session.start();
-            for (String listenerClassName : ActiveMQContextListener.getJobListeners(config)) {
-                String queueName = "job." + listenerClassName;
-                long msgCount = session.queueQuery(new SimpleString(queueName)).getMessageCount();
-                results.add(new QueueStatus(queueName, msgCount));
-            }
+//            for (String listenerClassName : ActiveMQContextListener.getJobListeners(config)) {
+//                String queueName = "job." + listenerClassName;
+//                long msgCount = session.queueQuery(new SimpleString(queueName)).getMessageCount();
+//                results.add(new QueueStatus(queueName, msgCount));
+//            }
+            // FIXME The issue here is that there's no way to determine how many of X job is in the queue.
+            //       Perhaps use the management API in the AdminResource.
             results.add(new QueueStatus("job_queue",
                 session.queueQuery(new SimpleString("job_queue")).getMessageCount()));
         }

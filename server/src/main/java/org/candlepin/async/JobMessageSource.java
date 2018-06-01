@@ -61,7 +61,6 @@ public class JobMessageSource {
      * @throws Exception
      */
     protected ClientSessionFactory createSessionFactory() throws Exception {
-        // TODO This will likely have to change to target the Artemis cluster.
         return ActiveMQClient.createServerLocatorWithoutHA(
             new TransportConfiguration(InVMConnectorFactory.class.getName())).createSessionFactory();
     }
