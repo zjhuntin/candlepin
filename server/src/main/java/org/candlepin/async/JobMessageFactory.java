@@ -198,6 +198,8 @@ public class JobMessageFactory {
                 long msgCount = session.queueQuery(new SimpleString(queueName)).getMessageCount();
                 results.add(new QueueStatus(queueName, msgCount));
             }
+            results.add(new QueueStatus("job_queue",
+                session.queueQuery(new SimpleString("job_queue")).getMessageCount()));
         }
         catch (Exception e) {
             log.error("Error looking up ActiveMQ queue info: ", e);
