@@ -488,17 +488,21 @@ public class ActiveMQContextListener {
             ClientSession session = factory.createSession(true, true);
             session.start();
 
-            for (int i = 0; i < queues.length; i++) {
+            for (String queue : queues) {
+                // Only clean up our own queues.
+                if (!queue.startsWith(MessageAddress.EVENT_ADDRESS_PREFIX) ||
+                    !queue.startsWith(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS)) {
+                    continue;
+                }
+
                 long msgCount =
-                    session.queueQuery(new SimpleString(queues[i])).getMessageCount();
+                    session.queueQuery(new SimpleString(queue)).getMessageCount();
                 if (msgCount == 0) {
-                    log.debug(String.format("found queue '%s' with 0 messages. deleting",
-                        queues[i]));
-                    session.deleteQueue(queues[i]);
+                    log.debug(String.format("found queue '%s' with 0 messages. deleting", queue));
+                    session.deleteQueue(queue);
                 }
                 else {
-                    log.debug(String.format("found queue '%s' with %d messages. kept",
-                        queues[i], msgCount));
+                    log.debug(String.format("found queue '%s' with %d messages. kept", queue, msgCount));
                 }
             }
 
