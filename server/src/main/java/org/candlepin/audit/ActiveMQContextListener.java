@@ -188,6 +188,7 @@ public class ActiveMQContextListener {
                 }
 
                 config.addClusterConfiguration(new ClusterConnectionConfiguration()
+                    .setAddress(MessageAddress.QPID_ASYNC_JOB_MESSAGE_ADDRESS)
                     .setName("my-cluster")
                     .setMaxHops(1)
                     .setRetryInterval(500)
