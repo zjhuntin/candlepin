@@ -219,7 +219,7 @@ public class ActiveMQContextListener {
             throw new RuntimeException(e);
         }
         // FIXME Do we really need to do this? Does this have to be removed to allow clustering to work?
-//        cleanupOldQueues();
+        cleanupOldQueues();
 
         // Create the event source and register all listeners now that the server is started
         // and the old queues are cleaned up.
@@ -442,7 +442,6 @@ public class ActiveMQContextListener {
      */
     private void configureMessageRetry(AddressSettings addressSettings,
         org.candlepin.common.config.Configuration candlepinConfig) {
-        // FIXME Does retry have to be disabled for this to work? Is retry required for async?
         addressSettings.setRedeliveryDelay(
             candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_DELAY));
         addressSettings.setMaxRedeliveryDelay(
