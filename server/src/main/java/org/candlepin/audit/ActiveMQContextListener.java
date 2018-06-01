@@ -442,13 +442,13 @@ public class ActiveMQContextListener {
     private void configureMessageRetry(AddressSettings addressSettings,
         org.candlepin.common.config.Configuration candlepinConfig) {
         // FIXME Does retry have to be disabled for this to work? Is retry required for async?
-//        addressSettings.setRedeliveryDelay(
-//            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_DELAY));
-//        addressSettings.setMaxRedeliveryDelay(
-//            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_MAX_REDELIVERY_DELAY));
-//        addressSettings.setRedeliveryMultiplier(
-//            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_MULTIPLIER));
-//        addressSettings.setMaxDeliveryAttempts(1);
+        addressSettings.setRedeliveryDelay(
+            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_DELAY));
+        addressSettings.setMaxRedeliveryDelay(
+            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_MAX_REDELIVERY_DELAY));
+        addressSettings.setRedeliveryMultiplier(
+            candlepinConfig.getLong(ConfigProperties.ACTIVEMQ_REDELIVERY_MULTIPLIER));
+        addressSettings.setMaxDeliveryAttempts(0);
     }
 
     /**
