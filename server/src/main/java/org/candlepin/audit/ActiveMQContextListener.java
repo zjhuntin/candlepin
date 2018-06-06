@@ -29,6 +29,7 @@ import org.apache.activemq.artemis.core.remoting.impl.netty.NettyAcceptorFactory
 import org.apache.activemq.artemis.core.remoting.impl.netty.NettyConnectorFactory;
 import org.apache.activemq.artemis.core.remoting.impl.netty.TransportConstants;
 import org.apache.activemq.artemis.core.server.cluster.impl.MessageLoadBalancingType;
+import org.apache.activemq.artemis.core.server.management.ManagementService;
 import org.candlepin.async.JobMessageFactory;
 import org.apache.activemq.artemis.api.core.ActiveMQException;
 import org.candlepin.async.JobMessageSource;
@@ -517,5 +518,9 @@ public class ActiveMQContextListener {
 
     public ActiveMQServerControl getServerControl() {
         return this.activeMQServer.getActiveMQServer().getActiveMQServerControl();
+    }
+
+    public ManagementService getManagementService() {
+        return this.activeMQServer.getActiveMQServer().getManagementService();
     }
 }

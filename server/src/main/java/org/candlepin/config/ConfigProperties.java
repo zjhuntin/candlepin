@@ -18,6 +18,7 @@ package org.candlepin.config;
 import static org.candlepin.common.config.ConfigurationPrefixes.JPA_CONFIG_PREFIX;
 
 import org.candlepin.async.jobs.RefreshPoolsMessageJob;
+import org.candlepin.async.jobs.TestJob;
 import org.candlepin.async.jobs.TestPersistenceJob;
 import org.candlepin.pinsetter.tasks.ActiveEntitlementJob;
 import org.candlepin.pinsetter.tasks.CancelJobJob;
@@ -501,7 +502,8 @@ public class ConfigProperties {
 
             String[] allowed = new String[] {
                 RefreshPoolsMessageJob.class.getCanonicalName(),
-                TestPersistenceJob.class.getCanonicalName()
+                TestPersistenceJob.class.getCanonicalName(),
+                TestJob.class.getCanonicalName()
             };
             this.put(ALLOWED_ASYNC_JOBS, StringUtils.join(allowed, ","));
         }
