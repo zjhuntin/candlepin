@@ -15,6 +15,9 @@
 package org.candlepin.resource;
 
 import org.apache.activemq.artemis.api.core.management.ActiveMQServerControl;
+import org.apache.activemq.artemis.api.core.management.QueueControl;
+import org.apache.activemq.artemis.api.core.management.ResourceNames;
+import org.apache.activemq.artemis.core.server.management.ManagementService;
 import org.candlepin.async.JobMessageFactory;
 import org.candlepin.audit.ActiveMQContextListener;
 import org.candlepin.audit.EventSink;
@@ -24,7 +27,7 @@ import org.candlepin.auth.SystemPrincipal;
 import org.candlepin.cache.CandlepinCache;
 import org.candlepin.common.auth.SecurityHole;
 import org.candlepin.common.config.Configuration;
-import org.candlepin.common.exceptions.CandlepinException;
+import org.candlepin.config.ConfigProperties;
 import org.candlepin.model.Product;
 import org.candlepin.model.User;
 import org.candlepin.model.UserCurator;
@@ -37,8 +40,8 @@ import org.jboss.resteasy.spi.ResteasyProviderFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -67,7 +70,8 @@ public class AdminResource {
     private JobMessageFactory jobs;
     private Configuration config;
     private CandlepinCache candlepinCache;
-    private ActiveMQServerControl serverControl;
+    private ActiveMQServerControl activeMQServerControl;
+    private ManagementService activeMQManagementService;
 
 
     @Inject
@@ -80,7 +84,11 @@ public class AdminResource {
         this.config = config;
         this.candlepinCache = candlepinCache;
         this.jobs = jobFactory;
-        this.serverControl = amqContext.getServerControl();
+
+        // FIXME Injecting the context listener to gain access to this stuff is wrong and is a HACK!
+        // FIXME The Artemis server and config should be broken out of the context listener class.
+        this.activeMQServerControl = amqContext.getServerControl();
+        this.activeMQManagementService = amqContext.getManagementService();
     }
 
     @GET
@@ -126,7 +134,26 @@ public class AdminResource {
     public Map<String, List<QueueStatus>> getQueueStats() {
         Map<String, List<QueueStatus>> all = new HashMap<>();
         all.put("events", sink.getQueueInfo());
-        all.put("jobs", jobs.getQueueInfo());
+
+        QueueControl coreQueueControl = (QueueControl) activeMQManagementService.getResource(
+            ResourceNames.QUEUE + JobMessageFactory.JOB_QUEUE_NAME);
+        if (coreQueueControl == null) {
+            log.warn("Unable to get job queue control. Not listing messages.");
+        }
+        else {
+            List<QueueStatus> jobStats = new LinkedList<>();
+            for (String configuredJobClass : ConfigProperties.DEFAULT_PROPERTIES.get(ConfigProperties.ALLOWED_ASYNC_JOBS).split(",")) {
+                String filter = String.format(JobMessageFactory.JOB_MESSAGE_FILTER_TEMPLATE, configuredJobClass);
+                try {
+                    jobStats.add(new QueueStatus(configuredJobClass, coreQueueControl.countMessages(filter)));
+                }
+                catch (Exception e) {
+                    log.warn("Unable to get message count for {}.", configuredJobClass, e);
+                }
+            }
+            all.put("async_jobs", jobStats);
+        }
+
         return all;
     }
 
@@ -140,7 +167,7 @@ public class AdminResource {
     )
     public String getArtemisClusterInfo() {
         try {
-            return serverControl.listNetworkTopology();
+            return activeMQServerControl.listNetworkTopology();
         }
         catch (Exception e) {
             throw new RuntimeException("Unable to get network topology.", e);
