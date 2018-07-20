@@ -232,6 +232,12 @@ public class GuestMigration {
         /** Perform all necessary object updates necessary to resolve this manifest */
         public void writeMigrationChanges() {
             for (GuestId id : newGuests) {
+                // NOTE: Adding a new GuestID fixes the detached object
+                //       issue, but results in an insert and a delete
+                //       for each.
+                // GuestId toAdd = new GuestId(id.getGuestId());
+                // toAdd.setAttributes(id.getAttributes());
+                // newHost.addGuestId(toAdd);
                 newHost.addGuestId(id);
             }
 
