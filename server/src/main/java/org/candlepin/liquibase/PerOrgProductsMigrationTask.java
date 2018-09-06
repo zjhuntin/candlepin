@@ -20,6 +20,7 @@ import liquibase.exception.DatabaseException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -151,6 +152,8 @@ public class PerOrgProductsMigrationTask extends LiquibaseCustomTask {
             // Do our initial validation check to avoid doing a multi-hour migration and fail out
             // while validating the last org...
             boolean validated = true;
+            Collection<String> vfailures = new LinkedList<>();
+
             ResultSet orgids = this.executeQuery("SELECT id, account FROM cp_owner");
             for (int index = 1; orgids.next(); ++index) {
                 String orgid = orgids.getString(1);
@@ -165,7 +168,7 @@ public class PerOrgProductsMigrationTask extends LiquibaseCustomTask {
                 }
 
                 // Check for malformed objects which may end up in a bad state if we migrate
-                boolean validationResult = this.checkForMalformedObjectRefs(orgid);
+                boolean validationResult = this.checkForMalformedObjectRefs(orgid, vfailures);
 
                 if (!validationResult) {
                     validated = false;
@@ -175,7 +178,12 @@ public class PerOrgProductsMigrationTask extends LiquibaseCustomTask {
             orgids.close();
 
             if (!validated) {
-                throw new DatabaseException("One or more orgs failed data validation");
+                for (String errmsg : vfailures) {
+                    this.logger.error(errmsg);
+                }
+
+                throw new DatabaseException("One or more orgs failed data validation; refer to other errors" +
+                    " for detailed failure information");
             }
 
             // Perform the actual per-org migration
@@ -213,8 +221,8 @@ public class PerOrgProductsMigrationTask extends LiquibaseCustomTask {
      *  true if the check completed successfully; false otherwise
      */
     @SuppressWarnings("checkstyle:methodlength")
-    protected boolean checkForMalformedObjectRefs(String orgid) throws DatabaseException,
-        SQLException {
+    protected boolean checkForMalformedObjectRefs(String orgid, Collection<String> errors)
+        throws DatabaseException, SQLException {
 
         ResultSet badObjectRefs = this.executeQuery(
             "SELECT DISTINCT u.product_id, u.pool_id, u.subscription_id " +
@@ -271,21 +279,34 @@ public class PerOrgProductsMigrationTask extends LiquibaseCustomTask {
 
             if (productId != null) {
                 if (poolId != null) {
-                    this.logger.error("  Pool \"%s\" references an unresolvable product: %s",
+                    String msg = String.format("Pool \"%s\" references an unresolvable product: %s",
                         poolId, productId);
+
+                    this.logger.error("  " + msg);
+                    errors.add(msg);
                 }
                 else if (subscriptionId != null) {
-                    this.logger.error("  Subscription \"%s\" references an unresolvable product: %s",
+                    String msg = String.format("Subscription \"%s\" references an unresolvable product: %s",
                         subscriptionId, productId);
+
+                    this.logger.error("  " + msg);
+                    errors.add(msg);
                 }
             }
             else {
                 if (poolId != null) {
-                    this.logger.error("  Pool \"%s\" contains a null or empty product reference", poolId);
+                    String msg = String.format("Pool \"%s\" contains a null or empty product reference",
+                        poolId);
+
+                    this.logger.error("  " + msg);
+                    errors.add(msg);
                 }
                 else if (subscriptionId != null) {
-                    this.logger.error("  Subscription \"%s\" contains a null or empty product reference",
+                    String msg = String.format("Subscription \"%s\" contains a null or empty product reference",
                         subscriptionId);
+
+                    this.logger.error("  " + msg);
+                    errors.add(msg);
                 }
             }
         }
@@ -309,7 +330,11 @@ public class PerOrgProductsMigrationTask extends LiquibaseCustomTask {
             String envId = badObjectRefs.getString(1);
             String contentId = badObjectRefs.getString(2);
 
-            this.logger.error("  Environment \"%s\" references unresolvable content: %s", envId, contentId);
+            String msg = String.format("Environment \"%s\" references unresolvable content: %s",
+                envId, contentId);
+
+            this.logger.error("  " + msg);
+            errors.add(msg);
         }
 
         badObjectRefs.close();
@@ -330,8 +355,11 @@ public class PerOrgProductsMigrationTask extends LiquibaseCustomTask {
             String keyId = badObjectRefs.getString(1);
             String productId = badObjectRefs.getString(2);
 
-            this.logger.error("  Activation Key \"%s\" references an unresolvable product: %s", keyId,
-                productId);
+            String msg = String.format("Activation Key \"%s\" references an unresolvable product: %s",
+                keyId, productId);
+
+            this.logger.error("  " + msg);
+            errors.add(msg);
         }
 
         badObjectRefs.close();
