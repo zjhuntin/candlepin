@@ -33,9 +33,13 @@ JBOSS_CLASSPATH = "/var/lib/jbossas/server/production/deploy/candlepin.war/WEB-I
 TOMCAT_CLASSPATH = "/var/lib/" + TOMCAT + "/webapps/candlepin/WEB-INF/classes/"
 
 def run_command(command):
+    print "Running command: %s" % (command)
+
     (status, output) = commands.getstatusoutput(command)
+
     if status > 0:
         error_out(command, status, output)
+
     return output
 
 def error_out(command, status, output):
@@ -59,7 +63,9 @@ class DbSetup(object):
 
     def initialize_schema(self):
         print("Loading Candlepin schema")
-        self._run_liquibase("db/changelog/changelog-create.xml")
+
+        options = self._build_liquibase_options("db/changelog/changelog-create.xml")
+        self._run_liquibase(options, "migrate")
 
     def drop(self):
         raise NotImplementedError("Implemented by subclasses")
@@ -67,24 +73,26 @@ class DbSetup(object):
     def validate(self):
         """ Validates an existing candlepin database. """
         print("Validating Candlepin database")
-        self._run_liquibase("db/changelog/changelog-validate.xml")
+
+        options = self._build_liquibase_options("db/changelog/changelog-update.xml")
+        self._run_liquibase(options, "validate")
 
     def update(self):
         """ Upgrades an existing candlepin database. """
         print("Migrating Candlepin database")
-        self._run_liquibase("db/changelog/changelog-update.xml")
 
-    def _run_liquibase(self, changelog_path):
+        options = self._build_liquibase_options("db/changelog/changelog-update.xml")
+        self._run_liquibase(options, "migrate")
+
+    def _build_liquibase_options(self, changelog_path):
         # Figure out what to append to the classpath for liquibase:
         classpath = self.jdbc_jar
 
         if os.path.exists('target/classes'):
             classpath = "%s:%s" % (classpath, 'target/classes/')
-
-        if os.path.exists(TOMCAT_CLASSPATH):
+        elif os.path.exists(TOMCAT_CLASSPATH):
             classpath = "%s:%s" % (classpath, TOMCAT_CLASSPATH)
-
-        if os.path.exists(JBOSS_CLASSPATH):
+        elif os.path.exists(JBOSS_CLASSPATH):
             classpath = "%s:%s" % (classpath, JBOSS_CLASSPATH)
 
         liquibase_options = "--driver=%s --classpath=%s --changeLogFile=%s --url=%s --username=%s" % (
@@ -101,9 +109,10 @@ class DbSetup(object):
         # Add in output level. By default, Liquibase defaults to "off"
         liquibase_options += " --logLevel=%s" % ('debug' if self.verbose else 'severe')
 
-        print liquibase_options
+        return liquibase_options
 
-        output = run_command("liquibase %s migrate -Dcommunity=%s" % (liquibase_options, self.community))
+    def _run_liquibase(self, options, action):
+        output = run_command("liquibase %s %s -Dcommunity=%s" % (options, action, self.community))
         print output
 
 
