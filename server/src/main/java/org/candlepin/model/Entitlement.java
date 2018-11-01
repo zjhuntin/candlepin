@@ -276,7 +276,7 @@ public class Entitlement extends AbstractHibernateObject<Entitlement>
     }
 
     public void setCertificates(Set<EntitlementCertificate> certificates) {
-        this.certificates.clear();
+        this.certificates = new HashSet<>();
 
         if (certificates != null) {
             this.certificates.addAll(certificates);
@@ -286,6 +286,10 @@ public class Entitlement extends AbstractHibernateObject<Entitlement>
     public void addCertificate(EntitlementCertificate certificate) {
         certificate.setEntitlement(this);
         certificates.add(certificate);
+    }
+
+    public boolean removeCertificate(EntitlementCertificate certificate) {
+        return this.certificates.remove(certificate);
     }
 
     @Override

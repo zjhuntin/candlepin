@@ -537,10 +537,11 @@ public class DefaultEntitlementCertServiceAdapter extends BaseEntitlementCertSer
                 throw new RuntimeException(
                     "Entitlement certificate not found for entitlement during cert generation");
             }
+
             nextCert.setSerial(nextSerial);
             if (save) {
                 Entitlement ent = entitlements.get(entry.getKey());
-                ent.getCertificates().add(nextCert);
+                ent.addCertificate(nextCert);
             }
         }
 
