@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -151,6 +152,34 @@ public class EntitlementCertificateGenerator {
     }
 
     /**
+     * Generates a new entitlement certificate for the given entitlement and pool.
+     *
+     * @param pool
+     *  The pool for which to generate an entitlement certificate
+     *
+     * @param entitlement
+     *  The entitlement to use when generating the certificate
+     *
+     * @return
+     *  The newly generate entitlement certificate
+     */
+    @Transactional
+    public EntitlementCertificate generateEntitlementCertificate(Pool pool, Entitlement entitlement,
+        boolean updateEntitlement) {
+
+        Map<String, Product> products = new HashMap<>();
+        Map<String, Entitlement> entitlements = new HashMap<>();
+        Map<String, PoolQuantity> poolQuantities = new HashMap<>();
+
+        products.put(pool.getId(), pool.getProduct());
+        entitlements.put(pool.getId(), entitlement);
+        poolQuantities.put(pool.getId(), new PoolQuantity(pool, entitlement.getQuantity()));
+
+        return this.generateEntitlementCertificates(entitlement.getConsumer(),
+            products, poolQuantities, entitlements, updateEntitlement).get(pool.getId());
+    }
+
+    /**
      * Regenerates the certificates for the specified entitlement. If the lazy parameter is set,
      * this method only marks the entitlement dirty for later certificate regeneration.
      *
@@ -203,55 +232,35 @@ public class EntitlementCertificateGenerator {
      */
     private void regenerateCertificatesImpl(Iterable<Entitlement> entitlements) {
         if (entitlements != null) {
-            // TODO: This should be updated such that the update process generates a new serial
-            // rather than entirely new certificate objects. Once that happens, it's no longer
-            // critical (or even necessary) to store these IDs for deletion.
-            Set<String> deadCertIds = new HashSet<>();
+            Set<String> entIds = new HashSet<>();
 
             for (Entitlement entitlement : entitlements) {
-                // Store existing certs for later deletion
-                Set<EntitlementCertificate> existing = entitlement.getCertificates();
-
                 try {
-                    // Since cert generation is additive, we need to clear the existing certs
-                    // before attempting to generate new ones
-                    entitlement.setCertificates(null);
-
                     // Generate new cert
                     EntitlementCertificate generated = this.generateEntitlementCertificate(
-                        entitlement.getPool(), entitlement);
+                        entitlement.getPool(), entitlement, false);
 
                     // Apply to the entitlement
                     entitlement.setDirty(false);
+                    entitlement.setCertificates(Collections.singleton(generated));
 
                     // send entitlement changed event.
                     this.eventSink.queueEvent(this.eventFactory.entitlementChanged(entitlement));
-                    log.debug("Generated entitlementCertificate: #{}", generated.getId());
 
-                    // Put the old certs into the dead certs pile to be deleted later
-                    if (existing != null) {
-                        for (EntitlementCertificate cert : existing) {
-                            if (cert != null) {
-                                deadCertIds.add(cert.getId());
-                                this.entitlementCertificateCurator.evict(cert);
-                            }
-                        }
-                    }
+                    entIds.add(entitlement.getId());
                 }
                 catch (CertificateSizeException cse) {
-                    // Uh oh... restore the old certs and do nothing for now.
-                    entitlement.setCertificates(existing);
+                    // Uh oh... do nothing for now.
                     log.warn("The certificate cannot be regenerated at this time: {}", cse.getMessage());
                 }
             }
 
+            // Clear the old certs before we save so we don't end up in a weird state
+            int count = this.entitlementCertificateCurator.deleteByEntitlementIds(entIds);
+            log.debug("{} old entitlement certificates deleted", count);
+
             // Save everything
             this.entitlementCurator.saveOrUpdateAll(entitlements, false, false);
-
-            // Save was (seemingly) successful; delete all of the old certs
-            int count = this.entitlementCertificateCurator.deleteByIds(deadCertIds);
-
-            log.debug("{} old entitlement certificates deleted", count);
         }
     }
 

@@ -75,56 +75,72 @@ public class EntitlementCertificateCurator extends AbstractHibernateCurator<Enti
     }
 
     /**
-     * Deletes any existing entitlement certificates represented by the specified certificate IDs.
+     * Deletes any existing entitlement certificates for the specified entitlements.
      *
      * @param entitlementIds
-     *  A collection of IDs representing the entitlement certificates to delete
+     *  A collection of IDs of the entitlements for which to delete certificates
      *
      * @return
      *  the number of entitlement certificates deleted
      */
-    public int deleteByIds(String... entitlementIds) {
-        return entitlementIds != null ? this.deleteByIds(Arrays.asList(entitlementIds)) : 0;
+    public int deleteByEntitlementIds(String... entitlementIds) {
+        return entitlementIds != null ? this.deleteByEntitlementIds(Arrays.asList(entitlementIds)) : 0;
     }
 
     /**
-     * Deletes any existing entitlement certificates represented by the specified certificate IDs.
+     * Deletes any existing entitlement certificates for the specified entitlements.
      *
      * @param entitlementIds
-     *  A collection of IDs representing the entitlement certificates to delete
+     *  A collection of IDs of the entitlements for which to delete certificates
      *
      * @return
      *  the number of entitlement certificates deleted
      */
     @Transactional
-    public int deleteByIds(Iterable<String> entitlementIds) {
+    public int deleteByEntitlementIds(Iterable<String> entitlementIds) {
         int removed = 0;
         int revoked = 0;
 
         if (entitlementIds != null) {
-            Set<String> serials = new HashSet<>();
+            Set<String> certIds = new HashSet<>();
+            Set<Long> serials = new HashSet<>();
 
-            String sjpql = "SELECT ec.serial.id FROM EntitlementCertificate ec WHERE ec.id IN :ecids";
+            String sjpql = "SELECT ec.id, ec.serial.id FROM EntitlementCertificate ec " +
+                "WHERE ec.entitlement.id IN :entids";
             Query selector = this.getEntityManager().createQuery(sjpql);
+
+            // Impl note:
+            // If we don't set the flush mode here, we will trigger inserts on any pending new
+            // entitlement certificates, on top of potentially catching certs we don't intend
+            // to pick up.
+            selector.setFlushMode(javax.persistence.FlushModeType.COMMIT);
 
             String rjpql = "DELETE FROM EntitlementCertificate ec WHERE ec.id IN :ecids";
             Query remover = this.getEntityManager().createQuery(rjpql);
 
+            // Get certificate and serial IDs...
             for (List<String> block : this.partition(entitlementIds)) {
-                selector.setParameter("ecids", block);
-                serials.addAll(selector.getResultList());
+                selector.setParameter("entids", block);
 
+                for (Object[] ids : (List<Object[]>) selector.getResultList()) {
+                    certIds.add((String) ids[0]);
+                    serials.add((Long) ids[1]);
+                }
+            }
+
+            // Delete the old entitlement certificates
+            for (List<String> block : this.partition(certIds)) {
                 remover.setParameter("ecids", block);
                 removed += remover.executeUpdate();
             }
 
             log.debug("{} entitlement certificates removed", removed);
 
-            // Update the serials so they get picked up later
+            // Mark the serials as revoked so they get picked up and added to the CRL later
             String ujpql = "UPDATE CertificateSerial cs SET cs.revoked = true WHERE cs.id IN :csids";
             Query updater = this.getEntityManager().createQuery(ujpql);
 
-            for (List<String> block : this.partition(serials)) {
+            for (List<Long> block : this.partition(serials)) {
                 updater.setParameter("csids", block);
                 revoked += updater.executeUpdate();
             }
