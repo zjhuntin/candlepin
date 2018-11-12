@@ -349,7 +349,7 @@ bash $SELF_DIR/gen-certs $GEN_CERTS_ARGS
 update_keystore
 
 # update server.xml
-$SUDO python $PROJECT_DIR/bin/update-server-xml.py $CONTAINER_CONF_DIR
+# $SUDO python $PROJECT_DIR/bin/update-server-xml.py $CONTAINER_CONF_DIR
 
 create_var_lib_candlepin
 create_var_log_candlepin
