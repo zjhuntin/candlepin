@@ -303,15 +303,12 @@ public class OwnerProductResource {
         @PathParam("product_id") String productId,
         @ApiParam(name = "contentMap", required = true) Map<String, Boolean> contentMap) {
 
+        // Get the owner & lock it while we are doing the update for this org
+        // This is done in order to prevent collisions in updates on different parts of the product
         Owner owner = this.getOwnerByKey(ownerKey);
+        ownerCurator.lock(owner);
         Product product = this.fetchProduct(owner, productId);
         Collection<ProductContent> productContent = new LinkedList<ProductContent>();
-
-        if (product.isLocked()) {
-            throw new ForbiddenException(i18n.tr("product \"{0}\" is locked", product.getId()));
-        }
-
-        this.productCurator.lock(product);
 
         for (Entry<String, Boolean> entry : contentMap.entrySet()) {
             Content content = this.fetchContent(owner, entry.getKey());
@@ -335,15 +332,12 @@ public class OwnerProductResource {
         @PathParam("content_id") String contentId,
         @QueryParam("enabled") Boolean enabled) {
 
+        // Get the owner & lock it while we are doing the update for this org
+        // This is done in order to prevent collisions in updates on different parts of the product
         Owner owner = this.getOwnerByKey(ownerKey);
+        ownerCurator.lock(owner);
         Product product = this.fetchProduct(owner, productId);
         Content content = this.fetchContent(owner, contentId);
-
-        if (product.isLocked()) {
-            throw new ForbiddenException(i18n.tr("product \"{0}\" is locked", product.getId()));
-        }
-
-        this.productCurator.lock(product);
 
         product = this.productManager.addContentToProduct(
             product, Arrays.asList(new ProductContent(product, content, enabled)), owner, true
@@ -363,12 +357,9 @@ public class OwnerProductResource {
         @PathParam("content_id") String contentId) {
 
         Owner owner = this.getOwnerByKey(ownerKey);
+        ownerCurator.lock(owner);
         Product product = this.fetchProduct(owner, productId);
         Content content = this.fetchContent(owner, contentId);
-
-        if (product.isLocked()) {
-            throw new ForbiddenException(i18n.tr("product \"{0}\" is locked", product.getId()));
-        }
 
         // Remove content
         this.productManager.removeProductContent(product, Arrays.asList(content), owner, true);
