@@ -62,7 +62,7 @@ JACKSON = [group('jackson-annotations', 'jackson-core', 'jackson-databind',
                :version => JACKSON_VERSION)]
 
 SUN_JAXB = ['com.sun.xml.bind:jaxb-impl:jar:2.3.0',
-	    'com.sun.xml.bind:jaxb-core:jar:2.3.0']
+  'com.sun.xml.bind:jaxb-core:jar:2.3.0']
 
 CORE_TESTING = [
   'junit:junit:jar:4.12',
@@ -72,8 +72,6 @@ CORE_TESTING = [
   'pl.pragmatists:JUnitParams:jar:1.0.3',
 ]
 Buildr.settings.build['junit'] = '4.12' # Buildr uses 4.11 by default
-
-JUKITO = ['org.jukito:jukito:jar:1.4']
 
 LOGBACK = [group('logback-core', 'logback-classic',
                  :under => 'ch.qos.logback',
@@ -306,7 +304,6 @@ define "candlepin" do
 
     test_classpath = [
       CORE_TESTING,
-      JUKITO,
       LIQUIBASE,
       LIQUIBASE_SLF4J,
     ]
@@ -413,7 +410,6 @@ define "candlepin" do
 
     test_classpath = [
       CORE_TESTING,
-      JUKITO,
       HSQLDB,
       LIQUIBASE_SLF4J,
     ]
