@@ -264,6 +264,10 @@ public class OwnerContentResource {
         @ApiParam(name = "content", required = true) ContentData content) {
 
         Owner owner = this.getOwnerByKey(ownerKey);
+
+        // Lock the relation so we don't do multiple updates in parallel and clobber one of them
+        boolean locked = this.ownerContentCurator.lockOwnerContentRelation(owner.getId(), contentId);
+
         Content existing  = this.fetchContent(owner, contentId);
 
         if (existing.isLocked()) {

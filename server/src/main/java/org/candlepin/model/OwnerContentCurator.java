@@ -33,6 +33,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.persistence.LockModeType;
+import javax.persistence.NoResultException;
+
 
 
 /**
@@ -93,6 +96,38 @@ public class OwnerContentCurator extends AbstractHibernateCurator<OwnerContent> 
         }
 
         return this.cpQueryFactory.<Owner>buildQuery();
+    }
+
+    /**
+     * Locks the owner-content relation for the given owner ID and content ID. This should be done
+     * before the content is fetched to ensure the proper state is fetched.
+     *
+     * @param ownerId
+     *  The ID of the owner for the owner-content relation to lock
+     *
+     * @param contentId
+     *  The ID of the content for the owner-content relation to lock
+     *
+     * @return
+     *  true if the owner-content relation was found and locked successfully; false otherwise
+     */
+    public boolean lockOwnerContentRelation(String ownerId, String contentId) {
+        String jpql = "SELECT oc FROM OwnerContent oc " +
+            "WHERE oc.owner.id = :owner_id AND oc.content.id = :content_id";
+
+        try {
+            OwnerContent oc = this.getEntityManager()
+                .createQuery(jpql, OwnerContent.class)
+                .setParameter("owner_id", ownerId)
+                .setParameter("content_id", contentId)
+                .setLockMode(LockModeType.PESSIMISTIC_WRITE)
+                .getSingleResult();
+
+            return true;
+        }
+        catch (NoResultException e) {
+            return false;
+        }
     }
 
     /**

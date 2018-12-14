@@ -281,6 +281,10 @@ public class OwnerProductResource {
         }
 
         Owner owner = this.getOwnerByKey(ownerKey);
+
+        // Lock the relation so we don't do multiple updates in parallel and clobber one of them
+        boolean locked = this.ownerProductCurator.lockOwnerProductRelation(owner.getId(), productId);
+
         Product existing = this.fetchProduct(owner, productId);
 
         if (existing.isLocked()) {
@@ -306,7 +310,10 @@ public class OwnerProductResource {
         // Get the owner & lock it while we are doing the update for this org
         // This is done in order to prevent collisions in updates on different parts of the product
         Owner owner = this.getOwnerByKey(ownerKey);
-        ownerCurator.lock(owner);
+
+        // Lock the relation so we don't do multiple updates in parallel and clobber one of them
+        boolean locked = this.ownerProductCurator.lockOwnerProductRelation(owner.getId(), productId);
+
         Product product = this.fetchProduct(owner, productId);
         Collection<ProductContent> productContent = new LinkedList<ProductContent>();
 
@@ -335,7 +342,10 @@ public class OwnerProductResource {
         // Get the owner & lock it while we are doing the update for this org
         // This is done in order to prevent collisions in updates on different parts of the product
         Owner owner = this.getOwnerByKey(ownerKey);
-        ownerCurator.lock(owner);
+
+        // Lock the relation so we don't do multiple updates in parallel and clobber one of them
+        boolean locked = this.ownerProductCurator.lockOwnerProductRelation(owner.getId(), productId);
+
         Product product = this.fetchProduct(owner, productId);
         Content content = this.fetchContent(owner, contentId);
 
@@ -357,7 +367,10 @@ public class OwnerProductResource {
         @PathParam("content_id") String contentId) {
 
         Owner owner = this.getOwnerByKey(ownerKey);
-        ownerCurator.lock(owner);
+
+        // Lock the relation so we don't do multiple updates in parallel and clobber one of them
+        boolean locked = this.ownerProductCurator.lockOwnerProductRelation(owner.getId(), productId);
+
         Product product = this.fetchProduct(owner, productId);
         Content content = this.fetchContent(owner, contentId);
 
@@ -376,6 +389,10 @@ public class OwnerProductResource {
         @PathParam("product_id") String productId) {
 
         Owner owner = this.getOwnerByKey(ownerKey);
+
+        // Lock the relation so we don't do multiple updates in parallel and clobber one of them
+        boolean locked = this.ownerProductCurator.lockOwnerProductRelation(owner.getId(), productId);
+
         Product product = this.fetchProduct(owner, productId);
 
         if (product.isLocked()) {
