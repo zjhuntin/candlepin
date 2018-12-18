@@ -16,22 +16,20 @@ package org.candlepin.model;
 
 import static org.junit.Assert.*;
 
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
-
 import org.candlepin.config.DatabaseConfigFactory;
 import org.candlepin.test.DatabaseTestFixture;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +37,6 @@ import java.util.Map;
 /**
  * AbstractHibernateCuratorTest
  */
-@RunWith(JUnitParamsRunner.class)
 public class AbstractHibernateCuratorTest extends DatabaseTestFixture {
     /**
      * Test implementation that provides access to some protected methods
@@ -264,8 +261,8 @@ public class AbstractHibernateCuratorTest extends DatabaseTestFixture {
         };
     }
 
-    @Test
-    @Parameters(method = "largeValueSetSizes")
+    @ParameterizedTest
+    @MethodSource("largeValueSetSizes")
     public void testBulkSQLUpdateWithLargeValueSets(int count, int skip) {
         Owner owner = this.createOwner();
 
@@ -313,8 +310,8 @@ public class AbstractHibernateCuratorTest extends DatabaseTestFixture {
         return entries.toArray();
     }
 
-    @Test
-    @Parameters(method = "largeValueSetAndCriteriaSizes")
+    @ParameterizedTest
+    @MethodSource("largeValueSetAndCriteriaSizes")
     public void testBulkSQLUpdateWithLargeValueSetAndCriteriaList(int valueCount, int criteriaListSize) {
         Owner owner = this.createOwner();
 

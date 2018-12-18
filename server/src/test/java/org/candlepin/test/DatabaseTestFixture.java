@@ -198,6 +198,7 @@ public class DatabaseTestFixture {
         registry.getEventListenerGroup(EventType.PRE_DELETE).appendListener(listenerProvider.get());
     }
 
+    // Need a before each here and a Liquibase extension...
     @Before
     public void init() throws Exception {
         this.init(true);
@@ -408,7 +409,6 @@ public class DatabaseTestFixture {
 
         return content;
     }
-
 
     protected Consumer createConsumer(Owner owner, ConsumerType ctype) {
         if (ctype == null) {

@@ -14,30 +14,25 @@
  */
 package org.candlepin.model;
 
-
-import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.*;
 
 import org.candlepin.test.DatabaseTestFixture;
 import org.candlepin.test.TestUtil;
 
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
-
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-
-
+import java.util.stream.Stream;
 
 /**
  * ContentTest
  */
-@RunWith(JUnitParamsRunner.class)
 public class ContentTest extends DatabaseTestFixture {
 
     @Test
@@ -101,8 +96,8 @@ public class ContentTest extends DatabaseTestFixture {
         assertEquals(newName, content.getName());
     }
 
-    protected Object[][] getValuesForEqualityAndReplication() {
-        return new Object[][] {
+    protected static Stream<Object[]> getValuesForEqualityAndReplication() {
+        return Stream.of(
             new Object[] { "Id", "test_value", "alt_value" },
             new Object[] { "Type", "test_value", "alt_value" },
             new Object[] { "Label", "test_value", "alt_value" },
@@ -116,7 +111,7 @@ public class ContentTest extends DatabaseTestFixture {
             new Object[] { "ModifiedProductIds", Arrays.asList("1", "2", "3"), Arrays.asList("4", "5", "6") },
             new Object[] { "Arches", "test_value", "alt_value" }
             // new Object[] { "Locked", Boolean.TRUE, Boolean.FALSE }
-        };
+        );
     }
 
     protected Method[] getAccessorAndMutator(String methodSuffix, Class mutatorInputClass)
@@ -162,8 +157,8 @@ public class ContentTest extends DatabaseTestFixture {
         assertTrue(rhs.equals(lhs));
     }
 
-    @Test
-    @Parameters(method = "getValuesForEqualityAndReplication")
+    @ParameterizedTest
+    @MethodSource("getValuesForEqualityAndReplication")
     public void testEquality(String valueName, Object value1, Object value2) throws Exception {
         Method[] methods = this.getAccessorAndMutator(valueName, value1.getClass());
         Method accessor = methods[0];
@@ -198,8 +193,8 @@ public class ContentTest extends DatabaseTestFixture {
         assertEquals(lhs.getEntityVersion(), rhs.getEntityVersion());
     }
 
-    @Test
-    @Parameters(method = "getValuesForEqualityAndReplication")
+    @ParameterizedTest
+    @MethodSource("getValuesForEqualityAndReplication")
     public void testEntityVersion(String valueName, Object value1, Object value2) throws Exception {
         Method[] methods = this.getAccessorAndMutator(valueName, value1.getClass());
         Method accessor = methods[0];

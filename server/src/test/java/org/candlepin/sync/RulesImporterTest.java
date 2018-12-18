@@ -14,7 +14,6 @@
  */
 package org.candlepin.sync;
 
-import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
 
 import org.candlepin.audit.EventSink;
@@ -86,17 +85,4 @@ public class RulesImporterTest extends DatabaseTestFixture {
         importer.importObject(new StringReader("//Version: 3.0"));
         verify(curator, never()).update(any(Rules.class));
     }
-
-    static class RulesMatcher extends ArgumentMatcher<Rules> {
-        private String rule;
-
-        public RulesMatcher(String rule) {
-            this.rule = rule;
-        }
-
-        public boolean matches(Object rules) {
-            return ((Rules) rules).getRules().equals(rule);
-        }
-    }
-
 }

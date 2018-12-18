@@ -15,7 +15,6 @@
 package org.candlepin.resource;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
 import org.candlepin.auth.Access;
@@ -170,7 +169,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
         assertEquals(1, pools.size());
 
         verify(attrUtil, times(1))
-            .setCalculatedAttributes((List<Pool>) argThat(IsCollectionWithSize.hasSize(1)), any(Date.class));
+            .setCalculatedAttributes(argThat(x -> x.size() == 1), any(Date.class));
     }
 
     @Test(expected = NotFoundException.class)
@@ -196,7 +195,7 @@ public class PoolResourceTest extends DatabaseTestFixture {
         assertEquals(2, pools.size());
 
         verify(attrUtil, times(1))
-            .setCalculatedAttributes((List<Pool>) argThat(IsCollectionWithSize.hasSize(2)), any(Date.class));
+            .setCalculatedAttributes(argThat(x -> x.size() == 2), any(Date.class));
     }
 
     @Test(expected = NotFoundException.class)

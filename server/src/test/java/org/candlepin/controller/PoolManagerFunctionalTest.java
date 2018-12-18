@@ -17,7 +17,6 @@ package org.candlepin.controller;
 import static org.apache.commons.collections.CollectionUtils.*;
 import static org.apache.commons.collections.TransformerUtils.*;
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 
 import org.candlepin.audit.Event;

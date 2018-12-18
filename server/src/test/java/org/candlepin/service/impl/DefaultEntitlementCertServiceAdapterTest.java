@@ -15,10 +15,6 @@
 package org.candlepin.service.impl;
 
 import static org.junit.Assert.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.argThat;
-import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -2084,21 +2080,20 @@ public class DefaultEntitlementCertServiceAdapterTest {
             encodedContent.containsKey(CONTENT_NAME);
     }
 
-    class ListContainsContentExtensions extends
-        ArgumentMatcher<Set<X509ExtensionWrapper>> {
+    class ListContainsContentExtensions implements ArgumentMatcher<Set<X509ExtensionWrapper>> {
 
-        public boolean matches(Object list) {
-            return isEncodedContentValid((Set) list);
+        @Override
+        public boolean matches(Set<X509ExtensionWrapper> argument) {
+            return isEncodedContentValid(argument);
         }
     }
 
-    static class ListContainsEntitlementExtensions extends
-        ArgumentMatcher<Set<X509ExtensionWrapper>> {
+    static class ListContainsEntitlementExtensions implements ArgumentMatcher<Set<X509ExtensionWrapper>> {
 
-        public boolean matches(Object list) {
+        public boolean matches(Set<X509ExtensionWrapper> argument) {
             Map<String, X509ExtensionWrapper> encodedContent = new HashMap<>();
 
-            for (X509ExtensionWrapper ext : (Set<X509ExtensionWrapper>) list) {
+            for (X509ExtensionWrapper ext : argument) {
                 encodedContent.put(ext.getOid(), ext);
             }
 
@@ -2109,8 +2104,7 @@ public class DefaultEntitlementCertServiceAdapterTest {
         }
     }
 
-    abstract static class OidMatcher extends
-        ArgumentMatcher<Set<X509ExtensionWrapper>> {
+    abstract static class OidMatcher implements ArgumentMatcher<Set<X509ExtensionWrapper>> {
 
         protected String value;
         protected String oid;
@@ -2120,10 +2114,10 @@ public class DefaultEntitlementCertServiceAdapterTest {
             this.oid = oid;
         }
 
-        public boolean matches(Object list) {
+        public boolean matches(Set<X509ExtensionWrapper> argument) {
             Map<String, X509ExtensionWrapper> encodedContent = new HashMap<>();
 
-            for (X509ExtensionWrapper ext : (Set<X509ExtensionWrapper>) list) {
+            for (X509ExtensionWrapper ext : argument) {
                 encodedContent.put(ext.getOid(), ext);
             }
 
@@ -2132,87 +2126,74 @@ public class DefaultEntitlementCertServiceAdapterTest {
     }
 
     static class ListContainsProvidesManagement extends OidMatcher {
-
         public ListContainsProvidesManagement(String value) {
             super(value, "1.3.6.1.4.1.2312.9.4.14");
         }
     }
 
     static class ListContainsSupportLevel extends OidMatcher {
-
         public ListContainsSupportLevel(String value) {
             super(value, "1.3.6.1.4.1.2312.9.4.15");
         }
     }
 
     static class ListContainsSupportType extends OidMatcher {
-
         public ListContainsSupportType(String value) {
             super(value, "1.3.6.1.4.1.2312.9.4.16");
         }
     }
 
     static class ListContainsStackingId extends OidMatcher {
-
         public ListContainsStackingId(String value) {
             super(value, "1.3.6.1.4.1.2312.9.4.17");
         }
     }
     static class ListContainsVirtOnlyKey extends OidMatcher {
-
         public ListContainsVirtOnlyKey(String value) {
             super(value, "1.3.6.1.4.1.2312.9.4.18");
         }
     }
     static class ListContainsOrderNumberKey extends OidMatcher {
-
         public ListContainsOrderNumberKey(String value) {
             super(value, "1.3.6.1.4.1.2312.9.4.2");
         }
     }
 
     static class ListContainsContentUrl extends OidMatcher {
-
         public ListContainsContentUrl(String value, String contentID) {
             super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".1.6");
         }
     }
 
     static class ListContainsContentTypeYum extends OidMatcher {
-
         public ListContainsContentTypeYum(String value, String contentID) {
             super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".1");
         }
     }
 
     static class ListContainsContentTypeFile extends OidMatcher {
-
         public ListContainsContentTypeFile(String value, String contentID) {
             super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".2");
         }
     }
 
     static class ListContainsContentTypeKickstart extends OidMatcher {
-
         public ListContainsContentTypeKickstart(String value, String contentID) {
             super(value, "1.3.6.1.4.1.2312.9.2." + contentID + ".3");
         }
     }
 
-
-    abstract static class OidAbsentMatcher extends
-        ArgumentMatcher<Set<X509ExtensionWrapper>> {
-
+    abstract static class OidAbsentMatcher implements ArgumentMatcher<Set<X509ExtensionWrapper>> {
         protected String oid;
 
         public OidAbsentMatcher(String oid) {
             this.oid = oid;
         }
 
-        public boolean matches(Object list) {
+        public boolean matches(Set<X509ExtensionWrapper> argument) {
             Map<String, X509ExtensionWrapper> encodedContent = new HashMap<>();
 
-            for (X509ExtensionWrapper ext : (Set<X509ExtensionWrapper>) list) {
+            for (X509ExtensionWrapper ext : argument) {
                 encodedContent.put(ext.getOid(), ext);
             }
 
@@ -2221,14 +2202,12 @@ public class DefaultEntitlementCertServiceAdapterTest {
     }
 
     static class ListDoesNotContainSupportLevel extends OidAbsentMatcher {
-
         public ListDoesNotContainSupportLevel() {
             super("1.3.6.1.4.1.2312.9.4.15");
         }
     }
 
     static class ListDoesNotContainSupportType extends OidAbsentMatcher {
-
         public ListDoesNotContainSupportType() {
             super("1.3.6.1.4.1.2312.9.4.16");
         }

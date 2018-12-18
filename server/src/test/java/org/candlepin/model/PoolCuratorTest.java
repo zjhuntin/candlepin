@@ -32,10 +32,10 @@ import org.candlepin.util.Util;
 import org.hamcrest.Matchers;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +49,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import javax.inject.Inject;
 
@@ -57,7 +58,7 @@ import javax.inject.Inject;
 /**
  * Test suite for the PoolCurator object
  */
-@RunWith(JUnitParamsRunner.class)
+@TestInstance(Lifecycle.PER_CLASS)
 public class PoolCuratorTest extends DatabaseTestFixture {
 
     @Inject private CandlepinPoolManager poolManager;
@@ -2161,11 +2162,11 @@ public class PoolCuratorTest extends DatabaseTestFixture {
         assertEquals(expectedPoolProductMap, actualPoolProductMap);
     }
 
-    protected Object[][] getPoolSetSizes() {
+    protected Stream<Object[]> getPoolSetSizes() {
         int inBlockSize = getConfigForParameters().getInt(DatabaseConfigFactory.IN_OPERATOR_BLOCK_SIZE);
         int halfBlockSize = inBlockSize / 2;
 
-        return new Object[][] {
+        return Stream.of(
             new Object[] { 0 },
             new Object[] { 1 },
             new Object[] { 10 },
@@ -2185,12 +2186,12 @@ public class PoolCuratorTest extends DatabaseTestFixture {
             new Object[] { 3 * inBlockSize },
             new Object[] { 3 * inBlockSize + 1 },
             new Object[] { 3 * inBlockSize + 10 },
-            new Object[] { 3 * inBlockSize + halfBlockSize },
-        };
+            new Object[] { 3 * inBlockSize + halfBlockSize }
+        );
     }
 
-    //@Test
-    @Parameters(method = "getPoolSetSizes")
+    @ParameterizedTest
+    @MethodSource("getPoolSetSizes")
     public void testFetchingPoolProvidedProductIdsWithVaryingPoolSetSizes(int poolsToCreate) {
         Owner owner = this.createOwner();
 

@@ -92,9 +92,10 @@ import org.candlepin.test.MockResultIterator;
 import org.candlepin.test.TestUtil;
 
 import org.hamcrest.core.IsCollectionContaining;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -105,9 +106,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnap.commons.i18n.I18n;
 import org.xnap.commons.i18n.I18nFactory;
-
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -122,11 +120,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Stream;
 
 /**
  * PoolManagerTest
  */
-@RunWith(JUnitParamsRunner.class)
 public class PoolManagerTest {
     private static Logger log = LoggerFactory.getLogger(PoolManagerTest.class);
 
@@ -173,7 +171,7 @@ public class PoolManagerTest {
 
     protected static Map<String, List<Pool>> subToPools;
 
-    @Before
+    @BeforeEach
     public void init() throws Exception {
         MockitoAnnotations.initMocks(this);
 
@@ -1673,7 +1671,7 @@ public class PoolManagerTest {
         assertEquals(newPools.get(0).getSourceSubscription().getSubscriptionSubKey(), "master");
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void createPoolsForPoolBonusExist() {
         Owner owner = this.getOwner();
         PoolRules pRules = new PoolRules(manager, mockConfig, entitlementCurator,
@@ -2076,10 +2074,10 @@ public class PoolManagerTest {
 
     // TODO:
     // Refactor these tests when isManaged is refactored to not be reliant upon the config
-    public Object[][] getParametersForIsManagedTests() {
+    public static Stream<Object[]> getParametersForIsManagedTests() {
         SourceSubscription srcSub = new SourceSubscription("test_sub_id", "test_sub_key");
 
-        return new Object[][] {
+        return Stream.of(
             // Standalone tests
             new Object[] { PoolType.NORMAL, null, null, false, false },
             new Object[] { PoolType.ENTITLEMENT_DERIVED, null, null, false, false },
@@ -2136,8 +2134,8 @@ public class PoolManagerTest {
             new Object[] { PoolType.STACK_DERIVED, srcSub, "upstream_pool_id", true, false },
             new Object[] { PoolType.BONUS, srcSub, "upstream_pool_id", true, true },
             new Object[] { PoolType.UNMAPPED_GUEST, srcSub, "upstream_pool_id", true, true },
-            new Object[] { PoolType.DEVELOPMENT, srcSub, "upstream_pool_id", true, true },
-        };
+            new Object[] { PoolType.DEVELOPMENT, srcSub, "upstream_pool_id", true, true }
+        );
     }
 
     @Test
@@ -2145,8 +2143,8 @@ public class PoolManagerTest {
         assertFalse(manager.isManaged(null));
     }
 
-    @Test
-    @Parameters(method = "getParametersForIsManagedTests")
+    @ParameterizedTest
+    @MethodSource("getParametersForIsManagedTests")
     public void testIsManaged(PoolType type, SourceSubscription srcSub, String upstreamPoolId, boolean hosted,
         boolean expected) {
 

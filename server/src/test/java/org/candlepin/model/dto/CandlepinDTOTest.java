@@ -14,28 +14,24 @@
  */
 package org.candlepin.model.dto;
 
-import org.candlepin.model.AbstractHibernateObject;
-import org.candlepin.util.Util;
-import org.candlepin.test.TestUtil;
-
 import static org.junit.Assert.*;
 
-import junitparams.JUnitParamsRunner;
-import junitparams.Parameters;
+import org.candlepin.model.AbstractHibernateObject;
+import org.candlepin.test.TestUtil;
+import org.candlepin.util.Util;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Date;
-
-
+import java.util.stream.Stream;
 
 /**
  * Test suite for the CandlepinDTO class
  */
-@RunWith(JUnitParamsRunner.class)
 public class CandlepinDTOTest {
 
     public static class CandlepinDTOImpl extends CandlepinDTO {
@@ -78,11 +74,11 @@ public class CandlepinDTOTest {
         assertEquals(input, output);
     }
 
-    protected Object[][] getValuesForEqualityAndReplication() {
-        return new Object[][] {
+    protected static Stream<Object[]> getValuesForEqualityAndReplication() {
+        return Stream.of(
             new Object[] { "Created", TestUtil.createDate(1, 1, 2015), TestUtil.createDate(2, 2, 2015) },
             new Object[] { "Updated", TestUtil.createDate(3, 3, 2016), TestUtil.createDate(4, 4, 2016) }
-        };
+        );
     }
 
     protected Method[] getAccessorAndMutator(String methodSuffix, Class mutatorInputClass)
@@ -124,8 +120,8 @@ public class CandlepinDTOTest {
         assertTrue(rhs.equals(lhs));
     }
 
-    @Test
-    @Parameters(method = "getValuesForEqualityAndReplication")
+    @ParameterizedTest
+    @MethodSource("getValuesForEqualityAndReplication")
     public void testEquality(String valueName, Object value1, Object value2) throws Exception {
         Method[] methods = this.getAccessorAndMutator(valueName, value1.getClass());
         Method accessor = methods[0];
@@ -153,8 +149,8 @@ public class CandlepinDTOTest {
         assertTrue(rhs.equals(rhs));
     }
 
-    @Test
-    @Parameters(method = "getValuesForEqualityAndReplication")
+    @ParameterizedTest
+    @MethodSource("getValuesForEqualityAndReplication")
     public void testClone(String valueName, Object value1, Object value2) throws Exception {
         Method[] methods = this.getAccessorAndMutator(valueName, value1.getClass());
         Method accessor = methods[0];
@@ -171,8 +167,8 @@ public class CandlepinDTOTest {
         assertEquals(base.hashCode(), clone.hashCode());
     }
 
-    @Test
-    @Parameters(method = "getValuesForEqualityAndReplication")
+    @ParameterizedTest
+    @MethodSource("getValuesForEqualityAndReplication")
     public void testPopulateWithDTO(String valueName, Object value1, Object value2) throws Exception {
         Method[] methods = this.getAccessorAndMutator(valueName, value1.getClass());
         Method accessor = methods[0];
@@ -212,8 +208,8 @@ public class CandlepinDTOTest {
         };
     }
 
-    @Test
-    @Parameters(method = "getValuesPopulationByEntity")
+    @ParameterizedTest
+    @MethodSource("getValuesPopulationByEntity")
     public void testPopulateWithEntity(String valueName, Object input, Object defaultValue) throws Exception {
         Method accessor = null;
         Method mutator = null;
