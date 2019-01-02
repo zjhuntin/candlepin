@@ -21,8 +21,9 @@ import org.candlepin.pki.impl.JSSPrivateKeyReader;
 
 import org.junit.Test;
 
+import java.net.URL;
 import java.util.HashMap;
-
+import java.util.Objects;
 
 /**
  * CertificateReaderTest
@@ -31,15 +32,18 @@ public class CertificateReaderTest {
 
     @Test
     public void readkey() throws Exception {
+        ClassLoader cl = this.getClass().getClassLoader();
+
+
         Configuration config = new MapConfiguration(
             new HashMap<String, String>() {
                 {
-                    put(ConfigProperties.CA_CERT,
-                        "target/test/resources/certs/test.crt");
-                    put(ConfigProperties.CA_CERT_UPSTREAM,
-                        "target/test/resources/certs/upstream");
-                    put(ConfigProperties.CA_KEY,
-                        "target/test/resources/keys/pkcs1-des-encrypted.pem");
+                    URL url = cl.getResource("certs/test.crt");
+                    put(ConfigProperties.CA_CERT, Objects.requireNonNull(url).getFile());
+                    url = cl.getResource("certs/upstream");
+                    put(ConfigProperties.CA_CERT_UPSTREAM, Objects.requireNonNull(url).getFile());
+                    url = cl.getResource("keys/pkcs1-des-encrypted.pem");
+                    put(ConfigProperties.CA_KEY, Objects.requireNonNull(url).getFile());
                     put(ConfigProperties.CA_KEY_PASSWORD, "password");
                 }
             });
