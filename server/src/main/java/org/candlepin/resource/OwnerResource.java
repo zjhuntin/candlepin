@@ -148,8 +148,10 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
 
 import javax.persistence.PersistenceException;
 import javax.ws.rs.Consumes;
@@ -2084,6 +2086,56 @@ public class OwnerResource {
                     purposes = new LinkedHashSet<>(Arrays.asList(purposeValue.split("\\s*,\\s*")));
                 }
                 dtoMap.get(type.toString()).addAll(purposes);
+            }
+        }
+
+        SystemPurposeAttributesDTO dto = new SystemPurposeAttributesDTO();
+        dto.setOwner(translator.translate(owner, OwnerDTO.class));
+        dto.setSystemPurposeAttributes(dtoMap);
+        return dto;
+    }
+
+    @ApiOperation(notes = "Retrieves an aggregate of the system purpose settings of the owner's consumers",
+        value = "getConsumersSyspurpose")
+    @ApiResponses({@ApiResponse(code = 404, message = "Owner not found")})
+    @GET
+    @Path("{owner_key}/consumers_system_purpose")
+    @Produces(MediaType.APPLICATION_JSON)
+    public SystemPurposeAttributesDTO getConsumersSyspurpose(
+        @PathParam("owner_key") @Verify(Owner.class) String ownerKey) {
+        Owner owner = findOwnerByKey(ownerKey);
+        CandlepinQuery<Consumer> ownerConsumers = this.consumerCurator.searchOwnerConsumers(
+            owner, null, null, null, null, null, null,
+            null, null);
+
+        Map<String, Set<String>> dtoMap = new HashMap<>();
+        Arrays.stream(SystemPurposeAttributeType.values())
+            .forEach(x -> dtoMap.put(x.toString(), new LinkedHashSet<>()));
+
+        for (Consumer consumer : ownerConsumers) {
+            // we have to check that the sla is not only non-null, but also non-empty because for backwards
+            // compatibility an empty string for consumer's serviceLevel means that it is absent.
+            if (consumer.getServiceLevel() != null && !consumer.getServiceLevel().isEmpty()) {
+                dtoMap.get(SystemPurposeAttributeType.SERVICE_LEVEL.toString())
+                    .add(consumer.getServiceLevel());
+            }
+
+            if (consumer.getRole() != null) {
+                dtoMap.get(SystemPurposeAttributeType.ROLES.toString())
+                    .add(consumer.getRole());
+            }
+
+            if (consumer.getUsage() != null) {
+                dtoMap.get(SystemPurposeAttributeType.USAGE.toString())
+                    .add(consumer.getUsage());
+            }
+
+            if (consumer.getAddOns() != null) {
+                dtoMap.get(SystemPurposeAttributeType.ADDONS.toString())
+                    .addAll(consumer.getAddOns().stream()
+                    .filter(Objects::nonNull)
+                    .filter(addon -> !addon.isEmpty())
+                    .collect(Collectors.toSet()));
             }
         }
 

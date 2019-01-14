@@ -589,7 +589,7 @@ describe 'Owner Resource' do
     # output for owners, so we don't need to verify their presence.
   end
 
-  it 'accepts system purpose attributes' do
+  it 'lists system purpose attributes of its products' do
     owner_key = random_string("owner")
     @cp.create_owner(owner_key)
 
@@ -608,6 +608,36 @@ describe 'Owner Resource' do
     expect(res["systemPurposeAttributes"]["addons"]).to include("addon1")
     expect(res["systemPurposeAttributes"]["addons"]).to include("addon2")
     expect(res["systemPurposeAttributes"]["support_level"]).to include("mysla")
+  end
+
+  it 'lists system purpose attributes of its consumers' do
+    owner1_key = random_string("owner1")
+    owner1 = @cp.create_owner(owner1_key)
+
+    username1 = random_string("user1")
+    user1 = user_client(owner1, username1)
+
+    consumer1 = user1.register(random_string('consumer1'), :system, nil, {}, random_string('consumer1'), owner1_key,
+      [], [], nil, [], nil, [], nil, nil, nil, nil, nil, nil, nil, 'sla1', 'role1', 'usage1', ['addon1_1', 'addon1_2'])
+    consumer2 = user1.register(random_string('consumer2'), :system, nil, {}, random_string('consumer2'), owner1_key,
+      [], [], nil, [], nil, [], nil, nil, nil, nil, nil, nil, nil, 'sla2', 'role2', 'usage2', ['addon2_1'])
+    consumer3 = user1.register(random_string('consumer3'), :system, nil, {}, random_string('consumer3'), owner1_key,
+      [], [], nil, [], nil, [], nil, nil, nil, nil, nil, nil, nil, nil, nil, 'usage3', [])
+
+    user1.list_owner_consumers(owner1_key).length.should == 3
+
+    res = @cp.get_owner_consumers_syspurpose(owner1_key)
+    expect(res["owner"]["key"]).to eq(owner1_key)
+    expect(res["systemPurposeAttributes"]["usage"]).to include("usage1")
+    expect(res["systemPurposeAttributes"]["usage"]).to include("usage2")
+    expect(res["systemPurposeAttributes"]["usage"]).to include("usage3")
+    expect(res["systemPurposeAttributes"]["roles"]).to include("role1")
+    expect(res["systemPurposeAttributes"]["roles"]).to include("role2")
+    expect(res["systemPurposeAttributes"]["addons"]).to include("addon1_1")
+    expect(res["systemPurposeAttributes"]["addons"]).to include("addon1_2")
+    expect(res["systemPurposeAttributes"]["addons"]).to include("addon2_1")
+    expect(res["systemPurposeAttributes"]["support_level"]).to include("sla1")
+    expect(res["systemPurposeAttributes"]["support_level"]).to include("sla2")
   end
 end
 
