@@ -357,8 +357,9 @@ public class JobManager {
             job.setState(JobState.QUEUED);
         }
         catch (Exception e) {
+            log.warn("Error sending async job message.", e);
             job.setState(JobState.FAILED);
-            job.setJobResult(e);
+            job.setJobResult(e.getMessage());
 
             // Do we need to persist the job status in this branch? It's basically perma-dead.
         }
