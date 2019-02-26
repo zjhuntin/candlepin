@@ -22,13 +22,19 @@ the server functional.
 """
 
 import sys
-import commands
+import subprocess
 import os.path, os
 import socket
 import re
 import time
-import httplib
+
 from optparse import OptionParser
+from __future__ import print_function
+
+try:
+    from httplib import HTTPConnection
+except ImportError:
+    from http.client import HTTPConnection
 
 CANDLEPIN_CONF = '/etc/candlepin/candlepin.conf'
 
@@ -38,7 +44,7 @@ else:
     TOMCAT = 'tomcat6'
 
 def run_command(command):
-    (status, output) = commands.getstatusoutput(command)
+    (status, output) = subprocess.getstatusoutput(command)
     if status > 0:
         sys.stderr.write("\n########## ERROR ############\n")
         sys.stderr.write("Error running command: %s\n" % command)
@@ -119,7 +125,7 @@ class TomcatSetup(object):
 
     def wait_for_startup(self):
         print("Waiting for tomcat to restart...")
-        conn = httplib.HTTPConnection('localhost:8080')
+        conn = HTTPConnection('localhost:8080')
         for x in range(1,5):
             time.sleep(5)
             try:
